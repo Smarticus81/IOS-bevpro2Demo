@@ -21,8 +21,12 @@ app = Flask(__name__)
 # Initialize ElevenLabs
 eleven_labs_key = os.getenv('ELEVEN_LABS_API_KEY')
 if eleven_labs_key:
-    set_api_key(eleven_labs_key)
-    logger.info("ElevenLabs API initialized successfully")
+    try:
+        set_api_key(eleven_labs_key)
+        logger.info("ElevenLabs API initialized successfully with key starting with: %s", eleven_labs_key[:8])
+    except Exception as e:
+        logger.error("Failed to initialize ElevenLabs API: %s", str(e))
+        raise
 else:
     logger.warning("ElevenLabs API key not found")
 
