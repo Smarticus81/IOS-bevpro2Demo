@@ -1,13 +1,19 @@
 import OpenAI from "openai";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
+let openai: OpenAI | null = null;
 
-if (!OPENAI_API_KEY) {
-  throw new Error('OpenAI API key is required. Please set VITE_OPENAI_API_KEY environment variable.');
+async function getOpenAIClient() {
+  if (!openai) {
+    const response = await fetch('/api/config');
+    const { openaiKey } = await response.json();
+    if (!openaiKey) {
+      throw new Error('OpenAI API key not available');
+    }
+    openai = new OpenAI({ apiKey: openaiKey });
+  }
+  return openai;
 }
-
-const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 interface OrderIntent {
   type: "order";
@@ -15,29 +21,48 @@ interface OrderIntent {
     name: string;
     quantity: number;
   }>;
+  conversational_response: string;
 }
 
 interface QueryIntent {
   type: "query";
   category?: string;
   attribute?: string;
+  conversational_response: string;
 }
 
 type Intent = OrderIntent | QueryIntent;
 
 export async function processVoiceCommand(text: string): Promise<Intent> {
   try {
-    const response = await openai.chat.completions.create({
+    const client = await getOpenAIClient();
+    const response = await client.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: `You are a bartender's AI assistant. Parse customer drink orders and queries.
-          For orders, extract drink names and quantities.
-          For queries, identify the category or attribute being asked about.
+          content: `You are a friendly and helpful AI bartender. Your task is to:
+          1. Parse customer drink orders and queries naturally
+          2. Extract order details or query information
+          3. Generate a natural, conversational response
+          4. Format the entire response as JSON
+          
+          Examples:
+          - "I'll have two beers" -> Order for 2 beers with response like "Coming right up! Two beers for you."
+          - "What wines do you have?" -> Query about wine category with response like "We have a great selection of wines, including reds, whites, and sparkling options."
+          
           Respond with JSON in one of these formats:
-          Order: { "type": "order", "items": [{ "name": string, "quantity": number }] }
-          Query: { "type": "query", "category": string?, "attribute": string? }`
+          Order: { 
+            "type": "order", 
+            "items": [{ "name": string, "quantity": number }],
+            "conversational_response": string
+          }
+          Query: { 
+            "type": "query", 
+            "category": string?,
+            "attribute": string?,
+            "conversational_response": string
+          }`
         },
         {
           role: "user",

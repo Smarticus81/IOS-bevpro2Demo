@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Mic, MicOff } from "lucide-react";
 import { voiceRecognition } from "@/lib/voice";
+import { processVoiceCommand } from "@/lib/openai";
 import type { Drink } from "@db/schema";
 
 interface VoiceControlProps {
@@ -41,45 +42,49 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
     };
   }, [drinks]);
 
-  const processOrder = (text: string) => {
-    // Simple order processing logic
-    // Look for patterns like "two beers" or "one moscow mule"
-    const words = text.toLowerCase().split(' ');
-    const quantities: { [key: string]: number } = {
-      'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
-      '1': 1, '2': 2, '3': 3, '4': 4, '5': 5
-    };
+  const processOrder = async (text: string) => {
+    try {
+      const intent = await processVoiceCommand(text);
+      
+      if (intent.type === "order") {
+        let orderSuccess = false;
+        
+        for (const item of intent.items) {
+          const drink = drinks.find(d => 
+            d.name.toLowerCase().includes(item.name.toLowerCase()) || 
+            item.name.toLowerCase().includes(d.name.toLowerCase())
+          );
 
-    let quantity = 1;
-    let drinkName = '';
+          if (drink) {
+            onAddToCart(drink, item.quantity);
+            orderSuccess = true;
+          }
+        }
 
-    for (let i = 0; i < words.length; i++) {
-      if (quantities[words[i]]) {
-        quantity = quantities[words[i]];
-        drinkName = words.slice(i + 1).join(' ');
-        break;
+        setStatus(orderSuccess ? intent.conversational_response : "Sorry, I couldn't find that drink");
+      } else if (intent.type === "query") {
+        let response = intent.conversational_response;
+        
+        if (intent.category) {
+          const categoryDrinks = drinks.filter(d => 
+            d.category.toLowerCase() === intent.category?.toLowerCase()
+          );
+          if (categoryDrinks.length > 0) {
+            const drinkNames = categoryDrinks.map(d => d.name).join(', ');
+            response += ` We have: ${drinkNames}`;
+          }
+        }
+        
+        setStatus(response);
       }
-    }
-
-    if (!drinkName) {
-      drinkName = words.join(' ');
-    }
-
-    const drink = drinks.find(d => 
-      d.name.toLowerCase().includes(drinkName) || 
-      drinkName.includes(d.name.toLowerCase())
-    );
-
-    if (drink) {
-      onAddToCart(drink, quantity);
-      setStatus(`Added ${quantity} ${drink.name} to order`);
-    } else {
-      setStatus("Sorry, I didn't understand that order");
+    } catch (error) {
+      console.error("Error processing voice command:", error);
+      setStatus("Sorry, I didn't catch that. Could you please repeat?");
     }
 
     setTimeout(() => {
       setStatus("Waiting for 'hey bar'...");
-    }, 3000);
+    }, 5000);
   };
 
   const toggleListening = () => {

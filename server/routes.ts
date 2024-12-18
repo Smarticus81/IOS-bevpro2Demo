@@ -78,5 +78,19 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Get OpenAI API configuration
+  app.get("/api/config", (_req, res) => {
+    try {
+      const openaiKey = process.env.OPENAI_API_KEY;
+      if (!openaiKey) {
+        throw new Error("OpenAI API key not configured");
+      }
+      res.json({ openaiKey });
+    } catch (error) {
+      console.error("Error fetching config:", error);
+      res.status(500).json({ error: "Configuration error" });
+    }
+  });
+
   return httpServer;
 }
