@@ -158,6 +158,13 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
           }
           break;
         }
+
+        case "incomplete_order": {
+          // Play a gentle sound for incomplete orders
+          await soundEffects.playListeningStart();
+          await handleResponse(intent.conversational_response);
+          break;
+        }
         
         case "query": {
           let response = intent.conversational_response;
@@ -173,6 +180,12 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
           }
           
           await handleResponse(response);
+          break;
+        }
+
+        case "greeting": {
+          await soundEffects.playListeningStart();
+          await handleResponse(intent.conversational_response);
           break;
         }
 

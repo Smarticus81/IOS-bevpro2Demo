@@ -53,6 +53,14 @@ interface OrderIntent {
   conversational_response: string;
 }
 
+interface IncompleteOrderIntent {
+  type: "incomplete_order";
+  missing: "drink_type" | "quantity";
+  quantity?: number;
+  drink_type?: string;
+  conversational_response: string;
+}
+
 interface QueryIntent {
   type: "query";
   category?: string;
@@ -60,7 +68,12 @@ interface QueryIntent {
   conversational_response: string;
 }
 
-type Intent = OrderIntent | QueryIntent;
+interface GreetingIntent {
+  type: "greeting";
+  conversational_response: string;
+}
+
+type Intent = OrderIntent | IncompleteOrderIntent | QueryIntent | GreetingIntent;
 
 export async function processVoiceCommand(text: string): Promise<Intent> {
   try {
@@ -85,12 +98,17 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
           role: "system",
           content: `You are a friendly and helpful AI bartender assistant. Your task is to:
           1. Parse customer drink orders and queries in a flexible, natural way
-          2. Extract order details or query information, even from partial or informal requests
+          2. Extract order details or query information
           3. Generate a friendly, conversational response
           4. Format the entire response as JSON
-
-          Only respond with "Sorry, I didn't catch that" if the request is completely unclear or empty.
-          Try to interpret partial or informal requests based on context.
+          
+          Response types:
+          - "order": Complete drink orders
+          - "incomplete_order": Orders missing drink type or quantity
+          - "query": Questions about drinks
+          - "greeting": General greetings or acknowledgments
+          
+          For incomplete orders, ask for clarification about the missing information.
           
           Examples:
           User: "I'll have two beers"
@@ -100,14 +118,20 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
             "conversational_response": "Coming right up! Two beers for you."
           }
           
-          User: "can you add two cucumber coolers and a vodka"
+          User: "add three"
           Response: {
-            "type": "order",
-            "items": [
-              {"name": "cucumber cooler", "quantity": 2},
-              {"name": "vodka", "quantity": 1}
-            ],
-            "conversational_response": "Sure thing! Adding two Cucumber Coolers and one Vodka to your order."
+            "type": "incomplete_order",
+            "missing": "drink_type",
+            "quantity": 3,
+            "conversational_response": "What type of drink would you like to add three of? We have beers, cocktails, wines, and spirits."
+          }
+          
+          User: "some beers"
+          Response: {
+            "type": "incomplete_order",
+            "missing": "quantity",
+            "drink_type": "beer",
+            "conversational_response": "How many beers would you like?"
           }
           
           User: "What wines do you have?"
@@ -117,11 +141,10 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
             "conversational_response": "We have a great selection of wines, including reds, whites, and sparkling options."
           }
           
-          User: "add three beers please"
+          User: "hey"
           Response: {
-            "type": "order",
-            "items": [{"name": "beer", "quantity": 3}],
-            "conversational_response": "I'll add three beers to your order right away!"
+            "type": "greeting",
+            "conversational_response": "Hello! What can I get for you today?"
           }`
         },
         {
