@@ -44,8 +44,11 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
       
       if (!errorType || errorType !== 'synthesis') {
         try {
-          console.log('Attempting to speak:', finalResponse);
-          await voiceSynthesis.speak(finalResponse, "alloy");
+          // Only attempt to speak if we have a response
+          if (finalResponse?.trim()) {
+            console.log('Attempting to speak:', finalResponse);
+            await voiceSynthesis.speak(finalResponse, "alloy");
+          }
         } catch (synthError) {
           console.error('Voice synthesis error:', synthError);
           setStatus('Voice response failed. ' + finalResponse);

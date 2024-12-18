@@ -4,12 +4,24 @@ import type { IncomingMessage } from 'http';
 
 export function setupRealtimeProxy(server: Server) {
   const wss = new WebSocketServer({ 
-    server,
-    path: '/api/realtime',
-    clientTracking: true,
-    // Skip WebSocket protocol check for vite HMR
-    verifyClient: (info: { req: IncomingMessage }) => {
-      return !info.req.headers['sec-websocket-protocol']?.includes('vite-hmr');
+    noServer: true,
+    clientTracking: true
+  });
+
+  // Handle upgrade manually to properly handle protocols
+  server.on('upgrade', (request, socket, head) => {
+    const wsProtocol = request.headers['sec-websocket-protocol'];
+    
+    // Skip vite HMR connections
+    if (wsProtocol?.includes('vite-hmr')) {
+      return;
+    }
+
+    // Only handle /api/realtime path
+    if (request.url?.startsWith('/api/realtime')) {
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit('connection', ws, request);
+      });
     }
   });
 

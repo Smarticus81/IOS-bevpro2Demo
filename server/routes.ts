@@ -7,6 +7,7 @@ import { setupRealtimeProxy } from "./realtime-proxy";
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
+  console.log('Setting up routes and realtime proxy...');
   setupRealtimeProxy(httpServer);
 
   // Get all drinks
