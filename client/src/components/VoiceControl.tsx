@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Mic, MicOff } from "lucide-react";
 import { voiceRecognition } from "@/lib/voice";
 import { processVoiceCommand } from "@/lib/openai";
-import { realtimeVoiceSynthesis as voiceSynthesis } from "@/lib/voice-realtime";
+import { voiceSynthesis } from "@/lib/voice-synthesis";
 import { soundEffects } from "@/lib/sound-effects";
 import { VoiceAnimation } from "./VoiceAnimation";
 import type { Drink } from "@db/schema";
@@ -40,16 +40,15 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         console.warn(`${errorType} error occurred:`, response);
       }
       
-      // Clear any pending voice synthesis before starting new response
-      voiceSynthesis.clearQueue();
       setStatus(finalResponse);
       
       if (!errorType || errorType !== 'synthesis') {
         try {
+          console.log('Attempting to speak:', finalResponse);
           await voiceSynthesis.speak(finalResponse, "alloy");
         } catch (synthError) {
           console.error('Voice synthesis error:', synthError);
-          // Don't throw, just log the error and continue with visual feedback
+          setStatus('Voice response failed. ' + finalResponse);
         }
       }
     } catch (error) {
