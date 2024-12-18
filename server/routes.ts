@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocket, WebSocketServer } from "ws";
 import { db } from "@db";
 import { drinks, orders, orderItems } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
@@ -71,8 +71,8 @@ export function registerRoutes(app: Express): Server {
         await db
           .update(drinks)
           .set({ 
-            inventory: db.sql`inventory - ${item.quantity}`,
-            sales: db.sql`sales + ${item.quantity}`
+            inventory: sql`${drinks.inventory} - ${item.quantity}`,
+            sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
           })
           .where(eq(drinks.id, item.id));
       }

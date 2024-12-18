@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Mic, MicOff } from "lucide-react";
-import { voiceRecognition } from "@/lib/voice";
+import { voiceRecognition, type VoiceProvider } from "@/lib/voice";
 import { processVoiceCommand } from "@/lib/openai";
 import type { Drink } from "@db/schema";
 
@@ -13,6 +14,7 @@ interface VoiceControlProps {
 export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
   const [isListening, setIsListening] = useState(false);
   const [status, setStatus] = useState<string>("");
+  const [provider, setProvider] = useState<VoiceProvider>("browser");
 
   useEffect(() => {
     voiceRecognition.onWakeWord(() => {
@@ -60,6 +62,23 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
 
   return (
     <div className="flex items-center gap-4 mb-6">
+      <Select
+        value={provider}
+        onValueChange={(value: VoiceProvider) => {
+          setProvider(value);
+          voiceRecognition.setProvider(value);
+        }}
+      >
+        <SelectTrigger className="w-40">
+          <SelectValue placeholder="Voice Provider" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="browser">Browser</SelectItem>
+          <SelectItem value="google">Google</SelectItem>
+          <SelectItem value="openai">OpenAI</SelectItem>
+        </SelectContent>
+      </Select>
+
       <Button
         onClick={toggleListening}
         variant={isListening ? "destructive" : "default"}

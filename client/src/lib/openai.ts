@@ -47,7 +47,11 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
       response_format: { type: "json_object" }
     });
 
-    return JSON.parse(response.choices[0].message.content);
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new Error("No response content from OpenAI");
+    }
+    return JSON.parse(content);
   } catch (error) {
     console.error("Failed to process voice command:", error);
     throw new Error("Failed to process voice command");
