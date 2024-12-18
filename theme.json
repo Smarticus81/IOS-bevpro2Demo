@@ -1,10 +1,10 @@
 {
   "variant": "professional",
-  "primary": "hsl(162 57% 57%)",
-  "secondary": "hsl(248 100% 75%)",
-  "background": "hsl(228 75% 97%)",
-  "foreground": "hsl(234 48% 20%)",
-  "accent": "hsl(0 100% 74%)",
+  "primary": "#4CD7B0",
+  "secondary": "#9381FF",
+  "background": "#F8F9FC",
+  "foreground": "#1A1B4B",
+  "accent": "#FF7C7C",
   "appearance": "light",
   "radius": 1.0
 }
