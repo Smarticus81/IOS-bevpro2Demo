@@ -66,13 +66,28 @@ class VoiceRecognition extends EventHandler {
         const text = result[0].transcript.toLowerCase();
         console.log('Recognized text:', text);
 
-        if (text.includes(this.orderWakeWord)) {
+        // Check for wake words
+        const hasOrderWake = text.includes(this.orderWakeWord);
+        const hasInquiryWake = text.includes(this.inquiryWakeWord);
+        
+        console.log('Wake word detection:', {
+          text,
+          hasOrderWake,
+          hasInquiryWake,
+          orderWakeWord: this.orderWakeWord,
+          inquiryWakeWord: this.inquiryWakeWord
+        });
+
+        if (hasOrderWake) {
+          console.log('Order wake word detected, emitting order mode');
           this.emit('wakeWord', { mode: 'order' });
           this.retryCount = 0;
-        } else if (text.includes(this.inquiryWakeWord)) {
+        } else if (hasInquiryWake) {
+          console.log('Inquiry wake word detected, emitting inquiry mode');
           this.emit('wakeWord', { mode: 'inquiry' });
           this.retryCount = 0;
         } else {
+          console.log('No wake word detected, emitting speech');
           this.emit('speech', text);
         }
       } catch (error) {

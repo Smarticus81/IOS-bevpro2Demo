@@ -112,19 +112,33 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
       setStatus(finalResponse);
       console.log('Current mode:', mode, 'Attempting response:', finalResponse);
 
+      console.log('HandleResponse - Current mode:', mode, 'Response:', finalResponse);
+      
       if (mode === 'inquiry') { // Only speak in inquiry mode
         try {
           if (finalResponse?.trim()) {
-            console.log('Initiating voice synthesis in inquiry mode');
+            console.log('Attempting voice synthesis:', {
+              mode,
+              response: finalResponse,
+              timestamp: new Date().toISOString()
+            });
+            
             await voiceSynthesis.speak(finalResponse, "alloy");
-            console.log('Voice synthesis completed');
+            console.log('Voice synthesis completed successfully');
+          } else {
+            console.log('Empty response, skipping voice synthesis');
           }
         } catch (error) {
-          console.error('Voice synthesis error:', error);
+          console.error('Voice synthesis error:', {
+            error,
+            mode,
+            response: finalResponse,
+            timestamp: new Date().toISOString()
+          });
           setStatus('Voice response failed. ' + finalResponse);
         }
       } else {
-        console.log('Skipping voice response in order mode');
+        console.log('Skipping voice response - currently in order mode');
       }
     } catch (error) {
       console.error('Response handling error:', error);
@@ -137,8 +151,10 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
 
     const setupVoiceRecognition = () => {
       voiceRecognition.on<WakeWordEvent>('wakeWord', async (event) => {
+        console.log('Wake word event received:', event);
         await soundEffects.playWakeWord();
         setMode(event.mode);
+        console.log('Mode set to:', event.mode);
         setStatus(event.mode === 'order' ? "Listening for order..." : "How can I help you?");
       });
 
