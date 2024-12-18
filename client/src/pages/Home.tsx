@@ -40,18 +40,23 @@ export function Home() {
     }
   });
 
-  const addToCart = (drink: Drink, quantity: number = 1) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.drink.id === drink.id);
-      if (existing) {
-        return prev.map(item => 
-          item.drink.id === drink.id 
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
-      }
-      return [...prev, { drink, quantity }];
-    });
+  const addToCart = (action: CartAction) => {
+    if (action.type === 'ADD_ITEM') {
+      const { drink, quantity } = action;
+      setCart(prev => {
+        const existing = prev.find(item => item.drink.id === drink.id);
+        if (existing) {
+          return prev.map(item => 
+            item.drink.id === drink.id 
+              ? { ...item, quantity: item.quantity + quantity }
+              : item
+          );
+        }
+        return [...prev, { drink, quantity }];
+      });
+    } else if (action.type === 'COMPLETE_TRANSACTION') {
+      placeOrder();
+    }
   };
 
   const removeFromCart = (drinkId: number) => {

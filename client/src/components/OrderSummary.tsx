@@ -16,9 +16,10 @@ export function OrderSummary({
   onPlaceOrder,
   isLoading 
 }: OrderSummaryProps) {
-  const total = cart.reduce((sum, item) => 
-    sum + (item.drink.price * item.quantity), 0
-  );
+  const total = cart.reduce((sum, item) => {
+    const itemPrice = Number(item.drink.price);
+    return sum + (itemPrice * item.quantity);
+  }, 0);
 
   return (
     <Card>
@@ -71,7 +72,7 @@ export function OrderSummary({
       <CardFooter className="flex-col gap-4">
         <div className="w-full flex justify-between text-lg font-semibold">
           <span>Total</span>
-          <span>${total}</span>
+          <span>${total.toFixed(2)}</span>
         </div>
 
         <Button
