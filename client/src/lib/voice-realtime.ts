@@ -13,8 +13,6 @@ class RealtimeVoiceSynthesis extends EventTarget {
   private static instance: RealtimeVoiceSynthesis;
   private audioContext: AudioContext | null = null;
   private currentMode: 'order' | 'inquiry' = 'order';
-  private elevenLabsInitialized = false;
-
   private constructor() {
     super();
     // Initialize Web Audio API context on first user interaction
@@ -23,10 +21,6 @@ class RealtimeVoiceSynthesis extends EventTarget {
         try {
           this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
           console.log('Audio context initialized on user interaction');
-          // Try to initialize Eleven Labs
-          this.initializeElevenLabs().catch(error => {
-            console.warn('Eleven Labs initialization failed, will use Web Speech API fallback:', error);
-          });
         } catch (error) {
           console.error('Failed to initialize audio context:', error);
         }
@@ -45,26 +39,6 @@ class RealtimeVoiceSynthesis extends EventTarget {
     return RealtimeVoiceSynthesis.instance;
   }
 
-  private async initializeElevenLabs() {
-    try {
-      console.log('Checking Eleven Labs configuration...');
-      const response = await fetch('/api/config');
-      if (!response.ok) {
-        throw new Error(`Config API error: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      if (data.elevenLabsKey) {
-        this.elevenLabsInitialized = true;
-        console.log('Eleven Labs initialized successfully');
-      } else {
-        console.log('No Eleven Labs API key found, will use Web Speech API');
-      }
-    } catch (error) {
-      console.warn('Failed to initialize Eleven Labs:', error);
-      this.elevenLabsInitialized = false;
-    }
-  }
 
   setMode(mode: 'order' | 'inquiry') {
     this.currentMode = mode;
@@ -84,37 +58,28 @@ class RealtimeVoiceSynthesis extends EventTarget {
     });
 
     try {
-      // Use OpenAI TTS for all modes
-      console.log('Processing voice synthesis request:', {
-        text: text.substring(0, 100) + '...',
-        mode: this.currentMode,
-        timestamp: new Date().toISOString()
-      });
-      
+      // Attempt OpenAI Nova voice synthesis first
       try {
+        console.log('Using OpenAI Nova voice synthesis:', {
+          text: text.substring(0, 100) + '...',
+          timestamp: new Date().toISOString()
+        });
+        
         await this.synthesizeWithOpenAI(text);
-        console.log('OpenAI voice synthesis completed successfully');
+        console.log('OpenAI Nova voice synthesis completed successfully');
+        return;
       } catch (error) {
-        console.error('OpenAI synthesis failed:', {
+        console.error('OpenAI Nova synthesis failed:', {
           error,
           timestamp: new Date().toISOString()
         });
         
-        // Try Eleven Labs as fallback
-        try {
-          console.log('Attempting Eleven Labs fallback...');
-          await this.synthesizeWithElevenLabs(text);
-        } catch (elevenLabsError) {
-          console.error('Eleven Labs synthesis failed:', {
-            error: elevenLabsError,
-            timestamp: new Date().toISOString()
-          });
-          // Final fallback to Web Speech
-          await this.synthesizeWithWebSpeech(text);
-        }
+        // Fallback to Web Speech API
+        console.log('Falling back to Web Speech API');
+        await this.synthesizeWithWebSpeech(text);
       }
     } catch (error) {
-      console.error('Speech synthesis failed:', error);
+      console.error('All speech synthesis methods failed:', error);
       this.dispatchEvent(new CustomEvent('error', {
         detail: {
           type: 'synthesis' as const,
@@ -126,7 +91,7 @@ class RealtimeVoiceSynthesis extends EventTarget {
   }
 
   private async synthesizeWithOpenAI(text: string) {
-    console.log('Using OpenAI for synthesis');
+    console.log('Using OpenAI Nova for synthesis');
     try {
       const response = await fetch('/api/synthesize', {
         method: 'POST',
@@ -134,19 +99,18 @@ class RealtimeVoiceSynthesis extends EventTarget {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          text,
-          provider: 'openai'
+          text
         }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('OpenAI synthesis failed:', {
+        console.error('OpenAI Nova synthesis failed:', {
           status: response.status,
           statusText: response.statusText,
           error: errorText
         });
-        throw new Error(`OpenAI synthesis failed: ${response.status} - ${errorText}`);
+        throw new Error(`OpenAI Nova synthesis failed: ${response.status} - ${errorText}`);
       }
 
       const audioData = await response.arrayBuffer();
@@ -154,38 +118,18 @@ class RealtimeVoiceSynthesis extends EventTarget {
         throw new Error('Received empty audio data from server');
       }
 
-      console.log('OpenAI synthesis succeeded, playing audio:', {
+      console.log('OpenAI Nova synthesis succeeded, playing audio:', {
         audioSize: audioData.byteLength,
         timestamp: new Date().toISOString()
       });
 
       await this.playAudioBuffer(audioData);
     } catch (error) {
-      console.error('OpenAI synthesis error details:', error);
+      console.error('OpenAI Nova synthesis error details:', error);
       throw error;
     }
   }
 
-  private async synthesizeWithElevenLabs(text: string) {
-    console.log('Using Eleven Labs for synthesis');
-    const response = await fetch('/api/synthesize', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        text,
-        provider: 'elevenlabs'
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Eleven Labs synthesis failed: ${response.statusText}`);
-    }
-
-    const audioData = await response.arrayBuffer();
-    await this.playAudioBuffer(audioData);
-  }
 
   // Cache for available voices
   private cachedVoices: SpeechSynthesisVoice[] | null = null;
