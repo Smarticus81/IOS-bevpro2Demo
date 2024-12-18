@@ -40,13 +40,20 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         console.warn(`${errorType} error occurred:`, response);
       }
       
+      // Clear any pending voice synthesis before starting new response
+      voiceSynthesis.clearQueue();
       setStatus(finalResponse);
       
       if (!errorType || errorType !== 'synthesis') {
-        await voiceSynthesis.speak(finalResponse, "alloy");
+        try {
+          await voiceSynthesis.speak(finalResponse, "alloy");
+        } catch (synthError) {
+          console.error('Voice synthesis error:', synthError);
+          // Don't throw, just log the error and continue with visual feedback
+        }
       }
     } catch (error) {
-      console.error('Voice synthesis error:', error);
+      console.error('Response handling error:', error);
       setStatus(response); // Fallback to visual feedback
     }
   };
@@ -164,6 +171,7 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
           const successfulItems: string[] = [];
           const failedItems: string[] = [];
           
+          // Process all items first before any responses
           for (const item of intent.items) {
             const drink = drinks.find(d => 
               d.name.toLowerCase().includes(item.name.toLowerCase()) || 
@@ -178,10 +186,19 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
             }
           }
 
-          if (successfulItems.length > 0) {
+          // Only send one response based on the overall result
+          if (successfulItems.length > 0 && failedItems.length === 0) {
+            // All items succeeded
             await soundEffects.playSuccess();
             await handleResponse(intent.conversational_response);
-          } else if (failedItems.length > 0) {
+          } else if (successfulItems.length > 0 && failedItems.length > 0) {
+            // Partial success
+            await soundEffects.playSuccess();
+            const successMsg = `Added ${successfulItems.join(' and ')}`;
+            const failMsg = `but couldn't find ${failedItems.join(', ')}`;
+            await handleResponse(`${successMsg}, ${failMsg}`);
+          } else {
+            // All items failed
             await soundEffects.playError();
             await handleResponse(`Sorry, I couldn't find ${failedItems.join(', ')} in our menu.`);
           }
