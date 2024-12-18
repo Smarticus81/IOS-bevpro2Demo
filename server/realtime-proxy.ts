@@ -40,12 +40,15 @@ export function setupRealtimeProxy(server: Server) {
       );
 
       // Set authentication headers
-      openaiWs.addListener('upgrade', (response) => {
-        response.headers = {
-          ...response.headers,
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        };
+      const authHeaders = {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      };
+      
+      openaiWs.addListener('upgrade', (response, socket, head) => {
+        Object.entries(authHeaders).forEach(([key, value]) => {
+          response.headers[key] = value;
+        });
       });
 
       // Set up error handlers first

@@ -166,22 +166,44 @@ class RealtimeVoiceSynthesis extends EventTarget {
               }
             }));
           } else if (data.type === 'audio') {
-            // Convert base64 to ArrayBuffer
-            const binaryString = atob(data.chunk);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-              bytes[i] = binaryString.charCodeAt(i);
-            }
+            console.log('Received audio chunk:', {
+              chunkSize: data.chunk.length,
+              timestamp: new Date().toISOString()
+            });
             
-            if (!this.audioContext) {
-              throw new Error('Audio context not initialized');
-            }
+            try {
+              // Convert base64 to ArrayBuffer
+              const binaryString = atob(data.chunk);
+              const bytes = new Uint8Array(binaryString.length);
+              for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+              }
+              
+              if (!this.audioContext) {
+                throw new Error('Audio context not initialized');
+              }
 
-            const audioBuffer = await this.audioContext.decodeAudioData(bytes.buffer);
-            this.audioQueue.push(audioBuffer);
-            
-            if (!this.isPlaying) {
-              await this.playNextChunk();
+              console.log('Decoding audio data...');
+              const audioBuffer = await this.audioContext.decodeAudioData(bytes.buffer);
+              console.log('Successfully decoded audio chunk:', {
+                duration: audioBuffer.duration,
+                sampleRate: audioBuffer.sampleRate,
+                timestamp: new Date().toISOString()
+              });
+              
+              this.audioQueue.push(audioBuffer);
+              console.log('Added chunk to queue, current queue length:', this.audioQueue.length);
+              
+              if (!this.isPlaying) {
+                console.log('Starting playback of queued audio');
+                await this.playNextChunk();
+              }
+            } catch (decodeError) {
+              console.error('Failed to decode audio chunk:', {
+                error: decodeError,
+                timestamp: new Date().toISOString()
+              });
+              throw decodeError;
             }
           }
         } catch (error) {
@@ -347,6 +369,14 @@ class RealtimeVoiceSynthesis extends EventTarget {
     try {
       this.isPlaying = true;
       const buffer = this.audioQueue.shift()!;
+      
+      console.log('Playing audio chunk:', {
+        sampleRate: buffer.sampleRate,
+        duration: buffer.duration,
+        numberOfChannels: buffer.numberOfChannels,
+        timestamp: new Date().toISOString()
+      });
+
       const source = this.audioContext.createBufferSource();
       
       // Create a gain node for smooth fade in/out
@@ -362,6 +392,7 @@ class RealtimeVoiceSynthesis extends EventTarget {
       
       source.buffer = buffer;
       source.onended = () => {
+        console.log('Audio chunk playback ended');
         // Cleanup
         source.disconnect();
         gainNode.disconnect();
@@ -371,8 +402,15 @@ class RealtimeVoiceSynthesis extends EventTarget {
           this.playNextChunk();
         } else {
           this.isPlaying = false;
+          console.log('Finished playing all audio chunks');
         }
       };
+      
+      // Resume audio context if it's suspended
+      if (this.audioContext.state === 'suspended') {
+        await this.audioContext.resume();
+        console.log('Resumed audio context');
+      }
       
       source.start();
       console.log('Started playing audio chunk');
