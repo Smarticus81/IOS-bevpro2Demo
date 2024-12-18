@@ -10,7 +10,7 @@ import { soundEffects } from "@/lib/sound-effects";
 import { VoiceAnimation } from "./VoiceAnimation";
 import fuzzysort from 'fuzzysort';
 import type { Drink } from "@db/schema";
-import type { ErrorType, VoiceError } from "@/types/speech";
+import type { ErrorType, VoiceError, WakeWordEvent, VoiceSettings } from "@/types/speech";
 
 interface VoiceControlProps {
   drinks: Drink[];
@@ -24,6 +24,11 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
   const [isSupported, setIsSupported] = useState(true);
   const [mode, setMode] = useState<'order' | 'inquiry' | 'training'>('order');
   const [showTraining, setShowTraining] = useState(false);
+  const [provider, setProvider] = useState<'elevenlabs' | 'webspeech'>('elevenlabs');
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [pitch, setPitch] = useState<number[]>([1.0]);
+  const [rate, setRate] = useState<number[]>([1.0]);
+  const [volume, setVolume] = useState<number[]>([1.0]);
 
   // Constants for fuzzy matching
   const FUZZY_THRESHOLD = -2000;
@@ -56,17 +61,19 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
     if (directMatch) return directMatch;
 
     // Strategy 2: Fuzzy matching with prepared targets
-    const fuzzyResults = fuzzysort.go(normalizedTarget, menuItems.map(item => ({
-      ...item,
-      searchStr: normalizeText(item.name)
-    })), {
-      keys: ['searchStr'],
-      threshold: FUZZY_THRESHOLD,
-      allowTypo: true
+    const fuzzyResults = fuzzysort.go(normalizedTarget, menuItems.map(item => 
+      normalizeText(item.name)
+    ), {
+      threshold: FUZZY_THRESHOLD
     });
 
-    if (fuzzyResults.length > 0 && fuzzyResults[0].obj) {
-      return fuzzyResults[0].obj as Drink;
+    if (fuzzyResults.length > 0) {
+      const bestMatchIndex = menuItems.findIndex(
+        item => normalizeText(item.name) === fuzzyResults[0].target
+      );
+      if (bestMatchIndex !== -1) {
+        return menuItems[bestMatchIndex];
+      }
     }
 
     // Strategy 3: Brand-focused matching
