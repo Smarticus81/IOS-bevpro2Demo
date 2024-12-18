@@ -11,24 +11,42 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
   const [stage, setStage] = useState<number>(0);
   
   useEffect(() => {
+    let mounted = true;
+    
     const animate = async () => {
-      // Play a welcome sound
-      await soundEffects.playWakeWord();
-      
-      // Sequence the animations
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setStage(1); // Logo appears
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setStage(2); // Tagline appears
-      
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setStage(3); // Start button appears
-      
-      await new Promise(resolve => setTimeout(resolve, 500));
+      try {
+        // Play a welcome sound if available
+        try {
+          await soundEffects.playWakeWord();
+        } catch (error) {
+          console.warn('Sound effect playback failed:', error);
+        }
+        
+        // Sequence the animations with cleanup check
+        if (mounted) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          setStage(1); // Logo appears
+        }
+        
+        if (mounted) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          setStage(2); // Tagline appears
+        }
+        
+        if (mounted) {
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          setStage(3); // Start button appears
+        }
+      } catch (error) {
+        console.error('Animation sequence failed:', error);
+      }
     };
     
     animate();
+    
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
