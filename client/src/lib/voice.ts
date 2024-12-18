@@ -29,7 +29,8 @@ class EventHandler {
 class VoiceRecognition extends EventHandler {
   private recognition: SpeechRecognition | null = null;
   private isListening = false;
-  private wakeWord = "hey bar";
+  private orderWakeWord = "hey bar";
+  private inquiryWakeWord = "hey bev";
   private retryCount = 0;
   private maxRetries = 3;
 
@@ -65,9 +66,12 @@ class VoiceRecognition extends EventHandler {
         const text = result[0].transcript.toLowerCase();
         console.log('Recognized text:', text);
 
-        if (text.includes(this.wakeWord)) {
-          this.emit('wakeWord');
-          this.retryCount = 0; // Reset retry count on successful recognition
+        if (text.includes(this.orderWakeWord)) {
+          this.emit('wakeWord', { mode: 'order' });
+          this.retryCount = 0;
+        } else if (text.includes(this.inquiryWakeWord)) {
+          this.emit('wakeWord', { mode: 'inquiry' });
+          this.retryCount = 0;
         } else {
           this.emit('speech', text);
         }
