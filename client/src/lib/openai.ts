@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 
+import { intentPredictor } from "./intent-prediction";
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 let openai: OpenAI | null = null;
 
@@ -81,14 +82,35 @@ import { conversationState } from "./conversation-state";
 const MAX_HISTORY_LENGTH = 6; // Keep last 3 exchanges
 let conversationHistory: Array<{ role: string, content: string }> = [];
 
+// Placeholder for the intent predictor.  Replace with actual implementation.
+const intentPredictor = {
+  async predictIntent(text: string): Promise<Intent> {
+    // Replace this with your actual intent prediction logic.
+    // This is a dummy implementation for demonstration purposes.
+    if (text.toLowerCase().includes("beer")) {
+      return {
+        type: "order",
+        items: [{ name: "beer", quantity: 1 }],
+        conversational_response: "One beer coming right up!"
+      };
+    } else if (text.toLowerCase().includes("wine")) {
+      return {
+        type: "query",
+        category: "Wine",
+        conversational_response: "We have a nice selection of reds and whites."
+      };
+    } else {
+      return {
+        type: "greeting",
+        conversational_response: "Hello there! What can I get for you?"
+      };
+    }
+  }
+};
+
+
 export async function processVoiceCommand(text: string): Promise<Intent> {
   try {
-    // Get OpenAI client
-    const client = await getOpenAIClient().catch(error => {
-      console.error('Failed to initialize OpenAI client:', error);
-      throw new Error('OpenAI client initialization failed');
-    });
-
     console.log('Processing voice command:', text);
     
     // Validate input
@@ -120,114 +142,18 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
       historyLength: conversationHistory.length
     });
 
-    const response = await client.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: `You are a knowledgeable and helpful AI bartender. Your tasks:
-          1. Remember context from previous exchanges
-          2. Parse drink orders and queries
-          3. Answer questions about drinks and menu items
-          4. Maintain conversation flow
-          5. Format responses as JSON
-          
-          Handle follow-up questions naturally while maintaining context.
-          For example:
-          User: "What beers do you have?"
-          Assistant: { "type": "query", "category": "Beer", "conversational_response": "We have several beers including Bud Light, Coors Light, and craft options." }
-          User: "How much are they?"
-          Assistant: { "type": "query", "category": "Beer", "attribute": "price", "conversational_response": "Our domestic beers like Bud Light and Coors Light are $5, while craft beers are $6." }
-          
-          Response types remain consistent:
-          1. Parse drink orders and queries
-          2. Extract details
-          3. Give brief responses
-          4. Format as JSON
-          
-          Response types:
-          - "order": Complete orders
-          - "incomplete_order": Missing info
-          - "query": Drink questions
-          - "greeting": Quick greetings
-          
-          Keep responses short and clear.
-          
-          Examples:
-          User: "two beers"
-          Response: {
-            "type": "order",
-            "items": [{"name": "beer", "quantity": 2}],
-            "conversational_response": "Two beers."
-          }
-          
-          User: "add three"
-          Response: {
-            "type": "incomplete_order",
-            "missing": "drink_type",
-            "quantity": 3,
-            "conversational_response": "Which drink?"
-          }
-          
-          User: "some beers"
-          Response: {
-            "type": "incomplete_order",
-            "missing": "quantity",
-            "drink_type": "beer",
-            "conversational_response": "How many?"
-          }
-          
-          User: "What wines?"
-          Response: {
-            "type": "query",
-            "category": "Wine",
-            "conversational_response": "We have reds, whites, and sparkling."
-          }
-          
-          User: "hey"
-          Response: {
-            "type": "greeting",
-            "conversational_response": "What would you like?"
-          }`
-        },
-        {
-          role: "user",
-          content: text
-        }
-      ],
-      temperature: 0.3, // Lower temperature for more consistent responses
-      max_tokens: 150,
-      response_format: { type: "json_object" }
-    });
-
-    console.log('OpenAI response:', response.choices[0]?.message?.content);
-
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error("No response content from OpenAI");
-    }
-
-    const parsed = JSON.parse(content);
-    
-    // Validate response format
-    if (!parsed.type || !parsed.conversational_response) {
-      console.error('Invalid response format:', parsed);
-      throw new Error("Invalid response format from OpenAI");
-    }
-
-    if (parsed.type === 'order' && (!Array.isArray(parsed.items) || parsed.items.length === 0)) {
-      console.error('Invalid order format:', parsed);
-      throw new Error("Invalid order format from OpenAI");
-    }
+    // Use the intent predictor for more accurate intent classification
+    const intent = await intentPredictor.predictIntent(text);
+    console.log('Predicted intent:', intent);
 
     // Update conversation state and history
-    conversationState.updateContext(parsed, text);
+    conversationState.updateContext(intent, text);
     conversationHistory.push({ 
       role: "assistant", 
-      content: JSON.stringify(parsed)
+      content: JSON.stringify(intent)
     });
     
-    return parsed;
+    return intent;
   } catch (error: any) {
     console.error("Failed to process voice command:", error);
     console.log("Current conversation history:", conversationHistory);
