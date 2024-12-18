@@ -27,34 +27,39 @@ export function OrderSummary({
       </CardHeader>
       
       <CardContent className="space-y-4">
-        {cart.map(item => (
-          <div 
-            key={item.drink.id}
-            className="flex justify-between items-center"
-          >
-            <div>
-              <div className="font-medium">
-                {item.drink.name}
+        {cart.map((item, index) => {
+          const itemPrice = Number(item.drink.price);
+          const totalPrice = itemPrice * item.quantity;
+          
+          return (
+            <div 
+              key={`${item.drink.id}-${index}`}
+              className="flex justify-between items-center"
+            >
+              <div>
+                <div className="font-medium">
+                  {item.drink.name}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {item.quantity} × ${itemPrice.toFixed(2)}
+                </div>
               </div>
-              <div className="text-sm text-muted-foreground">
-                {item.quantity} × ${item.drink.price}
+              
+              <div className="flex items-center gap-2">
+                <span className="font-medium">
+                  ${totalPrice.toFixed(2)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onRemoveItem(item.drink.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="font-medium">
-                ${item.quantity * item.drink.price}
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onRemoveItem(item.drink.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
 
         {cart.length === 0 && (
           <div className="text-center text-muted-foreground py-8">

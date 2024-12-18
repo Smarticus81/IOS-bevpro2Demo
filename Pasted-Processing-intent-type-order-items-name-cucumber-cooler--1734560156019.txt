@@ -1,0 +1,89 @@
+Processing intent: {
+  "type": "order",
+  "items": [
+    {
+      "name": "cucumber cooler",
+      "quantity": 3
+    },
+    {
+      "name": "corona extra",
+      "quantity": 1
+    }
+  ],
+  "conversational_response": "Three Cucumber Coolers and one Corona Extra."
+}
+OpenAI response: {
+  "type": "order",
+  "items": [
+    {
+      "name": "cucumber cooler",
+      "quantity": 3
+    },
+    {
+      "name": "corona extra",
+      "quantity": 1
+    }
+  ],
+  "conversational_response": "Three cucumber coolers and one Corona Extra."
+}
+Updating conversation context: 
+Object {previousContext: {…}, newIntent: {…}, query: " add three cucumber coolers and the corona extra please"}
+Updated context: 
+Object {timestamp: 1734560098062, topics: Array(0), relevantDrinks: Array(0), contextExpiry: 300000, lastIntent: {…}, …}
+Processing intent: {
+  "type": "order",
+  "items": [
+    {
+      "name": "cucumber cooler",
+      "quantity": 3
+    },
+    {
+      "name": "corona extra",
+      "quantity": 1
+    }
+  ],
+  "conversational_response": "Three cucumber coolers and one Corona Extra."
+}
+Adding drink to cart: 
+Object {name: "Cucumber Cooler", quantity: 3, price: 4, total: 12}
+Adding drink to cart: 
+Object {name: "Corona Extra", quantity: 1, price: 6, total: 6}
+Warning: Each child in a list should have a unique &quot;key&quot; prop.
+
+Check the render method of `OrderSummary`. See https://reactjs.org/link/warning-keys for more information.
+    at div
+    at OrderSummary (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/src/components/OrderSummary.tsx:21:3)
+    at div
+    at div
+    at div
+    at div
+    at Home (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/src/pages/Home.tsx:27:27)
+    at Route (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/@fs/home/runner/New-Repl/node_modules/.vite/deps/wouter.js?v=e08d122f:323:16)
+    at Switch (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/@fs/home/runner/New-Repl/node_modules/.vite/deps/wouter.js?v=e08d122f:379:17)
+    at App
+    at QueryClientProvider (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/@fs/home/runner/New-Repl/node_modules/.vite/deps/@tanstack_react-query.js?v=e08d122f:2805:3)
+Recognition ended, restarting...
+Speech recognition error: no-speech 
+Voice recognition error: 
+Object {type: "recognition", message: "Recognition error: no-speech"}
+
+recognition error occurred: Recognition error: no-speech
+Current mode: order Attempting response: I'm having trouble understanding you. Could you speak more clearly?
+HandleResponse - Current mode: order Response: I'm having trouble understanding you. Could you speak more clearly?
+Skipping voice response - currently in order mode
+Voice recognition error: 
+Object {type: "recognition", message: "Recognition error: no-speech"}
+
+recognition error occurred: Recognition error: no-speech
+Current mode: order Attempting response: I'm having trouble understanding you. Could you speak more clearly?
+HandleResponse - Current mode: order Response: I'm having trouble understanding you. Could you speak more clearly?
+Skipping voice response - currently in order mode
+Voice recognition error: 
+Object {type: "recognition", message: "Recognition error: no-speech"}
+
+recognition error occurred: Recognition error: no-speech
+Current mode: order Attempting response: I'm having trouble understanding you. Could you speak more clearly?
+HandleResponse - Current mode: order Response: I'm having trouble understanding you. Could you speak more clearly?
+Skipping voice response - currently in order mode
+Retrying speech recognition (1/3)
+Recognition ended, restarting...
