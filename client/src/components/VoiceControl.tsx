@@ -388,33 +388,44 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
 
         case "complete_transaction": {
           try {
-            // Process transaction completion
-            console.log('Processing transaction completion:', {
-              mode,
-              intent,
-              timestamp: new Date().toISOString()
-            });
-
-            // Trigger transaction processing
-            onAddToCart({ type: 'COMPLETE_TRANSACTION' });
-            
-            // Wait briefly to allow the UI to update
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            await soundEffects.playSuccess();
-            setMode('order'); // Reset to order mode after completion
-            setIsWakeWordOnly(true); // Enter wake word only mode
-            
-            const completionMessage = "Order processed successfully. Say 'hey bar' to start a new order or 'hey bev' for questions.";
-            setStatus(completionMessage);
-            
-            if (mode === 'inquiry') {
-              await handleResponse(intent.conversational_response || completionMessage);
+            if (isProcessingCommand) {
+              console.log('Skipping duplicate transaction completion');
+              return;
             }
 
-            console.log('Transaction completed successfully', {
-              timestamp: new Date().toISOString()
-            });
+            isProcessingCommand = true;
+            
+            try {
+              // Process transaction completion
+              console.log('Processing transaction completion:', {
+                mode,
+                intent,
+                timestamp: new Date().toISOString()
+              });
+
+              // Trigger transaction processing
+              onAddToCart({ type: 'COMPLETE_TRANSACTION' });
+              
+              // Wait briefly to allow the UI to update
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              await soundEffects.playSuccess();
+              setMode('order'); // Reset to order mode after completion
+              setIsWakeWordOnly(true); // Enter wake word only mode
+              
+              const completionMessage = "Order processed successfully. Say 'hey bar' to start a new order or 'hey bev' for questions.";
+              setStatus(completionMessage);
+              
+              if (mode === 'inquiry') {
+                await handleResponse(intent.conversational_response || completionMessage);
+              }
+
+              console.log('Transaction completed successfully', {
+                timestamp: new Date().toISOString()
+              });
+            } finally {
+              isProcessingCommand = false;
+            }
           } catch (error) {
             console.error('Failed to process transaction:', error);
             await soundEffects.playError();
