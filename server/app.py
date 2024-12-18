@@ -4,9 +4,16 @@ from elevenlabs import generate, set_api_key
 import io
 from openai import OpenAI
 import logging
+import sys
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure detailed logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -15,9 +22,22 @@ app = Flask(__name__)
 eleven_labs_key = os.getenv('ELEVEN_LABS_API_KEY')
 if eleven_labs_key:
     set_api_key(eleven_labs_key)
+    logger.info("ElevenLabs API initialized successfully")
+else:
+    logger.warning("ElevenLabs API key not found")
 
 # Initialize OpenAI
-openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+openai_api_key = os.getenv('OPENAI_API_KEY')
+if not openai_api_key:
+    logger.error("OpenAI API key not found")
+    raise ValueError("OpenAI API key is required")
+
+try:
+    openai_client = OpenAI(api_key=openai_api_key)
+    logger.info("OpenAI client initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize OpenAI client: {str(e)}")
+    raise
 
 @app.route('/api/settings/voice', methods=['GET'])
 def get_voice_settings():
@@ -87,27 +107,33 @@ def update_voice_settings():
 def synthesize_speech():
     try:
         data = request.json
+        logger.info(f"Received synthesis request data: {data}")
+        
         text = data.get('text')
         provider = data.get('provider', 'openai')
         
         if not text:
+            logger.error("No text provided in request")
             return jsonify({'error': 'Text is required'}), 400
 
-        logger.info(f"Voice synthesis request: {text[:100]}... using {provider}")
+        logger.info(f"Processing voice synthesis request: text='{text[:100]}...', provider={provider}")
 
         if provider == 'openai':
             try:
+                logger.info("Attempting OpenAI voice synthesis")
                 response = openai_client.audio.speech.create(
                     model="tts-1",
                     voice="nova",
-                    input=text
+                    input=text,
+                    response_format="mp3"
                 )
                 
+                logger.info("OpenAI synthesis successful, processing audio content")
                 # Convert response content to file-like object
                 audio_io = io.BytesIO(response.content)
                 audio_io.seek(0)
                 
-                logger.info("Successfully generated audio with OpenAI")
+                logger.info(f"Successfully generated audio with OpenAI, content size: {len(response.content)} bytes")
                 
                 return send_file(
                     audio_io,
@@ -116,10 +142,10 @@ def synthesize_speech():
                     download_name='speech.mp3'
                 )
             except Exception as openai_error:
-                logger.error(f"OpenAI synthesis failed: {str(openai_error)}")
+                logger.error(f"OpenAI synthesis failed: {str(openai_error)}", exc_info=True)
                 # Fall back to Eleven Labs if OpenAI fails
                 if eleven_labs_key:
-                    logger.info("Falling back to Eleven Labs")
+                    logger.info("Falling back to Eleven Labs due to OpenAI failure")
                     provider = 'elevenlabs'
                 else:
                     raise openai_error
