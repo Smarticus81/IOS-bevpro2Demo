@@ -21,7 +21,8 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [isSupported, setIsSupported] = useState(true);
-  const [mode, setMode] = useState<'order' | 'inquiry'>('order'); // Add mode state
+  const [mode, setMode] = useState<'order' | 'inquiry'>('order');
+  const [isWakeWordOnly, setIsWakeWordOnly] = useState(true); // Only listen for wake words initially
 
   // Constants for fuzzy matching
   const FUZZY_THRESHOLD = -2000;
@@ -150,10 +151,16 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
 
     const setupVoiceRecognition = () => {
       voiceRecognition.on<WakeWordEvent>('wakeWord', async (event) => {
+        if (!event) {
+          console.error('Received invalid wake word event');
+          return;
+        }
+        
         console.log('Wake word event received:', event);
         await soundEffects.playWakeWord();
         setMode(event.mode);
-        console.log('Mode set to:', event.mode);
+        setIsWakeWordOnly(false); // Exit wake word only mode when wake word is detected
+        console.log('Mode set to:', event.mode, 'Wake word only mode disabled');
         setStatus(event.mode === 'order' ? "Listening for order..." : "How can I help you?");
       });
 
@@ -168,6 +175,17 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
           await soundEffects.playError();
           setStatus("Sorry, I didn't hear anything");
           return;
+        }
+
+        // In wake word only mode, only process wake word commands
+        if (isWakeWordOnly) {
+          const hasOrderWake = text.toLowerCase().includes("hey bar");
+          const hasInquiryWake = text.toLowerCase().includes("hey bev");
+          
+          if (!hasOrderWake && !hasInquiryWake) {
+            console.log('Ignoring non-wake word command in wake word only mode');
+            return;
+          }
         }
 
         clearTimeout(processingTimeout);
@@ -328,6 +346,8 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         case "complete_transaction": {
           await soundEffects.playSuccess();
           setMode('order'); // Reset to order mode after completion
+          setIsWakeWordOnly(true); // Enter wake word only mode
+          setStatus("Transaction completed. Say 'hey bar' to start a new order or 'hey bev' for questions.");
           if (mode === 'inquiry') {
             await handleResponse(intent.conversational_response);
           }
@@ -369,7 +389,11 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
 
     setTimeout(() => {
       if (isListening) {
-        setStatus("Say 'hey bar' to order drinks or 'hey bev' to ask questions.");
+        if (isWakeWordOnly) {
+          setStatus("Say 'hey bar' to start a new order or 'hey bev' to ask questions.");
+        } else {
+          setStatus(`In ${mode} mode. What would you like?`);
+        }
       }
     }, 5000);
   };

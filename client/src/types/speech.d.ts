@@ -57,7 +57,3 @@ export interface VoiceError {
 export interface WakeWordEvent {
   mode: 'order' | 'inquiry';
 }
-
-export interface WakeWordEvent {
-  mode: 'order' | 'inquiry';
-}
