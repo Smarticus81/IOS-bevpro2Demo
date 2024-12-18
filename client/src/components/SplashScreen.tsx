@@ -52,10 +52,10 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
   return (
     <AnimatePresence mode="wait">
       <motion.div
-        className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-pearl-light to-pearl-dark"
+        className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-sky-100 to-sky-700"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        exit={{ opacity: 0, transition: { duration: 0.3 } }}
       >
         <div className="text-center space-y-8">
           {/* Logo Animation */}
@@ -67,11 +67,9 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
             }}
             className="flex flex-col items-center"
           >
-            <div className="p-4 rounded-full bg-gradient-to-r from-mint to-lavender">
-              <Wine className="h-16 w-16 text-white" />
-            </div>
+            <Wine className="h-16 w-16 text-white" />
             <motion.h1 
-              className="text-4xl font-bold mt-4 bg-gradient-to-r from-mint to-lavender bg-clip-text text-transparent"
+              className="text-4xl font-bold mt-4 bg-gradient-to-r from-sky-500 to-sky-700 bg-clip-text text-transparent"
               initial={{ y: 20 }}
               animate={{ y: stage >= 1 ? 0 : 20 }}
             >
@@ -81,7 +79,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
 
           {/* Tagline Animation */}
           <motion.p
-            className="text-xl text-navy/80"
+            className="text-xl text-gray-700"
             initial={{ opacity: 0, y: 20 }}
             animate={{ 
               opacity: stage >= 2 ? 1 : 0,
@@ -94,7 +92,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
 
           {/* Start Button Animation */}
           <motion.button
-            className="mt-8 px-8 py-3 rounded-full bg-gradient-to-r from-mint to-lavender text-white font-semibold 
+            className="mt-8 px-8 py-3 rounded-full bg-gradient-to-r from-sky-500 to-sky-700 text-white font-semibold 
                      shadow-lg hover:shadow-xl transform transition-all hover:-translate-y-1"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ 
