@@ -73,7 +73,23 @@ interface GreetingIntent {
   conversational_response: string;
 }
 
-export type Intent = OrderIntent | IncompleteOrderIntent | QueryIntent | GreetingIntent;
+interface CompleteTransactionIntent {
+  type: "complete_transaction";
+  total?: number;
+  conversational_response: string;
+}
+
+interface ShutdownIntent {
+  type: "shutdown";
+  conversational_response: string;
+}
+
+interface CancelIntent {
+  type: "cancel";
+  conversational_response: string;
+}
+
+export type Intent = OrderIntent | IncompleteOrderIntent | QueryIntent | GreetingIntent | CompleteTransactionIntent | ShutdownIntent | CancelIntent;
 
 import { conversationState } from "./conversation-state";
 
@@ -150,6 +166,23 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
           - "incomplete_order": Missing info
           - "query": Drink questions
           - "greeting": Quick greetings
+          - "complete_transaction": Finish and process the order
+          - "shutdown": Completely turn off voice commands
+          - "cancel": Cancel current order or operation
+          
+          Order flow:
+          1. Stay in order mode until transaction is complete or cancelled
+          2. Process "complete_transaction" intent when user says things like:
+             - "that's all"
+             - "complete my order"
+             - "finish order"
+             - "process payment"
+             - "check out"
+          3. Handle "shutdown" intent for commands like:
+             - "shut down"
+             - "turn off"
+             - "power off"
+             - "exit system"
           
           Keep responses short and clear.
           

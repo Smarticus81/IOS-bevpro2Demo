@@ -326,6 +326,36 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
           break;
         }
 
+        case "complete_transaction": {
+          await soundEffects.playSuccess();
+          setMode('order'); // Reset to order mode after completion
+          if (mode === 'inquiry') {
+            await handleResponse(intent.conversational_response);
+          }
+          // Here you would typically trigger the actual transaction processing
+          break;
+        }
+
+        case "shutdown": {
+          await soundEffects.playSuccess();
+          await handleResponse(intent.conversational_response);
+          // Completely stop voice recognition
+          voiceRecognition.stop();
+          setIsListening(false);
+          setMode('order');
+          setStatus("Voice system shut down.");
+          break;
+        }
+
+        case "cancel": {
+          await soundEffects.playError();
+          setMode('order'); // Reset to order mode
+          if (mode === 'inquiry') {
+            await handleResponse(intent.conversational_response);
+          }
+          break;
+        }
+
         default: {
           console.log('Unknown intent type:', intent);
           await soundEffects.playError();
