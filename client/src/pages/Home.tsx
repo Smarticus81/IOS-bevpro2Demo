@@ -63,20 +63,32 @@ export function Home() {
     setCart(prev => prev.filter(item => item.drink.id !== drinkId));
   };
 
-  const placeOrder = () => {
+  const placeOrder = async () => {
     if (cart.length === 0) return;
 
-    const total = cart.reduce((sum, item) => 
-      sum + (item.drink.price * item.quantity), 0
-    );
+    const total = cart.reduce((sum, item) => {
+      const itemPrice = Number(item.drink.price);
+      return sum + (itemPrice * item.quantity);
+    }, 0);
+
+    console.log('Placing order:', {
+      cart,
+      total,
+      timestamp: new Date().toISOString()
+    });
 
     const items = cart.map(item => ({
       id: item.drink.id,
       quantity: item.quantity,
-      price: item.drink.price
+      price: Number(item.drink.price)
     }));
 
-    orderMutation.mutate({ items, total });
+    try {
+      await orderMutation.mutateAsync({ items, total });
+      console.log('Order placed successfully');
+    } catch (error) {
+      console.error('Failed to place order:', error);
+    }
   };
 
   return (

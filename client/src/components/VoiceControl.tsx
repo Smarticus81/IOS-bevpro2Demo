@@ -398,6 +398,9 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
             // Trigger transaction processing
             onAddToCart({ type: 'COMPLETE_TRANSACTION' });
             
+            // Wait briefly to allow the UI to update
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             await soundEffects.playSuccess();
             setMode('order'); // Reset to order mode after completion
             setIsWakeWordOnly(true); // Enter wake word only mode
