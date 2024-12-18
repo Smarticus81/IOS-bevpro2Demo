@@ -111,7 +111,7 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
 
       setStatus(finalResponse);
 
-      if (mode === 'inquiry' && (!errorType || errorType !== 'synthesis')) { // Only speak in inquiry mode
+      if (mode === 'inquiry') { // Only speak in inquiry mode
         try {
           if (finalResponse?.trim()) {
             console.log('Attempting to speak:', finalResponse);
@@ -132,15 +132,10 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
     setIsSupported(voiceRecognition.isSupported());
 
     const setupVoiceRecognition = () => {
-      voiceRecognition.on('wakeWord', async (wakeWord) => { //Added wakeWord parameter
+      voiceRecognition.on('wakeWord', async ({ mode: wakeMode }) => {
         await soundEffects.playWakeWord();
-        if (wakeWord === "hey bar") {
-          setMode('order');
-          setStatus("Listening for order...");
-        } else if (wakeWord === "hey bev") {
-          setMode('inquiry');
-          setStatus("Listening for inquiry...");
-        }
+        setMode(wakeMode);
+        setStatus(wakeMode === 'order' ? "Listening for order..." : "How can I help you?");
       });
 
       let processingTimeout: NodeJS.Timeout;
@@ -177,7 +172,7 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
             console.log('Processing speech:', text);
             setIsProcessing(true);
             await soundEffects.playListeningStop();
-            await processVoiceInput(text); //Changed function name
+            await processVoiceInput(text);
           } finally {
             isProcessingCommand = false;
             setIsProcessing(false);
@@ -188,7 +183,7 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
       voiceRecognition.on<void>('start', async () => {
         await soundEffects.playListeningStart();
         setIsListening(true);
-        setStatus("Waiting for 'hey bar' or 'hey bev'..."); //Updated status message
+        setStatus("Say 'hey bar' to order drinks or 'hey bev' to ask questions.");
       });
 
       voiceRecognition.on<void>('stop', async () => {
@@ -211,7 +206,7 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
           setIsListening(false);
         } else {
           setTimeout(() => {
-            setStatus("Waiting for 'hey bar' or 'hey bev'..."); //Updated status message
+            setStatus("Say 'hey bar' to order drinks or 'hey bev' to ask questions.");
           }, 3000);
         }
       });
@@ -224,10 +219,7 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
     };
   }, [drinks]);
 
-  const processVoiceInput = async (text: string) => { //Renamed function
-    const isOrderMode = text.toLowerCase().includes("hey bar");
-    const isInquiryMode = text.toLowerCase().includes("hey bev");
-
+  const processVoiceInput = async (text: string) => {
     try {
       console.log('Processing voice input:', text);
 
@@ -259,19 +251,19 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
           // Handle response based on mode
           if (successfulItems.length > 0 && failedItems.length === 0) {
             await soundEffects.playSuccess();
-            if (isInquiryMode) {
+            if (mode === 'inquiry') {
               await handleResponse(intent.conversational_response);
             }
           } else if (successfulItems.length > 0 && failedItems.length > 0) {
             await soundEffects.playSuccess();
-            if (isInquiryMode) {
+            if (mode === 'inquiry') {
               const successMsg = `Added ${successfulItems.join(' and ')}`;
               const failMsg = `but couldn't find ${failedItems.join(', ')}`;
               await handleResponse(`${successMsg}, ${failMsg}`);
             }
           } else {
             await soundEffects.playError();
-            if (isInquiryMode) {
+            if (mode === 'inquiry') {
               await handleResponse(`Sorry, I couldn't find ${failedItems.join(', ')} in our menu.`);
             }
           }
@@ -280,7 +272,7 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
 
         case "incomplete_order": {
           await soundEffects.playListeningStart();
-          if (isInquiryMode) {
+          if (mode === 'inquiry') {
             await handleResponse(intent.conversational_response);
           }
           break;
@@ -288,7 +280,7 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         
         case "query": {
           // Always respond to queries in inquiry mode
-          if (isInquiryMode) {
+          if (mode === 'inquiry') {
             let response = intent.conversational_response;
             
             if (intent.category) {
@@ -308,7 +300,7 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
 
         case "greeting": {
           await soundEffects.playListeningStart();
-          if (isInquiryMode) {
+          if (mode === 'inquiry') {
             await handleResponse(intent.conversational_response);
           }
           break;
@@ -328,7 +320,7 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
 
     setTimeout(() => {
       if (isListening) {
-        setStatus("Waiting for 'hey bar' or 'hey bev'..."); //Updated status message
+        setStatus("Say 'hey bar' to order drinks or 'hey bev' to ask questions.");
       }
     }, 5000);
   };
