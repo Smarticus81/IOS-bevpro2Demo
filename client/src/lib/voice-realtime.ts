@@ -84,46 +84,32 @@ class RealtimeVoiceSynthesis extends EventTarget {
     });
 
     try {
-      // Always use OpenAI TTS for inquiry mode ("hey bev")
-      if (this.currentMode === 'inquiry') {
-        console.log('Using OpenAI TTS for inquiry mode response:', {
-          text: text.substring(0, 100) + '...',
+      // Use OpenAI TTS for all modes
+      console.log('Processing voice synthesis request:', {
+        text: text.substring(0, 100) + '...',
+        mode: this.currentMode,
+        timestamp: new Date().toISOString()
+      });
+      
+      try {
+        await this.synthesizeWithOpenAI(text);
+        console.log('OpenAI voice synthesis completed successfully');
+      } catch (error) {
+        console.error('OpenAI synthesis failed:', {
+          error,
           timestamp: new Date().toISOString()
         });
         
+        // Try Eleven Labs as fallback
         try {
-          await this.synthesizeWithOpenAI(text);
-          console.log('OpenAI voice synthesis completed successfully');
-        } catch (error) {
-          console.error('OpenAI synthesis failed:', {
-            error,
+          console.log('Attempting Eleven Labs fallback...');
+          await this.synthesizeWithElevenLabs(text);
+        } catch (elevenLabsError) {
+          console.error('Eleven Labs synthesis failed:', {
+            error: elevenLabsError,
             timestamp: new Date().toISOString()
           });
-          
-          // Try Eleven Labs as fallback
-          try {
-            console.log('Attempting Eleven Labs fallback...');
-            await this.synthesizeWithElevenLabs(text);
-          } catch (elevenLabsError) {
-            console.error('Eleven Labs synthesis failed:', {
-              error: elevenLabsError,
-              timestamp: new Date().toISOString()
-            });
-            // Final fallback to Web Speech
-            await this.synthesizeWithWebSpeech(text);
-          }
-        }
-      } else {
-        // For other modes, use Eleven Labs or Web Speech
-        if (this.elevenLabsInitialized) {
-          try {
-            await this.synthesizeWithElevenLabs(text);
-          } catch (error) {
-            console.warn('Eleven Labs synthesis failed, falling back to Web Speech:', error);
-            await this.synthesizeWithWebSpeech(text);
-          }
-        } else {
-          console.log('Using Web Speech API as fallback...');
+          // Final fallback to Web Speech
           await this.synthesizeWithWebSpeech(text);
         }
       }
