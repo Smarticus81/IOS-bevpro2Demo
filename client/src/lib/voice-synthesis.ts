@@ -1,15 +1,17 @@
-import OpenAI from "openai";
+import type { VoiceError } from "@/types/speech";
 import { getOpenAIClient } from "./openai";
-import type { ErrorType } from "@/types/speech";
 
 type VoiceModel = "tts-1";
 type VoiceId = "alloy" | "echo" | "fable" | "onyx" | "shimmer";
 
-export class VoiceSynthesis {
+class VoiceSynthesis {
   private static instance: VoiceSynthesis;
   private audioContext: AudioContext | null = null;
   private currentAudio: HTMLAudioElement | null = null;
-  private lastProcessedText = '';
+  private speakPromise: Promise<void> | null = null;
+  private lastSpeakTime: number = 0;
+  private readonly MIN_INTERVAL = 300; // Minimum time between speeches in ms
+  private readonly SYNTHESIS_TIMEOUT = 5000; // Maximum time to wait for synthesis
 
   private constructor() {
     document.addEventListener('click', () => {
@@ -26,11 +28,6 @@ export class VoiceSynthesis {
     return VoiceSynthesis.instance;
   }
 
-  private speakPromise: Promise<void> | null = null;
-  private lastSpeakTime: number = 0;
-  private readonly MIN_INTERVAL = 500; // Minimum time between speeches in ms
-  private readonly CLEANUP_TIMEOUT = 10000; // Maximum time to wait for audio to complete
-
   async speak(text: string, voice: VoiceId = "alloy") {
     if (!text?.trim()) {
       console.warn('Empty text provided to speak');
@@ -45,66 +42,64 @@ export class VoiceSynthesis {
     
     // Clean up any existing audio before starting new synthesis
     this.stop();
-    
-    // Set cleanup timeout for any hanging promises
-    const cleanupTimeout = setTimeout(() => {
-      if (this.speakPromise) {
-        console.warn('Audio playback timeout, cleaning up');
-        this.stop();
-      }
-    }, this.CLEANUP_TIMEOUT);
 
     this.lastSpeakTime = now;
 
-    // Set up new speak promise
-    this.speakPromise = (async () => {
-      try {
-        const openai = await getOpenAIClient();
-        const response = await openai.audio.speech.create({
-          model: "tts-1",
-          voice,
-          input: text,
-          speed: 1.2
-        });
+    // Create a timeout promise
+    const timeoutPromise = new Promise<void>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Speech synthesis timeout'));
+      }, this.SYNTHESIS_TIMEOUT);
+    });
 
-        const arrayBuffer = await response.arrayBuffer();
-        const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
-        const url = URL.createObjectURL(blob);
+    // Create the synthesis promise
+    const synthesisPromise = async () => {
+      const openai = await getOpenAIClient();
+      const response = await openai.audio.speech.create({
+        model: "tts-1",
+        voice,
+        input: text,
+        speed: 1.2
+      });
+
+      const arrayBuffer = await response.arrayBuffer();
+      const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+      const url = URL.createObjectURL(blob);
+      
+      return new Promise<void>((resolve, reject) => {
+        this.currentAudio = new Audio(url);
         
-        return new Promise<void>((resolve, reject) => {
-          this.currentAudio = new Audio(url);
-          
-          this.currentAudio.addEventListener('ended', () => {
-            URL.revokeObjectURL(url);
-            this.currentAudio = null;
-            this.speakPromise = null;
-            resolve();
-          });
-
-          this.currentAudio.addEventListener('error', (e) => {
-            console.error('Audio playback error:', e);
-            URL.revokeObjectURL(url);
-            this.currentAudio = null;
-            this.speakPromise = null;
-            reject(e);
-          });
-
-          this.currentAudio.play().catch(error => {
-            console.error('Failed to play audio:', error);
-            URL.revokeObjectURL(url);
-            this.currentAudio = null;
-            this.speakPromise = null;
-            reject(error);
-          });
+        this.currentAudio.addEventListener('ended', () => {
+          URL.revokeObjectURL(url);
+          this.currentAudio = null;
+          resolve();
         });
-      } catch (error) {
-        console.error('Speech synthesis error:', error);
-        this.speakPromise = null;
-        throw error;
-      }
-    })();
 
-    return this.speakPromise;
+        this.currentAudio.addEventListener('error', (e) => {
+          console.error('Audio playback error:', e);
+          URL.revokeObjectURL(url);
+          this.currentAudio = null;
+          reject(e);
+        });
+
+        this.currentAudio.play().catch(error => {
+          console.error('Failed to play audio:', error);
+          URL.revokeObjectURL(url);
+          this.currentAudio = null;
+          reject(error);
+        });
+      });
+    };
+
+    try {
+      // Race between timeout and synthesis
+      this.speakPromise = Promise.race([synthesisPromise(), timeoutPromise]);
+      await this.speakPromise;
+    } catch (error) {
+      console.error('Speech synthesis error:', error);
+      this.speakPromise = null;
+      throw error;
+    }
   }
 
   stop() {
@@ -112,7 +107,6 @@ export class VoiceSynthesis {
       this.currentAudio.pause();
       this.currentAudio = null;
     }
-    this.lastProcessedText = '';
   }
 }
 

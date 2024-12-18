@@ -175,10 +175,18 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
           
           // Process all items first before any responses
           for (const item of intent.items) {
-            const drink = drinks.find(d => 
-              d.name.toLowerCase().includes(item.name.toLowerCase()) || 
-              item.name.toLowerCase().includes(d.name.toLowerCase())
-            );
+            // Normalize drink names for more flexible matching
+            const normalizeText = (text: string) => 
+              text.toLowerCase()
+                 .replace(/\s+/g, '')
+                 .replace('light', 'lite');
+                 
+            const drink = drinks.find(d => {
+              const normalizedMenu = normalizeText(d.name);
+              const normalizedOrder = normalizeText(item.name);
+              return normalizedMenu.includes(normalizedOrder) || 
+                     normalizedOrder.includes(normalizedMenu);
+            });
 
             if (drink) {
               onAddToCart(drink, item.quantity);
