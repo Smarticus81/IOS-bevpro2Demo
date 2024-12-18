@@ -48,7 +48,7 @@ export class ConversationState {
 
     // Extract and track topics from the query
     const topics = this.extractTopics(query);
-    this.context.topics = [...new Set([...this.context.topics, ...topics])];
+    this.context.topics = Array.from(new Set([...this.context.topics, ...topics]));
 
     // Track relevant drinks for drink-related queries
     if (intent.type === 'query' && intent.category) {

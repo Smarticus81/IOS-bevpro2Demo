@@ -73,7 +73,7 @@ interface GreetingIntent {
   conversational_response: string;
 }
 
-type Intent = OrderIntent | IncompleteOrderIntent | QueryIntent | GreetingIntent;
+export type Intent = OrderIntent | IncompleteOrderIntent | QueryIntent | GreetingIntent;
 
 import { conversationState } from "./conversation-state";
 

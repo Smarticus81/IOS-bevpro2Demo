@@ -27,7 +27,7 @@ class EventHandler {
 }
 
 class VoiceRecognition extends EventHandler {
-  private recognition: SpeechRecognition | null = null;
+  private recognition: globalThis.SpeechRecognition | null = null;
   private isListening = false;
   private orderWakeWord = "hey bar";
   private inquiryWakeWord = "hey bev";
@@ -56,7 +56,7 @@ class VoiceRecognition extends EventHandler {
   private setupRecognition() {
     if (!this.recognition) return;
 
-    this.recognition.onresult = (event: SpeechRecognitionEvent) => {
+    this.recognition.onresult = (event: globalThis.SpeechRecognitionEvent) => {
       try {
         const result = event.results[event.results.length - 1];
         if (!result?.[0]?.transcript) {
@@ -96,7 +96,7 @@ class VoiceRecognition extends EventHandler {
       }
     };
 
-    this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+    this.recognition.onerror = (event: globalThis.SpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error:', event.error, event.message);
       
       // Map Web Speech API error types to our error types
