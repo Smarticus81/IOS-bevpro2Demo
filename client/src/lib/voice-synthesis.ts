@@ -43,7 +43,7 @@ export class VoiceSynthesis {
       const openai = await getOpenAIClient();
       
       const response = await openai.audio.speech.create({
-        model: "nova",
+        model: "tts-1",
         voice: voice,
         input: text,
       });
@@ -64,7 +64,7 @@ export class VoiceSynthesis {
     }
   }
 
-  async speak(text: string, voice: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer" = "nova") {
+  async speak(text: string, voice: "alloy" | "echo" | "fable" | "onyx" | "shimmer" = "alloy") {
     if (!text) return;
 
     this.audioQueue.push({ text, voice });
