@@ -1,39 +1,11 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { WebSocket, WebSocketServer } from "ws";
 import { db } from "@db";
 import { drinks, orders, orderItems } from "@db/schema";
 import { eq, sql } from "drizzle-orm";
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
-  const wss = new WebSocketServer({ server: httpServer });
-
-  // WebSocket connection handler
-  wss.on("connection", (ws: WebSocket, req) => {
-    // Ignore Vite HMR connections
-    if (req.headers["sec-websocket-protocol"] === "vite-hmr") {
-      return;
-    }
-
-    console.log("New WebSocket connection");
-    
-    ws.on("message", async (message: string) => {
-      try {
-        const data = JSON.parse(message);
-        if (data.type === "order_update") {
-          // Broadcast order updates to all connected clients
-          wss.clients.forEach((client) => {
-            if (client !== ws && client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify(data));
-            }
-          });
-        }
-      } catch (error) {
-        console.error("Error processing WebSocket message:", error);
-      }
-    });
-  });
 
   // Get all drinks
   app.get("/api/drinks", async (_req, res) => {
@@ -41,6 +13,7 @@ export function registerRoutes(app: Express): Server {
       const allDrinks = await db.select().from(drinks);
       res.json(allDrinks);
     } catch (error) {
+      console.error("Error fetching drinks:", error);
       res.status(500).json({ error: "Failed to fetch drinks" });
     }
   });
@@ -66,7 +39,7 @@ export function registerRoutes(app: Express): Server {
 
       await db.insert(orderItems).values(orderItemsData);
 
-      // Update inventory
+      // Update inventory and sales
       for (const item of items) {
         await db
           .update(drinks)
@@ -79,28 +52,29 @@ export function registerRoutes(app: Express): Server {
 
       res.json(order);
     } catch (error) {
+      console.error("Error creating order:", error);
       res.status(500).json({ error: "Failed to create order" });
     }
   });
 
-  // Update order status
-  app.patch("/api/orders/:id", async (req, res) => {
+  // Get order by ID
+  app.get("/api/orders/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const { status } = req.body;
-
-      const [updatedOrder] = await db
-        .update(orders)
-        .set({ 
-          status,
-          completed_at: status === "completed" ? new Date() : null
-        })
+      const order = await db
+        .select()
+        .from(orders)
         .where(eq(orders.id, parseInt(id)))
-        .returning();
+        .limit(1);
 
-      res.json(updatedOrder);
+      if (!order.length) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      res.json(order[0]);
     } catch (error) {
-      res.status(500).json({ error: "Failed to update order" });
+      console.error("Error fetching order:", error);
+      res.status(500).json({ error: "Failed to fetch order" });
     }
   });
 

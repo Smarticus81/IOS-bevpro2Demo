@@ -6,18 +6,30 @@ async function seed() {
   try {
     console.log("Starting to seed drinks...");
     
-    // Insert drinks in smaller batches to avoid memory issues
-    const batchSize = 50;
+    // Clear existing drinks
+    await db.delete(drinks);
+    
+    // Insert drinks in smaller batches
+    const batchSize = 20;
     for (let i = 0; i < drinksData.length; i += batchSize) {
       const batch = drinksData.slice(i, i + batchSize);
-      await db.insert(drinks).values(batch);
-      console.log(`Inserted batch ${i/batchSize + 1}`);
+      await db.insert(drinks).values(batch.map(drink => ({
+        name: drink.name,
+        category: drink.category,
+        subcategory: drink.subcategory,
+        price: drink.price,
+        inventory: drink.inventory,
+        image: drink.image,
+        sales: drink.sales || 0
+      })));
+      console.log(`Inserted batch ${Math.floor(i/batchSize) + 1}`);
     }
     
     console.log("Successfully seeded drinks!");
     process.exit(0);
   } catch (error) {
     console.error("Error seeding database:", error);
+    console.error(error);
     process.exit(1);
   }
 }

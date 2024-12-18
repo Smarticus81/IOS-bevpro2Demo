@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Mic, MicOff } from "lucide-react";
-import { voiceRecognition, type VoiceProvider } from "@/lib/voice";
-import { processVoiceCommand } from "@/lib/openai";
+import { voiceRecognition } from "@/lib/voice";
 import type { Drink } from "@db/schema";
 
 interface VoiceControlProps {
@@ -14,75 +13,95 @@ interface VoiceControlProps {
 export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
   const [isListening, setIsListening] = useState(false);
   const [status, setStatus] = useState<string>("");
-  const [provider, setProvider] = useState<VoiceProvider>("browser");
+  const [isSupported, setIsSupported] = useState(true);
 
   useEffect(() => {
-    voiceRecognition.onWakeWord(() => {
+    setIsSupported(voiceRecognition.isSupported());
+
+    voiceRecognition.on('wakeWord', () => {
       setStatus("Listening for order...");
     });
 
-    voiceRecognition.onSpeech(async (text) => {
-      try {
-        const intent = await processVoiceCommand(text);
-        
-        if (intent.type === "order") {
-          for (const item of intent.items) {
-            const drink = drinks.find(d => 
-              d.name.toLowerCase() === item.name.toLowerCase()
-            );
-            
-            if (drink) {
-              onAddToCart(drink, item.quantity);
-            }
-          }
-          setStatus("Order added to cart");
-        }
-      } catch (error) {
-        setStatus("Sorry, I didn't understand that");
-      }
+    voiceRecognition.on('speech', (text: string) => {
+      processOrder(text);
+    });
 
-      setTimeout(() => setStatus(""), 3000);
+    voiceRecognition.on('start', () => {
+      setIsListening(true);
+      setStatus("Waiting for 'hey bar'...");
+    });
+
+    voiceRecognition.on('stop', () => {
+      setIsListening(false);
+      setStatus("");
     });
 
     return () => {
       voiceRecognition.stop();
     };
-  }, [drinks, onAddToCart]);
+  }, [drinks]);
+
+  const processOrder = (text: string) => {
+    // Simple order processing logic
+    // Look for patterns like "two beers" or "one moscow mule"
+    const words = text.toLowerCase().split(' ');
+    const quantities: { [key: string]: number } = {
+      'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
+      '1': 1, '2': 2, '3': 3, '4': 4, '5': 5
+    };
+
+    let quantity = 1;
+    let drinkName = '';
+
+    for (let i = 0; i < words.length; i++) {
+      if (quantities[words[i]]) {
+        quantity = quantities[words[i]];
+        drinkName = words.slice(i + 1).join(' ');
+        break;
+      }
+    }
+
+    if (!drinkName) {
+      drinkName = words.join(' ');
+    }
+
+    const drink = drinks.find(d => 
+      d.name.toLowerCase().includes(drinkName) || 
+      drinkName.includes(d.name.toLowerCase())
+    );
+
+    if (drink) {
+      onAddToCart(drink, quantity);
+      setStatus(`Added ${quantity} ${drink.name} to order`);
+    } else {
+      setStatus("Sorry, I didn't understand that order");
+    }
+
+    setTimeout(() => {
+      setStatus("Waiting for 'hey bar'...");
+    }, 3000);
+  };
 
   const toggleListening = () => {
+    if (!isSupported) {
+      setStatus("Voice recognition not supported in this browser");
+      return;
+    }
+
     if (isListening) {
       voiceRecognition.stop();
-      setStatus("");
     } else {
       voiceRecognition.start();
-      setStatus("Waiting for 'hey bar'...");
     }
-    setIsListening(!isListening);
   };
 
   return (
     <div className="flex items-center gap-4 mb-6">
-      <Select
-        value={provider}
-        onValueChange={(value: VoiceProvider) => {
-          setProvider(value);
-          voiceRecognition.setProvider(value);
-        }}
-      >
-        <SelectTrigger className="w-40">
-          <SelectValue placeholder="Voice Provider" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="browser">Browser</SelectItem>
-          <SelectItem value="google">Google</SelectItem>
-          <SelectItem value="openai">OpenAI</SelectItem>
-        </SelectContent>
-      </Select>
-
       <Button
         onClick={toggleListening}
         variant={isListening ? "destructive" : "default"}
         className="w-40"
+        disabled={!isSupported}
       >
         {isListening ? (
           <>
@@ -98,9 +117,9 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
       </Button>
       
       {status && (
-        <span className="text-sm text-muted-foreground">
+        <Badge variant="secondary" className="h-9">
           {status}
-        </span>
+        </Badge>
       )}
     </div>
   );
