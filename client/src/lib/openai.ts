@@ -75,6 +75,9 @@ interface GreetingIntent {
 
 type Intent = OrderIntent | IncompleteOrderIntent | QueryIntent | GreetingIntent;
 
+// Store conversation history
+let conversationHistory: Array<{ role: string, content: string }> = [];
+
 export async function processVoiceCommand(text: string): Promise<Intent> {
   try {
     // Get OpenAI client
@@ -90,13 +93,36 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
       throw new Error('Empty voice command received');
     }
 
+    // Maintain conversation history
+    if (conversationHistory.length > 6) {
+      // Keep last 3 exchanges (6 messages) to maintain context without too much overhead
+      conversationHistory = conversationHistory.slice(-6);
+    }
+
     // Create chat completion
+    // Add user's message to history
+    conversationHistory.push({ role: "user", content: text });
+
     const response = await client.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: `You are a concise AI bartender. Your task:
+          content: `You are a knowledgeable and helpful AI bartender. Your tasks:
+          1. Remember context from previous exchanges
+          2. Parse drink orders and queries
+          3. Answer questions about drinks and menu items
+          4. Maintain conversation flow
+          5. Format responses as JSON
+          
+          Handle follow-up questions naturally while maintaining context.
+          For example:
+          User: "What beers do you have?"
+          Assistant: { "type": "query", "category": "Beer", "conversational_response": "We have several beers including Bud Light, Coors Light, and craft options." }
+          User: "How much are they?"
+          Assistant: { "type": "query", "category": "Beer", "attribute": "price", "conversational_response": "Our domestic beers like Bud Light and Coors Light are $5, while craft beers are $6." }
+          
+          Response types remain consistent:
           1. Parse drink orders and queries
           2. Extract details
           3. Give brief responses
@@ -177,9 +203,16 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
       throw new Error("Invalid order format from OpenAI");
     }
 
+    // Add assistant's response to history
+    conversationHistory.push({ 
+      role: "assistant", 
+      content: JSON.stringify(parsed)
+    });
+    
     return parsed;
   } catch (error: any) {
     console.error("Failed to process voice command:", error);
+    console.log("Current conversation history:", conversationHistory);
     
     // Provide more specific error messages
     if (error.message.includes('fetch')) {

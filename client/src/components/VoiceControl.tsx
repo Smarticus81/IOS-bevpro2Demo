@@ -110,17 +110,21 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
       }
 
       setStatus(finalResponse);
+      console.log('Current mode:', mode, 'Attempting response:', finalResponse);
 
       if (mode === 'inquiry') { // Only speak in inquiry mode
         try {
           if (finalResponse?.trim()) {
-            console.log('Attempting to speak:', finalResponse);
+            console.log('Initiating voice synthesis in inquiry mode');
             await voiceSynthesis.speak(finalResponse, "alloy");
+            console.log('Voice synthesis completed');
           }
-        } catch (synthError) {
-          console.error('Voice synthesis error:', synthError);
+        } catch (error) {
+          console.error('Voice synthesis error:', error);
           setStatus('Voice response failed. ' + finalResponse);
         }
+      } else {
+        console.log('Skipping voice response in order mode');
       }
     } catch (error) {
       console.error('Response handling error:', error);
@@ -277,14 +281,14 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
           }
           break;
         }
-        
+
         case "query": {
           // Always respond to queries in inquiry mode
           if (mode === 'inquiry') {
             let response = intent.conversational_response;
-            
+
             if (intent.category) {
-              const categoryDrinks = drinks.filter(d => 
+              const categoryDrinks = drinks.filter(d =>
                 d.category.toLowerCase() === intent.category?.toLowerCase()
               );
               if (categoryDrinks.length > 0) {
@@ -292,7 +296,7 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
                 response += ` We have: ${drinkNames}`;
               }
             }
-            
+
             await handleResponse(response);
           }
           break;
