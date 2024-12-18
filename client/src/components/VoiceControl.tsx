@@ -7,6 +7,7 @@ import { processVoiceCommand } from "@/lib/openai";
 import { voiceSynthesis } from "@/lib/voice-synthesis";
 import { soundEffects } from "@/lib/sound-effects";
 import { VoiceAnimation } from "./VoiceAnimation";
+import fuzzysort from 'fuzzysort';
 import type { Drink } from "@db/schema";
 import type { ErrorType, VoiceError } from "@/types/speech";
 
@@ -21,9 +22,76 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
   const [status, setStatus] = useState<string>("");
   const [isSupported, setIsSupported] = useState(true);
 
-  // Error types for better error handling
-  type ErrorType = 'recognition' | 'synthesis' | 'network' | 'processing';
-  
+  // Constants for fuzzy matching
+  const FUZZY_THRESHOLD = -2000;
+  const BRAND_KEYWORDS = ['bud', 'coors', 'miller', 'michelob', 'dos', 'corona'];
+
+  // Enhanced normalization with brand name preservation
+  const normalizeText = (text: string) => {
+    let normalized = text.toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // Preserve brand names
+    BRAND_KEYWORDS.forEach(brand => {
+      const regex = new RegExp(`\\b${brand}\\b`, 'gi');
+      normalized = normalized.replace(regex, brand);
+    });
+    
+    return normalized;
+  };
+
+  // Find best matching drink using multiple strategies
+  const findBestMatch = (targetName: string, menuItems: Drink[]): Drink | null => {
+    const normalizedTarget = normalizeText(targetName);
+    
+    // Strategy 1: Direct match (case-insensitive)
+    const directMatch = menuItems.find(d => 
+      normalizeText(d.name) === normalizedTarget ||
+      normalizeText(d.name).replace('light', 'lite') === normalizedTarget.replace('light', 'lite')
+    );
+    if (directMatch) return directMatch;
+    
+    // Strategy 2: Fuzzy matching with prepared targets
+    const fuzzyResults = fuzzysort.go(normalizedTarget, menuItems.map(item => ({
+      ...item,
+      searchStr: normalizeText(item.name)
+    })), {
+      keys: ['searchStr'],
+      threshold: FUZZY_THRESHOLD,
+      allowTypo: true
+    });
+    
+    if (fuzzyResults.length > 0 && fuzzyResults[0].obj) {
+      return fuzzyResults[0].obj as Drink;
+    }
+    
+    // Strategy 3: Brand-focused matching
+    const targetWords = normalizedTarget.split(' ');
+    const brandWord = targetWords.find(word => BRAND_KEYWORDS.includes(word));
+    
+    if (brandWord) {
+      const brandMatches = menuItems.filter(d => 
+        normalizeText(d.name).includes(brandWord)
+      );
+      
+      if (brandMatches.length === 1) return brandMatches[0];
+      
+      // If multiple matches, try to narrow down by light/lite
+      const isLight = targetWords.some(w => ['light', 'lite'].includes(w));
+      if (isLight) {
+        const lightMatch = brandMatches.find(d => 
+          ['light', 'lite'].some(l => 
+            normalizeText(d.name).includes(l)
+          )
+        );
+        if (lightMatch) return lightMatch;
+      }
+    }
+    
+    return null;
+  };
+
   const handleResponse = async (response: string, errorType?: ErrorType) => {
     try {
       let finalResponse = response;
@@ -44,7 +112,6 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
       
       if (!errorType || errorType !== 'synthesis') {
         try {
-          // Only attempt to speak if we have a response
           if (finalResponse?.trim()) {
             console.log('Attempting to speak:', finalResponse);
             await voiceSynthesis.speak(finalResponse, "alloy");
@@ -56,7 +123,7 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
       }
     } catch (error) {
       console.error('Response handling error:', error);
-      setStatus(response); // Fallback to visual feedback
+      setStatus(response);
     }
   };
 
@@ -69,7 +136,6 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         setStatus("Listening for order...");
       });
 
-      // Command deduplication and debouncing
       let processingTimeout: NodeJS.Timeout;
       let lastProcessedCommand = '';
       let lastProcessedTime = 0;
@@ -83,10 +149,8 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
           return;
         }
 
-        // Clear any pending processing
         clearTimeout(processingTimeout);
         
-        // Check for duplicate commands within a 2-second window
         const now = Date.now();
         const commandHash = `${text}-${Math.floor(now / 2000)}`;
         
@@ -95,7 +159,6 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
           return;
         }
 
-        // Debounce the processing
         processingTimeout = setTimeout(async () => {
           if (isProcessingCommand) return;
           
@@ -128,19 +191,18 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         setStatus("");
       });
 
-      voiceRecognition.on<VoiceError>('error', (error) => {
+      voiceRecognition.on<VoiceError>('error', async (error) => {
         if (!error) {
           console.error('Received undefined error');
-          handleResponse('An unknown error occurred', 'processing');
+          await handleResponse('An unknown error occurred', 'processing');
           return;
         }
         console.error('Voice recognition error:', error);
-        handleResponse(error.message, error.type);
+        await handleResponse(error.message, error.type);
         
         if (error.type === 'network') {
           setIsListening(false);
         } else {
-          // For other errors, keep listening but show the error temporarily
           setTimeout(() => {
             setStatus("Waiting for 'hey bar'...");
           }, 3000);
@@ -156,7 +218,6 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
   }, [drinks]);
 
   const processOrder = async (text: string) => {
-    let processingSuccessful = false;
     try {
       console.log('Starting to process order:', text);
       
@@ -175,35 +236,7 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
           
           // Process all items first before any responses
           for (const item of intent.items) {
-            // Normalize drink names for more flexible matching
-            const normalizeText = (text: string) => 
-              text.toLowerCase()
-                 .replace(/\s+/g, ' ')
-                 .trim();
-                 
-            const drink = drinks.find(d => {
-              const menuName = normalizeText(d.name);
-              const orderName = normalizeText(item.name);
-              
-              // Handle Light/Lite variations
-              const normalizedMenu = menuName.replace(/\b(light|lite)\b/g, '').trim();
-              const normalizedOrder = orderName.replace(/\b(light|lite)\b/g, '').trim();
-              
-              // Direct match including Light/Lite variations
-              if (menuName === orderName || 
-                  menuName.replace('light', 'lite') === orderName.replace('light', 'lite')) {
-                return true;
-              }
-              
-              // Core name match (without Light/Lite)
-              if (normalizedMenu === normalizedOrder) {
-                return true;
-              }
-              
-              // Partial match for compound names
-              return normalizedMenu.includes(normalizedOrder) || 
-                     normalizedOrder.includes(normalizedMenu);
-            });
+            const drink = findBestMatch(item.name, drinks);
 
             if (drink) {
               onAddToCart(drink, item.quantity);
@@ -215,17 +248,14 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
 
           // Only send one response based on the overall result
           if (successfulItems.length > 0 && failedItems.length === 0) {
-            // All items succeeded
             await soundEffects.playSuccess();
             await handleResponse(intent.conversational_response);
           } else if (successfulItems.length > 0 && failedItems.length > 0) {
-            // Partial success
             await soundEffects.playSuccess();
             const successMsg = `Added ${successfulItems.join(' and ')}`;
             const failMsg = `but couldn't find ${failedItems.join(', ')}`;
             await handleResponse(`${successMsg}, ${failMsg}`);
           } else {
-            // All items failed
             await soundEffects.playError();
             await handleResponse(`Sorry, I couldn't find ${failedItems.join(', ')} in our menu.`);
           }
@@ -233,7 +263,6 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         }
 
         case "incomplete_order": {
-          // Play a gentle sound for incomplete orders
           await soundEffects.playListeningStart();
           await handleResponse(intent.conversational_response);
           break;
@@ -274,7 +303,6 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
       await handleResponse("Sorry, I had trouble processing that request. Could you please repeat?");
     }
 
-    // Reset status after a delay
     setTimeout(() => {
       if (isListening) {
         setStatus("Waiting for 'hey bar'...");
