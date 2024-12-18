@@ -60,8 +60,12 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         setStatus("Listening for order...");
       });
 
-      // Add debouncing to prevent multiple rapid-fire speech events
+      // Command deduplication and debouncing
       let processingTimeout: NodeJS.Timeout;
+      let lastProcessedCommand = '';
+      let lastProcessedTime = 0;
+      let isProcessingCommand = false;
+
       voiceRecognition.on<string>('speech', async (text) => {
         if (!text) {
           console.error('Received empty speech text');
@@ -73,13 +77,32 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         // Clear any pending processing
         clearTimeout(processingTimeout);
         
+        // Check for duplicate commands within a 2-second window
+        const now = Date.now();
+        const commandHash = `${text}-${Math.floor(now / 2000)}`;
+        
+        if (commandHash === lastProcessedCommand || isProcessingCommand) {
+          console.log('Skipping duplicate command or processing in progress');
+          return;
+        }
+
         // Debounce the processing
         processingTimeout = setTimeout(async () => {
-          console.log('Processing speech:', text);
-          setIsProcessing(true);
-          await soundEffects.playListeningStop();
-          await processOrder(text);
-          setIsProcessing(false);
+          if (isProcessingCommand) return;
+          
+          try {
+            isProcessingCommand = true;
+            lastProcessedCommand = commandHash;
+            lastProcessedTime = now;
+            
+            console.log('Processing speech:', text);
+            setIsProcessing(true);
+            await soundEffects.playListeningStop();
+            await processOrder(text);
+          } finally {
+            isProcessingCommand = false;
+            setIsProcessing(false);
+          }
         }, 300);
       });
 
@@ -124,11 +147,17 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
   }, [drinks]);
 
   const processOrder = async (text: string) => {
+    let processingSuccessful = false;
     try {
       console.log('Starting to process order:', text);
       
       const intent = await processVoiceCommand(text);
-      console.log('Received intent:', intent);
+      if (!intent) {
+        console.error('Received null intent from processVoiceCommand');
+        throw new Error('Invalid response from voice command processing');
+      }
+      
+      console.log('Processing intent:', JSON.stringify(intent, null, 2));
 
       switch (intent.type) {
         case "order": {
