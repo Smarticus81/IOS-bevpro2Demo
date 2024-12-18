@@ -78,35 +78,19 @@ export type Intent = OrderIntent | IncompleteOrderIntent | QueryIntent | Greetin
 
 import { conversationState } from "./conversation-state";
 
+// Initialize intent predictor with intents data
+fetch('/Pasted-intents-add-drink-add-quantity-drink-I-would-like-to-add-quantity-dr-1734505072759.txt')
+  .then(response => response.text())
+  .then(intentsContent => {
+    intentPredictor.initialize(intentsContent)
+      .catch(error => console.error('Failed to initialize intent predictor:', error));
+  })
+  .catch(error => console.error('Failed to load intents file:', error));
 // Store conversation history with improved context management
 const MAX_HISTORY_LENGTH = 6; // Keep last 3 exchanges
 let conversationHistory: Array<{ role: string, content: string }> = [];
 
-// Placeholder for the intent predictor.  Replace with actual implementation.
-const intentPredictor = {
-  async predictIntent(text: string): Promise<Intent> {
-    // Replace this with your actual intent prediction logic.
-    // This is a dummy implementation for demonstration purposes.
-    if (text.toLowerCase().includes("beer")) {
-      return {
-        type: "order",
-        items: [{ name: "beer", quantity: 1 }],
-        conversational_response: "One beer coming right up!"
-      };
-    } else if (text.toLowerCase().includes("wine")) {
-      return {
-        type: "query",
-        category: "Wine",
-        conversational_response: "We have a nice selection of reds and whites."
-      };
-    } else {
-      return {
-        type: "greeting",
-        conversational_response: "Hello there! What can I get for you?"
-      };
-    }
-  }
-};
+// Import intentPredictor for ML-based intent classification
 
 
 export async function processVoiceCommand(text: string): Promise<Intent> {
