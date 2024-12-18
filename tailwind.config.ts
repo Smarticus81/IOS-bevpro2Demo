@@ -5,12 +5,36 @@ export default {
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: [
+          "SF Pro Display",
+          "Roboto",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "system-ui",
+          "sans-serif"
+        ],
+      },
+      fontSize: {
+        'headline': ['32px', { lineHeight: '1.2', fontWeight: '700' }],
+        'subhead': ['24px', { lineHeight: '1.3', fontWeight: '600' }],
+        'body': ['16px', { lineHeight: '1.5', fontWeight: '400' }],
+        'caption': ['14px', { lineHeight: '1.4', fontWeight: '400' }],
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
       colors: {
+        mint: "#4CD7B0",
+        lavender: "#9381FF",
+        navy: "#1A1B4B",
+        coral: "#FF7C7C",
+        pearl: {
+          light: "#F8F9FC",
+          dark: "#F0F2F8"
+        },
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {
@@ -44,47 +68,62 @@ export default {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
-        chart: {
-          "1": "hsl(var(--chart-1))",
-          "2": "hsl(var(--chart-2))",
-          "3": "hsl(var(--chart-3))",
-          "4": "hsl(var(--chart-4))",
-          "5": "hsl(var(--chart-5))",
-        },
-        sidebar: {
-          DEFAULT: "hsl(var(--sidebar-background))",
-          foreground: "hsl(var(--sidebar-foreground))",
-          primary: "hsl(var(--sidebar-primary))",
-          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
-          accent: "hsl(var(--sidebar-accent))",
-          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
-          border: "hsl(var(--sidebar-border))",
-          ring: "hsl(var(--sidebar-ring))",
-        },
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+        "pulse-ring": {
+          "0%": { transform: "scale(0.95)", opacity: "0.5" },
+          "50%": { transform: "scale(1)", opacity: "0.3" },
+          "100%": { transform: "scale(0.95)", opacity: "0.5" },
+        },
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
         },
       },
       animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
+        "accordion-down": "accordion-down 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        "accordion-up": "accordion-up 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        "pulse-ring": "pulse-ring 2s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+        "fade-in": "fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+      },
+      backdropBlur: {
+        'xs': '2px',
+      },
+      boxShadow: {
+        'glass': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+      },
+      screens: {
+        'xs': '375px',  // iPhone SE
+        'sm': '428px',  // iPhone 14 Pro Max
+        'md': '744px',  // iPad Mini
+        'lg': '1024px', // iPad Pro
       },
     },
   },
-  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
+  plugins: [
+    require("tailwindcss-animate"),
+    require("@tailwindcss/typography"),
+    function({ addUtilities }) {
+      addUtilities({
+        '.glass-morphism': {
+          'background': 'rgba(255, 255, 255, 0.7)',
+          'backdrop-filter': 'blur(8px)',
+          'border': '1px solid rgba(255, 255, 255, 0.125)',
+          'box-shadow': '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+        },
+        '.touch-target': {
+          'min-width': '44px',
+          'min-height': '44px',
+        }
+      })
+    }
+  ],
 } satisfies Config;

@@ -1,0 +1,70 @@
+Design a modern UI/UX system for BevPro, a voice-controlled POS application in React Native, with the following specifications:
+Visual Design Language:
+
+Create a design system inspired by Apple's Human Interface Guidelines while maintaining platform fluidity for both iOS and Android
+Implement a frosted glass morphism aesthetic with subtle transparency and blur effects (using rgba values) to create depth
+Use smooth, organic animations with gentle ease curves for all transitions (0.3s duration)
+Incorporate micro-interactions that provide subtle feedback for voice commands
+Design with a minimum touch target size of 44x44pt for optimal accessibility
+
+Color Palette:
+
+Primary: Soft mint (#4CD7B0) for main actions and success states
+Secondary: Calm lavender (#9381FF) for secondary elements
+Background: Pearl white gradient (#F8F9FC to #F0F2F8)
+Dark elements: Deep navy (#1A1B4B) for text and icons
+Accent: Coral pink (#FF7C7C) for important alerts or highlights
+All colors should have 60-30-10 distribution ratio
+
+Typography:
+
+Primary font: SF Pro Display for iOS, Roboto for Android
+Use dynamic type scaling with these modular sizes:
+
+Headlines: -apple-system, 32pt, weight: 700
+Subheads: -apple-system, 24pt, weight: 600
+Body: -apple-system, 16pt, weight: 400
+Caption: -apple-system, 14pt, weight: 400
+
+
+
+Layout & Components:
+
+Implement auto-layout with flexible spacing using 8pt grid system
+Design for these screen breakpoints:
+
+iPhone SE: 375pt
+iPhone 14 Pro Max: 428pt
+iPad Mini: 744pt
+iPad Pro: 1024pt
+
+
+Use floating action buttons for primary voice controls
+Implement bottom sheets for secondary menus
+Create cards with subtle shadows (elevation: 2, opacity: 0.1)
+
+Voice Interface Elements:
+
+Design a pulsing voice indicator using concentric circles with opacity animations
+Include subtle sound wave visualizations during voice input
+Create clear visual feedback states for:
+
+Listening mode
+Processing command
+Command confirmed
+Error state
+
+
+
+Navigation:
+
+Tab bar with home, orders, menu, and settings
+Gesture-based navigation with swipe actions
+Clear visual hierarchy with breadcrumbs for deep navigation
+
+Accessibility:
+
+Support dynamic type scaling
+Maintain contrast ratio of at least 4.5:1
+Include haptic feedback for important actions
+Design clear focus states for keyboard navigation

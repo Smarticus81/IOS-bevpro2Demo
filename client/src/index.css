@@ -1,13 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --radius: 0.5rem;
+    --transition-ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-duration: 0.3s;
+  }
+
   * {
-    @apply border-border;
+    @apply border-border transition-all duration-300;
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans antialiased bg-gradient-to-b from-pearl-light to-pearl-dark text-navy min-h-screen;
+  }
+
+  h1 {
+    @apply text-headline;
+  }
+
+  h2 {
+    @apply text-subhead;
+  }
+
+  p {
+    @apply text-body;
+  }
+
+  small {
+    @apply text-caption;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply glass-morphism rounded-lg p-6;
+  }
+  
+  .interactive-element {
+    @apply touch-target cursor-pointer transition-all duration-300 ease-out
+           hover:scale-[1.02] active:scale-[0.98];
+  }
+
+  .voice-pulse {
+    @apply animate-pulse-ring;
+  }
+  
+  .fade-enter {
+    @apply animate-fade-in;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
   }
 }
