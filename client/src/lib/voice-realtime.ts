@@ -131,10 +131,6 @@ class RealtimeVoiceSynthesis extends EventTarget {
   }
 
 
-  // Cache for available voices
-  private cachedVoices: SpeechSynthesisVoice[] | null = null;
-  private isWebKit = /webkit/i.test(navigator.userAgent);
-
   private async synthesizeWithWebSpeech(text: string): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!text) {
@@ -150,85 +146,20 @@ class RealtimeVoiceSynthesis extends EventTarget {
       utterance.rate = 1.0;
       utterance.pitch = 1.0;
       utterance.volume = 1.0;
+      utterance.lang = 'en-US';
 
-      const initVoices = () => {
-        try {
-          // Get available voices
-          const voices = window.speechSynthesis.getVoices();
-          console.log('Available voices:', voices.length);
+      // Select voice
+      const voices = window.speechSynthesis.getVoices();
+      const englishVoice = voices.find(voice => 
+        voice.lang.startsWith('en') && voice.name.toLowerCase().includes('female')
+      ) || voices.find(voice => voice.lang.startsWith('en')) || voices[0];
 
-          // Define preferred voices and languages
-          const preferredVoices = [
-            { name: /samantha/i, lang: 'en-US' },
-            { name: /karen/i, lang: 'en-GB' },
-            { name: /female/i, lang: 'en' }
-          ];
+      if (englishVoice) {
+        console.log('Selected voice:', englishVoice.name);
+        utterance.voice = englishVoice;
+      }
 
-          // Try to find a matching voice
-          let selectedVoice = null;
-          for (const pref of preferredVoices) {
-            selectedVoice = voices.find(voice =>
-              pref.name.test(voice.name.toLowerCase()) &&
-              voice.lang.startsWith(pref.lang)
-            );
-            if (selectedVoice) {
-              console.log('Found preferred voice:', selectedVoice.name);
-              break;
-            }
-          }
-
-          // Fallback to any English voice if no preferred voice found
-          if (!selectedVoice) {
-            selectedVoice = voices.find(voice => voice.lang.startsWith('en'));
-            if (selectedVoice) {
-              console.log('Using fallback English voice:', selectedVoice.name);
-            }
-          }
-
-          // Last resort: use any available voice
-          if (!selectedVoice && voices.length > 0) {
-            selectedVoice = voices[0];
-            console.log('Using default voice:', selectedVoice.name);
-          }
-
-          if (selectedVoice) {
-            console.log('Voice selected:', {
-              name: selectedVoice.name,
-              lang: selectedVoice.lang,
-              local: selectedVoice.localService,
-              isWebKit: this.isWebKit
-            });
-            utterance.voice = selectedVoice;
-            utterance.lang = selectedVoice.lang;
-          } else {
-            console.warn('No suitable voice found, using system default');
-            utterance.lang = 'en-US'; // Fallback language
-          }
-
-          // Clear any ongoing speech synthesis
-          window.speechSynthesis.cancel();
-
-          // For WebKit browsers, we need special handling
-          if (this.isWebKit) {
-            console.log('Applying WebKit-specific handling');
-            
-            // Reset the synthesis state
-            window.speechSynthesis.resume();
-            
-            // Use a small delay to ensure proper initialization
-            setTimeout(() => {
-              window.speechSynthesis.speak(utterance);
-            }, 100);
-          } else {
-            window.speechSynthesis.speak(utterance);
-          }
-        } catch (error) {
-          console.error('Voice initialization error:', error);
-          reject(error);
-        }
-      };
-
-      // Enhanced event handlers
+      // Event handlers
       utterance.onstart = () => {
         console.log('Speech synthesis started:', {
           voice: utterance.voice?.name || 'default',
@@ -239,7 +170,6 @@ class RealtimeVoiceSynthesis extends EventTarget {
 
       utterance.onend = () => {
         console.log('Speech synthesis completed');
-        window.speechSynthesis.resume(); // Ensure synthesis is resumed for next utterance
         resolve();
       };
 
@@ -249,52 +179,27 @@ class RealtimeVoiceSynthesis extends EventTarget {
           elapsedTime: event.elapsedTime,
           timestamp: new Date().toISOString()
         });
-
-        // Try to recover from errors
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.resume();
-
-        if (this.isWebKit) {
-          // For WebKit, try one more time after a short delay
-          setTimeout(() => {
-            window.speechSynthesis.speak(utterance);
-          }, 250);
-        } else {
-          reject(new Error(`Web Speech synthesis failed: ${event.error}`));
-        }
+        reject(new Error(`Web Speech synthesis failed: ${event.error}`));
       };
 
-      // Improved voice initialization with better WebKit support
-      const tryInitVoices = (retryCount = 0) => {
-        const voices = window.speechSynthesis.getVoices();
-        
-        if (voices.length > 0) {
-          initVoices();
-          return;
-        }
+      // Clear any ongoing synthesis and speak
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
 
-        if (this.isWebKit) {
-          // WebKit requires multiple attempts due to async voice loading
-          if (retryCount < 5) {
-            console.log(`Initializing WebKit voices (attempt ${retryCount + 1}/5)...`);
-            setTimeout(() => {
-              tryInitVoices(retryCount + 1);
-            }, 100 * Math.pow(2, retryCount));
-          } else {
-            console.warn('WebKit voice initialization timeout, using defaults');
-            initVoices();
+      // Handle voice loading if voices aren't available yet
+      if (voices.length === 0) {
+        window.speechSynthesis.onvoiceschanged = () => {
+          const newVoices = window.speechSynthesis.getVoices();
+          const newEnglishVoice = newVoices.find(voice => 
+            voice.lang.startsWith('en') && voice.name.toLowerCase().includes('female')
+          ) || newVoices.find(voice => voice.lang.startsWith('en')) || newVoices[0];
+
+          if (newEnglishVoice) {
+            utterance.voice = newEnglishVoice;
+            console.log('Voice loaded and updated:', newEnglishVoice.name);
           }
-        } else {
-          // Standard browsers: wait for voices to load
-          window.speechSynthesis.onvoiceschanged = () => {
-            window.speechSynthesis.onvoiceschanged = null;
-            initVoices();
-          };
-        }
-      };
-
-      // Start voice initialization
-      tryInitVoices(0);
+        };
+      }
     });
   }
 
