@@ -179,28 +179,30 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
             const normalizeText = (text: string) => 
               text.toLowerCase()
                  .replace(/\s+/g, ' ')
-                 .trim()
-                 .replace(/\blight\b/g, 'lite');
+                 .trim();
                  
             const drink = drinks.find(d => {
-              const normalizedMenu = normalizeText(d.name);
-              const normalizedOrder = normalizeText(item.name);
+              const menuName = normalizeText(d.name);
+              const orderName = normalizeText(item.name);
               
-              // Try exact match first
+              // Handle Light/Lite variations
+              const normalizedMenu = menuName.replace(/\b(light|lite)\b/g, '').trim();
+              const normalizedOrder = orderName.replace(/\b(light|lite)\b/g, '').trim();
+              
+              // Direct match including Light/Lite variations
+              if (menuName === orderName || 
+                  menuName.replace('light', 'lite') === orderName.replace('light', 'lite')) {
+                return true;
+              }
+              
+              // Core name match (without Light/Lite)
               if (normalizedMenu === normalizedOrder) {
                 return true;
               }
               
-              // Split into words for partial matching
-              const menuWords = normalizedMenu.split(' ');
-              const orderWords = normalizedOrder.split(' ');
-              
-              // Check if all order words appear in menu item
-              return orderWords.every(word => 
-                menuWords.some(menuWord => 
-                  menuWord.includes(word) || word.includes(menuWord)
-                )
-              );
+              // Partial match for compound names
+              return normalizedMenu.includes(normalizedOrder) || 
+                     normalizedOrder.includes(normalizedMenu);
             });
 
             if (drink) {

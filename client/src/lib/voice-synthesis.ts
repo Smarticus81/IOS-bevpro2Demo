@@ -11,7 +11,7 @@ class VoiceSynthesis {
   private speakPromise: Promise<void> | null = null;
   private lastSpeakTime: number = 0;
   private readonly MIN_INTERVAL = 300; // Minimum time between speeches in ms
-  private readonly SYNTHESIS_TIMEOUT = 5000; // Maximum time to wait for synthesis
+  private readonly SYNTHESIS_TIMEOUT = 8000; // Maximum time to wait for synthesis
 
   private constructor() {
     document.addEventListener('click', () => {
@@ -95,10 +95,21 @@ class VoiceSynthesis {
       // Race between timeout and synthesis
       this.speakPromise = Promise.race([synthesisPromise(), timeoutPromise]);
       await this.speakPromise;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Speech synthesis error:', error);
       this.speakPromise = null;
-      throw error;
+      
+      // Enhance error handling with more specific error information
+      const errorMessage = error.message || 'Unknown speech synthesis error';
+      if (errorMessage.includes('timeout')) {
+        throw new Error('Speech synthesis timed out. Please try again.');
+      } else if (error.response?.status === 429) {
+        throw new Error('Too many voice requests. Please wait a moment.');
+      } else if (error.code === 'PLAY_FAILED') {
+        throw new Error('Failed to play audio. Please check your audio settings.');
+      } else {
+        throw new Error(`Speech synthesis failed: ${errorMessage}`);
+      }
     }
   }
 
