@@ -150,68 +150,44 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "Text is required" });
       }
 
-      if (useElevenLabs) {
-        const elevenLabsKey = process.env.ELEVEN_LABS_API_KEY;
-        if (!elevenLabsKey) {
-          throw new Error('Eleven Labs API key not configured');
-        }
-
-        const elevenLabsResponse = await fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM', {
-          method: 'POST',
-          headers: {
-            'Accept': 'audio/mpeg',
-            'xi-api-key': elevenLabsKey,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            text,
-            model_id: "eleven_monolingual_v1",
-            voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.75
-            }
-          })
-        });
-
-        if (!elevenLabsResponse.ok) {
-          throw new Error(`Eleven Labs API error: ${elevenLabsResponse.statusText}`);
-        }
-
-        const audioBuffer = await elevenLabsResponse.arrayBuffer();
-        const buffer = Buffer.from(audioBuffer);
-        
-        res.setHeader('Content-Type', 'audio/mpeg');
-        res.setHeader('Content-Length', buffer.length);
-        res.send(buffer);
-        
-        console.log('Eleven Labs synthesis completed successfully:', {
-          responseSize: buffer.length,
-          timestamp: new Date().toISOString()
-        });
-      } else {
-        const openai = await getOpenAIClient();
-        console.log('Starting OpenAI speech synthesis...');
-        
-        const response = await openai.audio.speech.create({
-          model: "tts-1",
-          voice: voice || "alloy",
-          input: text,
-          speed: speed || 1.2
-        });
-
-        console.log('OpenAI synthesis successful, streaming response...');
-        
-        // Convert response to array buffer and stream
-        const buffer = Buffer.from(await response.arrayBuffer());
-        res.setHeader('Content-Type', 'audio/mpeg');
-        res.setHeader('Content-Length', buffer.length);
-        res.send(buffer);
-        
-        console.log('Voice synthesis completed successfully:', {
-          responseSize: buffer.length,
-          timestamp: new Date().toISOString()
-        });
+      const elevenLabsKey = process.env.ELEVEN_LABS_API_KEY;
+      if (!elevenLabsKey) {
+        throw new Error('Eleven Labs API key not configured');
       }
+
+      console.log('Starting Eleven Labs synthesis...');
+      const elevenLabsResponse = await fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM', {
+        method: 'POST',
+        headers: {
+          'Accept': 'audio/mpeg',
+          'xi-api-key': elevenLabsKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text,
+          model_id: "eleven_monolingual_v1",
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75
+          }
+        })
+      });
+
+      if (!elevenLabsResponse.ok) {
+        throw new Error(`Eleven Labs API error: ${elevenLabsResponse.statusText}`);
+      }
+
+      const audioBuffer = await elevenLabsResponse.arrayBuffer();
+      const buffer = Buffer.from(audioBuffer);
+      
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Content-Length', buffer.length);
+      res.send(buffer);
+      
+      console.log('Eleven Labs synthesis completed successfully:', {
+        responseSize: buffer.length,
+        timestamp: new Date().toISOString()
+      });
     } catch (error: any) {
       const errorMessage = error.message || 'Unknown error occurred';
       console.error("Voice synthesis error:", {
