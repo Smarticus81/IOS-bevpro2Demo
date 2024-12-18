@@ -36,25 +36,47 @@ export function setupRealtimeProxy(server: Server) {
       // Connect to OpenAI's TTS realtime API
       const openaiWs = new WebSocket(
         "wss://api.openai.com/v1/audio/speech",
-        {
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          protocol: "audio.speech.beta.1"
-        }
+        ["audio.speech.beta.1"]
       );
+
+      // Set authentication headers
+      openaiWs.addListener('upgrade', (response) => {
+        response.headers = {
+          ...response.headers,
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        };
+      });
 
       // Set up error handlers first
       openaiWs.on('error', (error) => {
-        console.error('OpenAI WebSocket error:', error);
+        console.error('OpenAI WebSocket error:', {
+          error: error.message,
+          timestamp: new Date().toISOString(),
+          wsState: openaiWs.readyState,
+          stack: error.stack
+        });
+
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ 
             type: 'error',
-            error: 'Connection to OpenAI failed'
+            error: `Connection to OpenAI failed: ${error.message}`,
+            timestamp: new Date().toISOString()
           }));
         }
       });
+
+      // Log readyState changes
+      const logStateChange = () => {
+        console.log('OpenAI WebSocket state:', {
+          readyState: openaiWs.readyState,
+          timestamp: new Date().toISOString()
+        });
+      };
+
+      openaiWs.on('open', logStateChange);
+      openaiWs.on('close', logStateChange);
+      openaiWs.on('error', logStateChange);
 
       openaiWs.on('close', (code, reason) => {
         console.log('OpenAI WebSocket closed:', code, reason.toString());
