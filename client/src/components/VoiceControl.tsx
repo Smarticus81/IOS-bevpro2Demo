@@ -282,7 +282,21 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
             const drink = findBestMatch(item.name, drinks);
 
             if (drink) {
-              onAddToCart({ type: 'ADD_ITEM', drink, quantity: item.quantity });
+              console.log('Adding drink to cart:', {
+                drink,
+                quantity: item.quantity,
+                price: drink.price,
+                total: drink.price * item.quantity
+              });
+              
+              onAddToCart({ 
+                type: 'ADD_ITEM', 
+                drink: {
+                  ...drink,
+                  price: Number(drink.price) // Ensure price is a number
+                }, 
+                quantity: item.quantity 
+              });
               successfulItems.push(`${item.quantity} ${drink.name}`);
             } else {
               failedItems.push(item.name);
