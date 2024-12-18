@@ -178,14 +178,29 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
             // Normalize drink names for more flexible matching
             const normalizeText = (text: string) => 
               text.toLowerCase()
-                 .replace(/\s+/g, '')
-                 .replace('light', 'lite');
+                 .replace(/\s+/g, ' ')
+                 .trim()
+                 .replace(/\blight\b/g, 'lite');
                  
             const drink = drinks.find(d => {
               const normalizedMenu = normalizeText(d.name);
               const normalizedOrder = normalizeText(item.name);
-              return normalizedMenu.includes(normalizedOrder) || 
-                     normalizedOrder.includes(normalizedMenu);
+              
+              // Try exact match first
+              if (normalizedMenu === normalizedOrder) {
+                return true;
+              }
+              
+              // Split into words for partial matching
+              const menuWords = normalizedMenu.split(' ');
+              const orderWords = normalizedOrder.split(' ');
+              
+              // Check if all order words appear in menu item
+              return orderWords.every(word => 
+                menuWords.some(menuWord => 
+                  menuWord.includes(word) || word.includes(menuWord)
+                )
+              );
             });
 
             if (drink) {
