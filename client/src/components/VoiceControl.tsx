@@ -31,6 +31,7 @@ interface VoiceControlProps {
 export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessingCommand, setIsProcessingCommand] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [isSupported, setIsSupported] = useState(true);
   const [mode, setMode] = useState<'order' | 'inquiry'>('order');
@@ -187,7 +188,6 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
       let processingTimeout: NodeJS.Timeout;
       let lastProcessedCommand = '';
       let lastProcessedTime = 0;
-      let isProcessingCommand = false;
 
       voiceRecognition.on<string>('speech', async (text) => {
         if (!text) {
@@ -197,40 +197,64 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
           return;
         }
 
-        console.log('Processing voice input:', {
+        console.log('Received voice input:', {
           text,
           mode,
           isWakeWordOnly,
+          isProcessingCommand,
           timestamp: new Date().toISOString()
         });
 
         clearTimeout(processingTimeout);
 
         const now = Date.now();
-        const commandHash = `${text}-${Math.floor(now / 2000)}`;
+        const commandHash = `${text}-${Math.floor(now / 1000)}`; // Increase debounce window to 1 second
 
-        if (commandHash === lastProcessedCommand || isProcessingCommand) {
-          console.log('Skipping duplicate command or processing in progress');
+        if (isProcessingCommand) {
+          console.log('Skipping command - processing in progress:', {
+            text,
+            commandHash,
+            timestamp: new Date().toISOString()
+          });
+          return;
+        }
+
+        if (commandHash === lastProcessedCommand && (now - lastProcessedTime) < 1000) {
+          console.log('Skipping duplicate command:', {
+            text,
+            commandHash,
+            timeSinceLastCommand: now - lastProcessedTime,
+            timestamp: new Date().toISOString()
+          });
           return;
         }
 
         processingTimeout = setTimeout(async () => {
-          if (isProcessingCommand) return;
-
           try {
-            isProcessingCommand = true;
+            setIsProcessingCommand(true);
             lastProcessedCommand = commandHash;
             lastProcessedTime = now;
 
-            console.log('Processing speech:', text);
+            console.log('Starting command processing:', {
+              text,
+              commandHash,
+              timestamp: new Date().toISOString()
+            });
+            
             setIsProcessing(true);
             await soundEffects.playListeningStop();
             await processVoiceInput(text);
+            
+            console.log('Completed command processing:', {
+              text,
+              commandHash,
+              timestamp: new Date().toISOString()
+            });
           } finally {
-            isProcessingCommand = false;
+            setIsProcessingCommand(false);
             setIsProcessing(false);
           }
-        }, 300);
+        }, 500); // Increase debounce delay
       });
 
       voiceRecognition.on<void>('start', async () => {
@@ -387,45 +411,41 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         }
 
         case "complete_transaction": {
+          if (isProcessingCommand) {
+            console.log('Skipping transaction - already processing command');
+            return;
+          }
+
           try {
-            if (isProcessingCommand) {
-              console.log('Skipping duplicate transaction completion');
-              return;
-            }
+            setIsProcessingCommand(true);
+            console.log('Starting transaction completion:', {
+              mode,
+              intent,
+              timestamp: new Date().toISOString(),
+              isProcessingCommand: true
+            });
 
-            isProcessingCommand = true;
+            // Use a single transaction completion attempt
+            onAddToCart({ type: 'COMPLETE_TRANSACTION' });
             
-            try {
-              // Process transaction completion
-              console.log('Processing transaction completion:', {
-                mode,
-                intent,
-                timestamp: new Date().toISOString()
-              });
-
-              // Trigger transaction processing
-              onAddToCart({ type: 'COMPLETE_TRANSACTION' });
-              
-              // Wait briefly to allow the UI to update
-              await new Promise(resolve => setTimeout(resolve, 500));
-              
-              await soundEffects.playSuccess();
-              setMode('order'); // Reset to order mode after completion
-              setIsWakeWordOnly(true); // Enter wake word only mode
-              
-              const completionMessage = "Order processed successfully. Say 'hey bar' to start a new order or 'hey bev' for questions.";
-              setStatus(completionMessage);
-              
-              if (mode === 'inquiry') {
-                await handleResponse(intent.conversational_response || completionMessage);
-              }
-
-              console.log('Transaction completed successfully', {
-                timestamp: new Date().toISOString()
-              });
-            } finally {
-              isProcessingCommand = false;
+            // Wait briefly to allow the UI to update
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await soundEffects.playSuccess();
+            setMode('order'); // Reset to order mode after completion
+            setIsWakeWordOnly(true); // Enter wake word only mode
+            
+            const completionMessage = "Order processed successfully. Say 'hey bar' to start a new order or 'hey bev' for questions.";
+            setStatus(completionMessage);
+            
+            if (mode === 'inquiry') {
+              await handleResponse(intent.conversational_response || completionMessage);
             }
+
+            console.log('Transaction completed successfully', {
+              timestamp: new Date().toISOString(),
+              isProcessingCommand: true
+            });
           } catch (error) {
             console.error('Failed to process transaction:', error);
             await soundEffects.playError();
@@ -434,6 +454,12 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
             if (mode === 'inquiry') {
               await handleResponse(errorMessage);
             }
+          } finally {
+            setIsProcessingCommand(false);
+            console.log('Transaction processing complete, resetting state', {
+              timestamp: new Date().toISOString(),
+              isProcessingCommand: false
+            });
           }
           break;
         }
