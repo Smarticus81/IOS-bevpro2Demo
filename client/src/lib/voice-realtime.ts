@@ -127,23 +127,43 @@ class RealtimeVoiceSynthesis extends EventTarget {
 
   private async synthesizeWithOpenAI(text: string) {
     console.log('Using OpenAI for synthesis');
-    const response = await fetch('/api/synthesize', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        text,
-        provider: 'openai'
-      }),
-    });
+    try {
+      const response = await fetch('/api/synthesize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text,
+          provider: 'openai'
+        }),
+      });
 
-    if (!response.ok) {
-      throw new Error(`OpenAI synthesis failed: ${response.statusText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('OpenAI synthesis failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        throw new Error(`OpenAI synthesis failed: ${response.status} - ${errorText}`);
+      }
+
+      const audioData = await response.arrayBuffer();
+      if (!audioData || audioData.byteLength === 0) {
+        throw new Error('Received empty audio data from server');
+      }
+
+      console.log('OpenAI synthesis succeeded, playing audio:', {
+        audioSize: audioData.byteLength,
+        timestamp: new Date().toISOString()
+      });
+
+      await this.playAudioBuffer(audioData);
+    } catch (error) {
+      console.error('OpenAI synthesis error details:', error);
+      throw error;
     }
-
-    const audioData = await response.arrayBuffer();
-    await this.playAudioBuffer(audioData);
   }
 
   private async synthesizeWithElevenLabs(text: string) {

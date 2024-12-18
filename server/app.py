@@ -121,17 +121,28 @@ def synthesize_speech():
         if provider == 'openai':
             try:
                 logger.info("Attempting OpenAI voice synthesis")
-                response = openai_client.audio.speech.create(
-                    model="tts-1",
-                    voice="nova",
-                    input=text,
-                    response_format="mp3"
-                )
-                
-                logger.info("OpenAI synthesis successful, processing audio content")
-                # Convert response content to file-like object
-                audio_io = io.BytesIO(response.content)
-                audio_io.seek(0)
+                try:
+                    response = openai_client.audio.speech.create(
+                        model="tts-1",
+                        voice="nova",
+                        input=text,
+                        response_format="mp3"
+                    )
+                    
+                    if not response or not response.content:
+                        raise ValueError("Empty response from OpenAI")
+                    
+                    logger.info("OpenAI synthesis successful, processing audio content")
+                    # Convert response content to file-like object
+                    audio_io = io.BytesIO(response.content)
+                    audio_io.seek(0)
+                    
+                    if audio_io.getbuffer().nbytes == 0:
+                        raise ValueError("Generated audio content is empty")
+                        
+                except Exception as api_error:
+                    logger.error(f"OpenAI API error details: {str(api_error)}")
+                    raise
                 
                 logger.info(f"Successfully generated audio with OpenAI, content size: {len(response.content)} bytes")
                 
