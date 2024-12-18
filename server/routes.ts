@@ -3,9 +3,11 @@ import { createServer, type Server } from "http";
 import { db } from "@db";
 import { drinks, orders, orderItems } from "@db/schema";
 import { eq, sql } from "drizzle-orm";
+import { setupRealtimeProxy } from "./realtime-proxy";
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
+  setupRealtimeProxy(httpServer);
 
   // Get all drinks
   app.get("/api/drinks", async (_req, res) => {
