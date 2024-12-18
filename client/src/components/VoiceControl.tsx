@@ -123,47 +123,43 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
 
       console.log('HandleResponse - Current mode:', mode, 'Response:', finalResponse);
       
-      if (mode === 'inquiry') { // Only speak in inquiry mode
-        try {
-          if (finalResponse?.trim()) {
-            console.log('Attempting voice synthesis in inquiry mode:', {
-              mode,
-              response: finalResponse,
-              audioContext: !!window.AudioContext,
-              webAudioEnabled: 'AudioContext' in window,
-              timestamp: new Date().toISOString()
-            });
-            
-            // Ensure audioContext is initialized by user interaction
-            await soundEffects.playListeningStop();
-            
-            // Add a small delay to ensure audio context is ready
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            await realtimeVoiceSynthesis.speak(finalResponse);
-            console.log('Voice synthesis completed successfully');
-          } else {
-            console.log('Empty response, skipping voice synthesis');
-          }
-        } catch (error) {
-          console.error('Voice synthesis error:', {
-            error,
+      try {
+        if (finalResponse?.trim()) {
+          console.log('Attempting voice synthesis:', {
             mode,
             response: finalResponse,
+            audioContext: !!window.AudioContext,
+            webAudioEnabled: 'AudioContext' in window,
             timestamp: new Date().toISOString()
           });
-          setStatus('Voice response failed. ' + finalResponse);
           
-          // Try fallback to Web Speech API
-          try {
-            const utterance = new SpeechSynthesisUtterance(finalResponse);
-            window.speechSynthesis.speak(utterance);
-          } catch (fallbackError) {
-            console.error('Fallback synthesis failed:', fallbackError);
-          }
+          // Ensure audioContext is initialized by user interaction
+          await soundEffects.playListeningStop();
+          
+          // Add a small delay to ensure audio context is ready
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          await realtimeVoiceSynthesis.speak(finalResponse);
+          console.log('Voice synthesis completed successfully');
+        } else {
+          console.log('Empty response, skipping voice synthesis');
         }
-      } else {
-        console.log('Skipping voice response - currently in order mode');
+      } catch (error) {
+        console.error('Voice synthesis error:', {
+          error,
+          mode,
+          response: finalResponse,
+          timestamp: new Date().toISOString()
+        });
+        setStatus('Voice response failed. ' + finalResponse);
+        
+        // Try fallback to Web Speech API
+        try {
+          const utterance = new SpeechSynthesisUtterance(finalResponse);
+          window.speechSynthesis.speak(utterance);
+        } catch (fallbackError) {
+          console.error('Fallback synthesis failed:', fallbackError);
+        }
       }
     } catch (error) {
       console.error('Response handling error:', error);
