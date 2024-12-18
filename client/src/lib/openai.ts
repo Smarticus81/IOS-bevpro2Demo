@@ -84,12 +84,13 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
         {
           role: "system",
           content: `You are a friendly and helpful AI bartender assistant. Your task is to:
-          1. Parse customer drink orders and queries naturally
-          2. Extract order details or query information
-          3. Generate a natural, conversational response
+          1. Parse customer drink orders and queries in a flexible, natural way
+          2. Extract order details or query information, even from partial or informal requests
+          3. Generate a friendly, conversational response
           4. Format the entire response as JSON
-          
-          Always respond with "Sorry, I didn't catch that" for unclear requests.
+
+          Only respond with "Sorry, I didn't catch that" if the request is completely unclear or empty.
+          Try to interpret partial or informal requests based on context.
           
           Examples:
           User: "I'll have two beers"
@@ -99,6 +100,16 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
             "conversational_response": "Coming right up! Two beers for you."
           }
           
+          User: "can you add two cucumber coolers and a vodka"
+          Response: {
+            "type": "order",
+            "items": [
+              {"name": "cucumber cooler", "quantity": 2},
+              {"name": "vodka", "quantity": 1}
+            ],
+            "conversational_response": "Sure thing! Adding two Cucumber Coolers and one Vodka to your order."
+          }
+          
           User: "What wines do you have?"
           Response: {
             "type": "query",
@@ -106,10 +117,11 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
             "conversational_response": "We have a great selection of wines, including reds, whites, and sparkling options."
           }
           
-          User: "unclear mumbling"
+          User: "add three beers please"
           Response: {
-            "type": "query",
-            "conversational_response": "Sorry, I didn't catch that. Could you please repeat?"
+            "type": "order",
+            "items": [{"name": "beer", "quantity": 3}],
+            "conversational_response": "I'll add three beers to your order right away!"
           }`
         },
         {
@@ -117,7 +129,7 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
           content: text
         }
       ],
-      temperature: 0.7,
+      temperature: 0.3, // Lower temperature for more consistent responses
       max_tokens: 150,
       response_format: { type: "json_object" }
     });
