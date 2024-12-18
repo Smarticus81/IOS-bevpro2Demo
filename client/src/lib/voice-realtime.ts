@@ -148,10 +148,7 @@ class RealtimeVoiceSynthesis extends EventTarget {
       const initVoices = () => {
         try {
           // Get available voices
-          const voices = this.cachedVoices || window.speechSynthesis.getVoices();
-          if (!this.cachedVoices && voices.length > 0) {
-            this.cachedVoices = voices;
-          }
+          const voices = window.speechSynthesis.getVoices();
           console.log('Available voices:', voices.length);
 
           // Define preferred voices and languages
@@ -176,10 +173,7 @@ class RealtimeVoiceSynthesis extends EventTarget {
 
           // Fallback to any English voice if no preferred voice found
           if (!selectedVoice) {
-            selectedVoice = voices.find(voice =>
-              voice.lang.startsWith('en') &&
-              (this.isWebKit ? true : voice.localService) // Don't restrict to local voices in WebKit
-            );
+            selectedVoice = voices.find(voice => voice.lang.startsWith('en'));
             if (selectedVoice) {
               console.log('Using fallback English voice:', selectedVoice.name);
             }
@@ -205,12 +199,17 @@ class RealtimeVoiceSynthesis extends EventTarget {
             utterance.lang = 'en-US'; // Fallback language
           }
 
-          // Handle WebKit specific issues
+          // Clear any ongoing speech synthesis
+          window.speechSynthesis.cancel();
+
+          // For WebKit browsers, we need special handling
           if (this.isWebKit) {
             console.log('Applying WebKit-specific handling');
-            window.speechSynthesis.cancel(); // Clear any stuck utterances
-
-            // Add slight delay for WebKit
+            
+            // Reset the synthesis state
+            window.speechSynthesis.resume();
+            
+            // Use a small delay to ensure proper initialization
             setTimeout(() => {
               window.speechSynthesis.speak(utterance);
             }, 100);
@@ -223,7 +222,7 @@ class RealtimeVoiceSynthesis extends EventTarget {
         }
       };
 
-      // Event handlers with improved logging
+      // Enhanced event handlers
       utterance.onstart = () => {
         console.log('Speech synthesis started:', {
           voice: utterance.voice?.name || 'default',
@@ -234,54 +233,62 @@ class RealtimeVoiceSynthesis extends EventTarget {
 
       utterance.onend = () => {
         console.log('Speech synthesis completed');
-        if (this.isWebKit) {
-          window.speechSynthesis.cancel(); // Ensure clean state for WebKit
-        }
+        window.speechSynthesis.resume(); // Ensure synthesis is resumed for next utterance
         resolve();
       };
 
       utterance.onerror = (event) => {
         console.error('Speech synthesis error:', {
           error: event.error,
-          message: event.message,
           elapsedTime: event.elapsedTime,
           timestamp: new Date().toISOString()
         });
 
-        if (this.isWebKit) {
-          window.speechSynthesis.cancel(); // Clean up on error
-        }
+        // Try to recover from errors
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.resume();
 
-        reject(new Error(`Web Speech synthesis failed: ${event.error}`));
+        if (this.isWebKit) {
+          // For WebKit, try one more time after a short delay
+          setTimeout(() => {
+            window.speechSynthesis.speak(utterance);
+          }, 250);
+        } else {
+          reject(new Error(`Web Speech synthesis failed: ${event.error}`));
+        }
       };
 
-      // Handle voice initialization with retry
+      // Improved voice initialization with better WebKit support
       const tryInitVoices = (retryCount = 0) => {
-        // Start voice initialization process
+        const voices = window.speechSynthesis.getVoices();
+        
+        if (voices.length > 0) {
+          initVoices();
+          return;
+        }
+
         if (this.isWebKit) {
-          // WebKit browsers: try immediate initialization with retry
-          if (this.cachedVoices?.length > 0 || window.speechSynthesis.getVoices().length > 0) {
-            initVoices();
-          } else if (retryCount < 3) { // Retry up to 3 times
-            console.log(`Retrying voice initialization (${retryCount + 1}/3)...`);
-            setTimeout(() => tryInitVoices(retryCount + 1), 100 * Math.pow(2, retryCount));
+          // WebKit requires multiple attempts due to async voice loading
+          if (retryCount < 5) {
+            console.log(`Initializing WebKit voices (attempt ${retryCount + 1}/5)...`);
+            setTimeout(() => {
+              tryInitVoices(retryCount + 1);
+            }, 100 * Math.pow(2, retryCount));
           } else {
-            console.warn('Failed to initialize voices after retries');
-            initVoices(); // Try one last time with whatever we have
+            console.warn('WebKit voice initialization timeout, using defaults');
+            initVoices();
           }
         } else {
-          // Other browsers: use standard onvoiceschanged event
-          if (window.speechSynthesis.getVoices().length > 0) {
+          // Standard browsers: wait for voices to load
+          window.speechSynthesis.onvoiceschanged = () => {
+            window.speechSynthesis.onvoiceschanged = null;
             initVoices();
-          } else {
-            window.speechSynthesis.onvoiceschanged = () => {
-              window.speechSynthesis.onvoiceschanged = null; // Clean up listener
-              initVoices();
-            };
-          }
+          };
         }
       };
-      tryInitVoices();
+
+      // Start voice initialization
+      tryInitVoices(0);
     });
   }
 
