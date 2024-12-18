@@ -15,7 +15,7 @@ import { useState, useEffect } from "react";
 export function Settings() {
   const { toast } = useToast();
   const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [provider, setProvider] = useState<string>("elevenlabs");
+  const [provider, setProvider] = useState<string>("elevenlabs"); // Provider is now fixed to elevenlabs
   const [voiceStatus, setVoiceStatus] = useState<'connected' | 'error' | 'loading'>('loading');
   const [pitch, setPitch] = useState([1.0]);
   const [rate, setRate] = useState([1.0]);
@@ -48,11 +48,8 @@ export function Settings() {
   const checkVoiceStatus = async () => {
     try {
       setVoiceStatus('loading');
-      // Check if Web Speech API is available
-      if (provider === 'webspeech' && 'speechSynthesis' in window) {
-        const voices = window.speechSynthesis.getVoices();
-        setVoiceStatus('connected');
-      } else if (provider === 'elevenlabs') {
+      // Check if Web Speech API is available - This check is now redundant because webspeech is removed.
+      if (provider === 'elevenlabs') {
         const response = await fetch('/api/config');
         if (response.ok) {
           setVoiceStatus('connected');
@@ -145,21 +142,10 @@ export function Settings() {
                 <div className="space-y-0.5">
                   <Label>Voice Provider</Label>
                   <div className="text-sm text-muted-foreground">
-                    Choose your preferred voice synthesis provider
+                    Using OpenAI Nova for high-quality voice synthesis
                   </div>
                 </div>
-                <Select 
-                  value={provider}
-                  onValueChange={(value) => setProvider(value)}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select provider" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="elevenlabs">Eleven Labs</SelectItem>
-                    <SelectItem value="webspeech">Web Speech API</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Badge variant="secondary">OpenAI Nova</Badge>
               </div>
 
               <div className="flex items-center justify-between">
@@ -176,28 +162,6 @@ export function Settings() {
               </div>
 
               <div className="space-y-6">
-                <div className="space-y-2">
-                  <Label>Pitch</Label>
-                  <Slider
-                    value={pitch}
-                    onValueChange={setPitch}
-                    min={0.5}
-                    max={2.0}
-                    step={0.1}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Rate</Label>
-                  <Slider
-                    value={rate}
-                    onValueChange={setRate}
-                    min={0.5}
-                    max={2.0}
-                    step={0.1}
-                  />
-                </div>
-
                 <div className="space-y-2">
                   <Label>Volume</Label>
                   <Slider
@@ -275,11 +239,7 @@ export function Settings() {
                 <div>
                   <h4 className="font-medium">Browser Compatibility</h4>
                   <p className="text-sm text-muted-foreground">
-                    {provider === 'webspeech' 
-                      ? ('speechSynthesis' in window 
-                        ? "Web Speech API is supported in your browser"
-                        : "Web Speech API is not supported in your browser")
-                      : "Using Eleven Labs for voice synthesis"}
+                    Using Eleven Labs for voice synthesis
                   </p>
                 </div>
                 <Badge variant={voiceStatus === 'connected' ? "default" : "destructive"}>
