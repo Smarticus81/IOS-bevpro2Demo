@@ -4,6 +4,8 @@ import { DrinkMenu } from "@/components/DrinkMenu";
 import { VoiceControl } from "@/components/VoiceControl";
 import { OrderSummary } from "@/components/OrderSummary";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { BevProLogo } from "@/components/BevProLogo";
 import { useToast } from "@/hooks/use-toast";
 import type { Drink } from "@db/schema";
 
@@ -96,21 +98,31 @@ export function Home() {
       <div className="container mx-auto py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
-            <Card>
-              <CardContent className="p-6">
-                <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-                  Voice-Controlled Bar POS
-                </h1>
-                <VoiceControl 
-                  drinks={drinks}
-                  onAddToCart={addToCart}
-                />
-                <DrinkMenu 
-                  drinks={drinks}
-                  onAddToCart={addToCart}
-                />
-              </CardContent>
-            </Card>
+            <div className="space-y-6">
+              <Card className="glass-card">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <BevProLogo />
+                    <Badge variant="secondary" className="glass-morphism">
+                      Beta
+                    </Badge>
+                  </div>
+                  <VoiceControl 
+                    drinks={drinks}
+                    onAddToCart={addToCart}
+                  />
+                </CardContent>
+              </Card>
+              
+              <Card className="glass-card">
+                <CardContent className="p-6">
+                  <DrinkMenu 
+                    drinks={drinks}
+                    onAddToCart={addToCart}
+                  />
+                </CardContent>
+              </Card>
+            </div>
           </div>
           <div>
             <OrderSummary

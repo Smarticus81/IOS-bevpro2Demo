@@ -52,22 +52,24 @@ class SoundEffects {
 
   async playWakeWord() {
     // Cheerful ascending arpeggio
-    await this.playTone(440, 0.15); // A4
-    await this.playTone(554.37, 0.15); // C#5
-    await this.playTone(659.25, 0.15); // E5
+    // Playful ascending major triad with gentle fade
+    await this.playTone(523.25, 0.12, 'sine'); // C5
+    await this.playTone(659.25, 0.12, 'sine'); // E5
+    await this.playTone(783.99, 0.15, 'sine'); // G5
   }
 
   async playSuccess() {
-    // Happy major chord
-    await this.playTone(523.25, 0.2); // C5
-    await this.playTone(659.25, 0.3); // E5
-    await this.playTone(783.99, 0.4); // G5
+    // Cheerful major seventh chord with gentle attack
+    await this.playTone(523.25, 0.15, 'sine'); // C5
+    await this.playTone(659.25, 0.15, 'sine'); // E5
+    await this.playTone(783.99, 0.15, 'sine'); // G5
+    await this.playTone(987.77, 0.3, 'sine');  // B5
   }
 
   async playError() {
-    // Descending minor second
-    await this.playTone(440, 0.2); // A4
-    await this.playTone(415.30, 0.4); // Ab4
+    // Gentle descending perfect fifth with soft fade
+    await this.playTone(523.25, 0.15, 'sine'); // C5
+    await this.playTone(392.00, 0.25, 'sine'); // G4
   }
 
   async playListeningStart() {
