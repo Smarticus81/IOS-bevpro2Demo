@@ -5,6 +5,8 @@ import { Mic, MicOff } from "lucide-react";
 import { voiceRecognition } from "@/lib/voice";
 import { processVoiceCommand } from "@/lib/openai";
 import { voiceSynthesis } from "@/lib/voice-synthesis";
+import { soundEffects } from "@/lib/sound-effects";
+import { VoiceAnimation } from "./VoiceAnimation";
 import type { Drink } from "@db/schema";
 import type { ErrorType, VoiceError } from "@/types/speech";
 
@@ -15,6 +17,7 @@ interface VoiceControlProps {
 
 export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
   const [isListening, setIsListening] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [isSupported, setIsSupported] = useState(true);
 
@@ -52,27 +55,35 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
     setIsSupported(voiceRecognition.isSupported());
 
     const setupVoiceRecognition = () => {
-      voiceRecognition.on<void>('wakeWord', () => {
+      voiceRecognition.on<void>('wakeWord', async () => {
+        await soundEffects.playWakeWord();
         setStatus("Listening for order...");
       });
 
-      voiceRecognition.on<string>('speech', (text) => {
+      voiceRecognition.on<string>('speech', async (text) => {
         if (text) {
           console.log('Processing speech:', text);
-          processOrder(text);
+          setIsProcessing(true);
+          await soundEffects.playListeningStop();
+          await processOrder(text);
+          setIsProcessing(false);
         } else {
           console.error('Received empty speech text');
+          await soundEffects.playError();
           setStatus("Sorry, I didn't hear anything");
         }
       });
 
-      voiceRecognition.on<void>('start', () => {
+      voiceRecognition.on<void>('start', async () => {
+        await soundEffects.playListeningStart();
         setIsListening(true);
         setStatus("Waiting for 'hey bar'...");
       });
 
-      voiceRecognition.on<void>('stop', () => {
+      voiceRecognition.on<void>('stop', async () => {
+        await soundEffects.playListeningStop();
         setIsListening(false);
+        setIsProcessing(false);
         setStatus("");
       });
 
@@ -170,30 +181,37 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
 
   return (
     <div className="flex items-center gap-4 mb-6">
-      <Button
-        onClick={toggleListening}
-        variant={isListening ? "destructive" : "default"}
-        className="w-40"
-        disabled={!isSupported}
-      >
-        {isListening ? (
-          <>
-            <MicOff className="mr-2 h-4 w-4" />
-            Stop Listening
-          </>
-        ) : (
-          <>
-            <Mic className="mr-2 h-4 w-4" />
-            Start Listening
-          </>
+      <div className="flex items-center gap-4">
+        <Button
+          onClick={toggleListening}
+          variant={isListening ? "destructive" : "default"}
+          className="w-40"
+          disabled={!isSupported}
+        >
+          {isListening ? (
+            <>
+              <MicOff className="mr-2 h-4 w-4" />
+              Stop Listening
+            </>
+          ) : (
+            <>
+              <Mic className="mr-2 h-4 w-4" />
+              Start Listening
+            </>
+          )}
+        </Button>
+        
+        <VoiceAnimation 
+          isListening={isListening} 
+          isProcessing={isProcessing} 
+        />
+        
+        {status && (
+          <Badge variant="secondary" className="h-9">
+            {status}
+          </Badge>
         )}
-      </Button>
-      
-      {status && (
-        <Badge variant="secondary" className="h-9">
-          {status}
-        </Badge>
-      )}
+      </div>
     </div>
   );
 }
