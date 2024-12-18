@@ -36,12 +36,13 @@ export function setupRealtimeProxy(server: Server) {
       // Connect to OpenAI's TTS realtime API
       const openaiWs = new WebSocket(
         "wss://api.openai.com/v1/audio/speech",
-        [
-          // Auth
-          `Bearer ${process.env.OPENAI_API_KEY}`,
-          // Audio streaming protocol
-          "audio.speech.beta.1"
-        ]
+        {
+          headers: {
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          protocol: "audio.speech.beta.1"
+        }
       );
 
       // Set up error handlers first
@@ -86,13 +87,26 @@ export function setupRealtimeProxy(server: Server) {
       });
 
       // Handle messages from client
-      ws.on('message', (data) => {
+      ws.on('message', async (data) => {
         if (openaiWs.readyState === WebSocket.OPEN) {
           try {
             const message = JSON.parse(data.toString());
-            console.log('Client message:', message);
+            console.log('Client message:', {
+              type: message.type,
+              timestamp: new Date().toISOString()
+            });
             
             if (message.type === 'synthesis') {
+              if (!message.text) {
+                throw new Error('Text is required for synthesis');
+              }
+
+              console.log('Sending synthesis request to OpenAI:', {
+                voice: message.voice || "alloy",
+                speed: message.speed || 1.2,
+                timestamp: new Date().toISOString()
+              });
+
               // Send TTS request to OpenAI
               openaiWs.send(JSON.stringify({
                 model: "tts-1",
@@ -101,14 +115,27 @@ export function setupRealtimeProxy(server: Server) {
                 speed: message.speed || 1.2,
                 stream: true
               }));
+            } else {
+              console.warn('Unknown message type:', message.type);
             }
-          } catch (error) {
-            console.error('Failed to parse client message:', error);
+          } catch (error: any) {
+            console.error('Failed to process client message:', {
+              error: error.message,
+              stack: error.stack,
+              timestamp: new Date().toISOString()
+            });
+            
             ws.send(JSON.stringify({
               type: 'error',
-              error: 'Invalid message format'
+              error: error.message || 'Failed to process request'
             }));
           }
+        } else {
+          console.error('OpenAI WebSocket not ready');
+          ws.send(JSON.stringify({
+            type: 'error',
+            error: 'Voice synthesis service not ready'
+          }));
         }
       });
 
@@ -117,12 +144,24 @@ export function setupRealtimeProxy(server: Server) {
       openaiWs.onmessage = (event) => {
         if (ws.readyState === WebSocket.OPEN) {
           if (event.data instanceof ArrayBuffer) {
-            // Send audio chunk to client
-            ws.send(JSON.stringify({
-              type: 'audio',
-              chunk: Buffer.from(event.data).toString('base64')
-            }));
-          } else {
+            try {
+              // Convert ArrayBuffer to Base64
+              const buffer = Buffer.from(event.data);
+              const base64Data = buffer.toString('base64');
+              
+              // Send audio chunk to client
+              ws.send(JSON.stringify({
+                type: 'audio',
+                chunk: base64Data
+              }));
+            } catch (error) {
+              console.error('Failed to process audio data:', error);
+              ws.send(JSON.stringify({
+                type: 'error',
+                error: 'Failed to process audio chunk'
+              }));
+            }
+          } else if (typeof event.data === 'string') {
             try {
               const data = JSON.parse(event.data);
               if (data.type === 'end') {
