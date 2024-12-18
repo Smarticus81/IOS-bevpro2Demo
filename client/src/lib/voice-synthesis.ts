@@ -29,14 +29,30 @@ class VoiceSynthesis {
   }
 
   async speak(text: string, voice: VoiceId = "alloy") {
+    console.log('Voice synthesis speak called:', {
+      text,
+      voice,
+      audioContext: !!this.audioContext,
+      timestamp: new Date().toISOString()
+    });
+
     if (!text?.trim()) {
       console.warn('Empty text provided to speak');
       return;
     }
 
+    if (!this.audioContext) {
+      console.log('Creating new AudioContext');
+      this.audioContext = new AudioContext();
+    }
+
     const now = Date.now();
     if (now - this.lastSpeakTime < this.MIN_INTERVAL) {
-      console.log('Speech request too soon, skipping:', text);
+      console.log('Speech request too soon, skipping:', {
+        text,
+        timeSinceLastSpeak: now - this.lastSpeakTime,
+        minInterval: this.MIN_INTERVAL
+      });
       return;
     }
     
@@ -44,6 +60,11 @@ class VoiceSynthesis {
     this.stop();
 
     this.lastSpeakTime = now;
+    console.log('Starting voice synthesis:', {
+      text,
+      voice,
+      timestamp: new Date().toISOString()
+    });
 
     // Create a timeout promise
     const timeoutPromise = new Promise<void>((_, reject) => {
