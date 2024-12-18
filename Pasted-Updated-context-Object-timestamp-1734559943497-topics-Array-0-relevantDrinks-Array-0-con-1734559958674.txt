@@ -1,0 +1,47 @@
+Updated context: 
+Object {timestamp: 1734559943497, topics: Array(0), relevantDrinks: Array(0), contextExpiry: 300000, lastIntent: {…}, …}
+Processing intent: {
+  "type": "order",
+  "items": [
+    {
+      "name": "Crown Royal",
+      "quantity": 3
+    }
+  ],
+  "conversational_response": "Three Crown Royals."
+}
+OpenAI response: {
+  "type": "order",
+  "items": [{"name": "Crown Royal", "quantity": 3}],
+  "conversational_response": "Three Crown Royals."
+}
+Updating conversation context: 
+Object {previousContext: {…}, newIntent: {…}, query: " i had three crowns"}
+Updated context: 
+Object {timestamp: 1734559943536, topics: Array(0), relevantDrinks: Array(0), contextExpiry: 300000, lastIntent: {…}, …}
+Processing intent: {
+  "type": "order",
+  "items": [
+    {
+      "name": "Crown Royal",
+      "quantity": 3
+    }
+  ],
+  "conversational_response": "Three Crown Royals."
+}
+Adding drink to cart: 
+Object {drink: {…}, quantity: 3, price: 12, total: 36}
+Warning: Each child in a list should have a unique &quot;key&quot; prop.
+
+Check the render method of `OrderSummary`. See https://reactjs.org/link/warning-keys for more information.
+    at div
+    at OrderSummary (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/src/components/OrderSummary.tsx:21:3)
+    at div
+    at div
+    at div
+    at div
+    at Home (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/src/pages/Home.tsx:27:27)
+    at Route (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/@fs/home/runner/New-Repl/node_modules/.vite/deps/wouter.js?v=e08d122f:323:16)
+    at Switch (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/@fs/home/runner/New-Repl/node_modules/.vite/deps/wouter.js?v=e08d122f:379:17)
+    at App
+    at QueryClientProvider (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/@fs/home/runner/New-Repl/node_modules/.vite/deps/@tanstack_react-query.js?v=e08d122f:2805:3)

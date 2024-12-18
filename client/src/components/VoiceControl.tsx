@@ -11,9 +11,21 @@ import fuzzysort from 'fuzzysort';
 import type { Drink } from "@db/schema";
 import type { ErrorType, VoiceError, WakeWordEvent } from "@/types/speech";
 
+interface AddItemParams {
+  type: 'ADD_ITEM';
+  drink: Drink & { price: number };
+  quantity: number;
+}
+
+interface CompleteTransactionParams {
+  type: 'COMPLETE_TRANSACTION';
+}
+
+type CartAction = AddItemParams | CompleteTransactionParams;
+
 interface VoiceControlProps {
   drinks: Drink[];
-  onAddToCart: (params: { type: 'COMPLETE_TRANSACTION' } | { type: 'ADD_ITEM', drink: Drink, quantity: number }) => void;
+  onAddToCart: (params: CartAction) => void;
 }
 
 export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
@@ -282,18 +294,31 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
             const drink = findBestMatch(item.name, drinks);
 
             if (drink) {
+              // Validate and transform the drink data
+              const drinkPrice = typeof drink.price === 'string' ? parseFloat(drink.price) : drink.price;
+              
+              if (isNaN(drinkPrice)) {
+                console.error('Invalid price for drink:', {
+                  drink,
+                  originalPrice: drink.price,
+                  parsedPrice: drinkPrice
+                });
+                failedItems.push(item.name);
+                continue;
+              }
+
               console.log('Adding drink to cart:', {
-                drink,
+                name: drink.name,
                 quantity: item.quantity,
-                price: drink.price,
-                total: drink.price * item.quantity
+                price: drinkPrice,
+                total: drinkPrice * item.quantity
               });
               
               onAddToCart({ 
                 type: 'ADD_ITEM', 
                 drink: {
                   ...drink,
-                  price: Number(drink.price) // Ensure price is a number
+                  price: drinkPrice
                 }, 
                 quantity: item.quantity 
               });
