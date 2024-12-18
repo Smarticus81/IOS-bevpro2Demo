@@ -158,9 +158,17 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         
         console.log('Wake word event received:', event);
         await soundEffects.playWakeWord();
+        
+        // Use a callback to ensure state updates are atomic
+        setIsWakeWordOnly(false);
         setMode(event.mode);
-        setIsWakeWordOnly(false); // Exit wake word only mode when wake word is detected
-        console.log('Mode set to:', event.mode, 'Wake word only mode disabled');
+        
+        console.log('State transition:', {
+          newMode: event.mode,
+          wakeWordOnly: false,
+          timestamp: new Date().toISOString()
+        });
+        
         setStatus(event.mode === 'order' ? "Listening for order..." : "How can I help you?");
       });
 
@@ -177,18 +185,11 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
           return;
         }
 
-        // In wake word only mode, only process wake word commands
-        // Only check for wake words in wake word only mode
-        if (isWakeWordOnly) {
-          console.log('In wake word only mode, waiting for wake word...');
-          return; // Let the voice.ts handle wake word detection
-        }
-        
-        // If we're here, we're not in wake word only mode, so process the command
-        console.log('Processing command in active mode:', {
+        console.log('Processing voice input:', {
           text,
           mode,
-          isWakeWordOnly
+          isWakeWordOnly,
+          timestamp: new Date().toISOString()
         });
 
         clearTimeout(processingTimeout);
