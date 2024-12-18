@@ -336,21 +336,15 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
           // Handle response based on mode
           if (successfulItems.length > 0 && failedItems.length === 0) {
             await soundEffects.playSuccess();
-            if (mode === 'inquiry') {
-              await handleResponse(intent.conversational_response);
-            }
+            await handleResponse(intent.conversational_response);
           } else if (successfulItems.length > 0 && failedItems.length > 0) {
             await soundEffects.playSuccess();
-            if (mode === 'inquiry') {
-              const successMsg = `Added ${successfulItems.join(' and ')}`;
-              const failMsg = `but couldn't find ${failedItems.join(', ')}`;
-              await handleResponse(`${successMsg}, ${failMsg}`);
-            }
+            const successMsg = `Added ${successfulItems.join(' and ')}`;
+            const failMsg = `but couldn't find ${failedItems.join(', ')}`;
+            await handleResponse(`${successMsg}, ${failMsg}`);
           } else {
             await soundEffects.playError();
-            if (mode === 'inquiry') {
-              await handleResponse(`Sorry, I couldn't find ${failedItems.join(', ')} in our menu.`);
-            }
+            await handleResponse(`Sorry, I couldn't find ${failedItems.join(', ')} in our menu.`);
           }
           break;
         }
