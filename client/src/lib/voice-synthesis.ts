@@ -1,5 +1,9 @@
 import OpenAI from "openai";
 import { getOpenAIClient } from "./openai";
+import type { ErrorType } from "@/types/speech";
+
+type VoiceModel = "tts-1";
+type VoiceId = "alloy" | "echo" | "fable" | "onyx" | "shimmer";
 
 export class VoiceSynthesis {
   private static instance: VoiceSynthesis;
@@ -43,8 +47,8 @@ export class VoiceSynthesis {
       const openai = await getOpenAIClient();
       
       const response = await openai.audio.speech.create({
-        model: "tts-1",
-        voice: voice,
+        model: "tts-1" as VoiceModel,
+        voice: voice as VoiceId,
         input: text,
       });
 
@@ -64,7 +68,7 @@ export class VoiceSynthesis {
     }
   }
 
-  async speak(text: string, voice: "alloy" | "echo" | "fable" | "onyx" | "shimmer" = "alloy") {
+  async speak(text: string, voice: VoiceId = "alloy") {
     if (!text) return;
 
     this.audioQueue.push({ text, voice });

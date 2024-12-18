@@ -37,3 +37,9 @@ interface Window {
   SpeechRecognition: new () => SpeechRecognition;
   webkitSpeechRecognition: new () => SpeechRecognition;
 }
+export type ErrorType = 'recognition' | 'synthesis' | 'network' | 'processing';
+
+export interface VoiceError {
+  type: ErrorType;
+  message: string;
+}

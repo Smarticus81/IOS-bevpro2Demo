@@ -1,3 +1,5 @@
+import type { ErrorType, VoiceError } from "@/types/speech";
+
 type EventCallback<T = any> = (data?: T) => void;
 type EventMap = { [key: string]: EventCallback[] };
 

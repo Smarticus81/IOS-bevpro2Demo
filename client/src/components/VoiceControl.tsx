@@ -6,6 +6,7 @@ import { voiceRecognition } from "@/lib/voice";
 import { processVoiceCommand } from "@/lib/openai";
 import { voiceSynthesis } from "@/lib/voice-synthesis";
 import type { Drink } from "@db/schema";
+import type { ErrorType, VoiceError } from "@/types/speech";
 
 interface VoiceControlProps {
   drinks: Drink[];
@@ -75,7 +76,12 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         setStatus("");
       });
 
-      voiceRecognition.on<{ type: ErrorType; message: string }>('error', (error) => {
+      voiceRecognition.on<VoiceError>('error', (error) => {
+        if (!error) {
+          console.error('Received undefined error');
+          handleResponse('An unknown error occurred', 'processing');
+          return;
+        }
         console.error('Voice recognition error:', error);
         handleResponse(error.message, error.type);
         
