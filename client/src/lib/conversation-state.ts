@@ -82,23 +82,43 @@ export class ConversationState {
   private extractTopics(query: string): string[] {
     const topics: string[] = [];
     
-    // Extract drink categories
-    const drinkCategories = ['beer', 'wine', 'spirits', 'cocktails'];
+    // Extract drink categories from our defined schema
+    const drinkCategories = [
+      'signature', 'classics', 'beer', 'wine', 'spirits', 'non-alcoholic',
+      'cocktails', 'lager', 'ale', 'cider', 'red', 'white', 'sparkling'
+    ];
+    
     drinkCategories.forEach(category => {
       if (query.toLowerCase().includes(category)) {
         topics.push(category);
       }
     });
 
+    // Extract drink types
+    const drinkTypes = [
+      'vodka', 'gin', 'whiskey', 'bourbon', 'rum', 'tequila', 'cognac',
+      'beer', 'wine', 'champagne', 'seltzer', 'soda', 'juice'
+    ];
+    
+    drinkTypes.forEach(type => {
+      if (query.toLowerCase().includes(type)) {
+        topics.push(type);
+      }
+    });
+
     // Extract attributes
-    const attributes = ['price', 'alcohol content', 'ingredients'];
+    const attributes = [
+      'price', 'cost', 'alcohol content', 'ingredients', 'inventory',
+      'stock', 'available', 'special', 'popular', 'recommendation'
+    ];
+    
     attributes.forEach(attr => {
       if (query.toLowerCase().includes(attr)) {
         topics.push(attr);
       }
     });
 
-    return topics;
+    return [...new Set(topics)]; // Remove duplicates
   }
 
   public getRelevantContext(): string {
