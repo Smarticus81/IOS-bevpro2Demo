@@ -358,48 +358,15 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         }
 
         case "query": {
-          // Always speak in inquiry mode
-          if (mode === 'inquiry') { 
-            try {
-              if (intent.conversational_response?.trim()) {
-                console.log('Attempting voice synthesis in inquiry mode:', {
-                  mode,
-                  response: intent.conversational_response,
-                  audioContext: !!window.AudioContext,
-                  webAudioEnabled: 'AudioContext' in window,
-                  timestamp: new Date().toISOString()
-                });
-                
-                // Ensure audioContext is initialized by user interaction
-                await soundEffects.playListeningStop();
-                
-                // Add a small delay to ensure audio context is ready
-                await new Promise(resolve => setTimeout(resolve, 100));
-                
-                await realtimeVoiceSynthesis.speak(intent.conversational_response);
-                console.log('Voice synthesis completed successfully');
-              } else {
-                console.log('Empty response, skipping voice synthesis');
-              }
-            } catch (error) {
-              console.error('Voice synthesis error:', {
-                error,
-                mode,
-                response: intent.conversational_response,
-                timestamp: new Date().toISOString()
-              });
-              setStatus('Voice response failed. ' + intent.conversational_response);
-              
-              // Try fallback to Web Speech API
-              try {
-                const utterance = new SpeechSynthesisUtterance(intent.conversational_response);
-                window.speechSynthesis.speak(utterance);
-              } catch (fallbackError) {
-                console.error('Fallback synthesis failed:', fallbackError);
-              }
+          try {
+            if (intent.conversational_response?.trim()) {
+              await handleResponse(intent.conversational_response);
+            } else {
+              console.log('Empty response, skipping voice synthesis');
             }
-          } else {
-            console.log('Skipping voice response - currently in order mode');
+          } catch (error) {
+            console.error('Failed to handle query response:', error);
+            await soundEffects.playError();
           }
           break;
         }
