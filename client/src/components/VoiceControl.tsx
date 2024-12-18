@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Mic, MicOff } from "lucide-react";
 import { voiceRecognition } from "@/lib/voice";
 import { processVoiceCommand } from "@/lib/openai";
-import { voiceSynthesis } from "@/lib/voice-synthesis";
+import { realtimeVoiceSynthesis as voiceSynthesis } from "@/lib/voice-realtime";
 import { soundEffects } from "@/lib/sound-effects";
 import { VoiceAnimation } from "./VoiceAnimation";
 import type { Drink } from "@db/schema";
