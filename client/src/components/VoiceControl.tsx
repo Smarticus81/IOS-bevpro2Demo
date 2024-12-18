@@ -8,6 +8,7 @@ import { voiceSynthesis } from "@/lib/voice-synthesis";
 import { soundEffects } from "@/lib/sound-effects";
 import { transactionDebouncer } from "@/lib/debounce";
 import { VoiceAnimation } from "./VoiceAnimation";
+import { EmojiReaction, type SentimentType } from "./EmojiReaction";
 import fuzzysort from 'fuzzysort';
 import type { Drink } from "@db/schema";
 import type { ErrorType, VoiceError, WakeWordEvent } from "@/types/speech";
@@ -36,7 +37,8 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
   const [status, setStatus] = useState<string>("");
   const [isSupported, setIsSupported] = useState(true);
   const [mode, setMode] = useState<'order' | 'inquiry'>('order');
-  const [isWakeWordOnly, setIsWakeWordOnly] = useState(true); // Only listen for wake words initially
+  const [isWakeWordOnly, setIsWakeWordOnly] = useState(true);
+  const [sentiment, setSentiment] = useState<SentimentType>(null); // Only listen for wake words initially
 
   // Constants for fuzzy matching
   const FUZZY_THRESHOLD = -2000;
@@ -302,6 +304,7 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
       console.log('Processing voice input:', text);
 
       const intent = await processVoiceCommand(text);
+    setSentiment(intent.sentiment as SentimentType);
       if (!intent) {
         console.error('Received null intent from processVoiceCommand');
         throw new Error('Invalid response from voice command processing');
@@ -546,9 +549,12 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         />
 
         {status && (
-          <Badge variant="secondary" className="h-9">
-            {status}
-          </Badge>
+          <div className="flex items-center gap-4">
+            <Badge variant="secondary" className="h-9">
+              {status}
+            </Badge>
+            <EmojiReaction sentiment={sentiment} />
+          </div>
         )}
       </div>
     </div>

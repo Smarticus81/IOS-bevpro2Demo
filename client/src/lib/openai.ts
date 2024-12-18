@@ -89,7 +89,12 @@ interface CancelIntent {
   conversational_response: string;
 }
 
-export type Intent = OrderIntent | IncompleteOrderIntent | QueryIntent | GreetingIntent | CompleteTransactionIntent | ShutdownIntent | CancelIntent;
+export interface BaseIntent {
+  sentiment: 'positive' | 'negative' | 'neutral';
+  conversational_response: string;
+}
+
+export type Intent = (OrderIntent | IncompleteOrderIntent | QueryIntent | GreetingIntent | CompleteTransactionIntent | ShutdownIntent | CancelIntent) & BaseIntent;
 
 import { conversationState } from "./conversation-state";
 
@@ -141,7 +146,9 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
       messages: [
         {
           role: "system",
-          content: `You are a knowledgeable and helpful AI bartender. Your tasks:
+          content: `You are a knowledgeable and helpful AI bartender with emotional intelligence.
+          Analyze both intent and emotional sentiment in each interaction.
+          You are a knowledgeable and helpful AI bartender. Your tasks:
           1. Remember context from previous exchanges
           2. Parse drink orders and queries accurately with exact quantities
           3. Answer questions about drinks and menu items
