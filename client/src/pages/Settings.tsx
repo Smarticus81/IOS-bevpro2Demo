@@ -1,27 +1,104 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Mic, Volume2 } from "lucide-react";
+import { Mic, Volume2, AlertCircle, Wifi, CheckCircle2, XCircle } from "lucide-react";
 import { realtimeVoiceSynthesis } from "@/lib/voice-realtime";
+import { useState, useEffect } from "react";
 
 export function Settings() {
   const { toast } = useToast();
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [provider, setProvider] = useState<string>("elevenlabs");
+  const [voiceStatus, setVoiceStatus] = useState<'connected' | 'error' | 'loading'>('loading');
+  const [pitch, setPitch] = useState([1.0]);
+  const [rate, setRate] = useState([1.0]);
+  const [volume, setVolume] = useState([1.0]);
+  const [apiKey, setApiKey] = useState("");
+  const [isTestingVoice, setIsTestingVoice] = useState(false);
+
+  useEffect(() => {
+    checkVoiceStatus();
+  }, [provider]);
+
+  const checkVoiceStatus = async () => {
+    try {
+      setVoiceStatus('loading');
+      // Check if Web Speech API is available
+      if (provider === 'webspeech' && 'speechSynthesis' in window) {
+        const voices = window.speechSynthesis.getVoices();
+        setVoiceStatus('connected');
+      } else if (provider === 'elevenlabs') {
+        const response = await fetch('/api/config');
+        if (response.ok) {
+          setVoiceStatus('connected');
+        } else {
+          setVoiceStatus('error');
+        }
+      }
+    } catch (error) {
+      console.error('Voice status check failed:', error);
+      setVoiceStatus('error');
+    }
+  };
 
   const testVoice = async () => {
     try {
-      await realtimeVoiceSynthesis.speak("This is a test of the voice synthesis system.");
+      setIsTestingVoice(true);
+      await realtimeVoiceSynthesis.speak(
+        "This is a test of the voice synthesis system. If you can hear this message clearly, the voice system is working correctly."
+      );
       toast({
-        title: "Voice Test",
-        description: "Voice synthesis test completed",
+        title: "Voice Test Successful",
+        description: "Voice synthesis is working correctly",
+        variant: "default",
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Voice test failed:', error);
       toast({
         title: "Voice Test Failed",
-        description: error.message,
+        description: error?.message || "Failed to test voice synthesis",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingVoice(false);
+    }
+  };
+
+  const saveSettings = async () => {
+    try {
+      // Save voice settings
+      const settings = {
+        provider,
+        voiceEnabled,
+        pitch: pitch[0],
+        rate: rate[0],
+        volume: volume[0],
+        apiKey
+      };
+      
+      const response = await fetch('/api/settings/voice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      });
+
+      if (!response.ok) throw new Error('Failed to save settings');
+
+      toast({
+        title: "Settings Saved",
+        description: "Voice configuration has been updated successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Save Failed",
+        description: error?.message || "Failed to save settings",
         variant: "destructive",
       });
     }
@@ -34,7 +111,15 @@ export function Settings() {
       <div className="grid gap-4">
         <Card>
           <CardHeader>
-            <CardTitle>Voice Settings</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Voice Settings
+              {voiceStatus === 'connected' && <Badge variant="outline" className="bg-green-50"><CheckCircle2 className="h-3 w-3 text-green-500" /></Badge>}
+              {voiceStatus === 'error' && <Badge variant="outline" className="bg-red-50"><XCircle className="h-3 w-3 text-red-500" /></Badge>}
+              {voiceStatus === 'loading' && <Badge variant="outline" className="bg-yellow-50"><Wifi className="h-3 w-3 text-yellow-500" /></Badge>}
+            </CardTitle>
+            <CardDescription>
+              Configure voice synthesis settings and test functionality
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-4">
@@ -42,10 +127,13 @@ export function Settings() {
                 <div className="space-y-0.5">
                   <Label>Voice Provider</Label>
                   <div className="text-sm text-muted-foreground">
-                    Choose between Eleven Labs and Web Speech API
+                    Choose your preferred voice synthesis provider
                   </div>
                 </div>
-                <Select defaultValue="elevenlabs">
+                <Select 
+                  value={provider}
+                  onValueChange={(value) => setProvider(value)}
+                >
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Select provider" />
                   </SelectTrigger>
@@ -58,20 +146,62 @@ export function Settings() {
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Use Voice Response</Label>
+                  <Label>Voice Response</Label>
                   <div className="text-sm text-muted-foreground">
                     Enable or disable voice responses
                   </div>
                 </div>
-                <Switch defaultChecked />
+                <Switch 
+                  checked={voiceEnabled}
+                  onCheckedChange={setVoiceEnabled}
+                />
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Label>Pitch</Label>
+                  <Slider
+                    value={pitch}
+                    onValueChange={setPitch}
+                    min={0.5}
+                    max={2.0}
+                    step={0.1}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Rate</Label>
+                  <Slider
+                    value={rate}
+                    onValueChange={setRate}
+                    min={0.5}
+                    max={2.0}
+                    step={0.1}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Volume</Label>
+                  <Slider
+                    value={volume}
+                    onValueChange={setVolume}
+                    min={0.0}
+                    max={1.0}
+                    step={0.1}
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
                 <Label>Voice Test</Label>
                 <div className="flex gap-4">
-                  <Button onClick={testVoice} className="gap-2">
+                  <Button 
+                    onClick={testVoice} 
+                    className="gap-2"
+                    disabled={isTestingVoice || !voiceEnabled}
+                  >
                     <Volume2 className="h-4 w-4" />
-                    Test Voice
+                    {isTestingVoice ? "Testing..." : "Test Voice"}
                   </Button>
                 </div>
               </div>
@@ -81,15 +211,82 @@ export function Settings() {
               <div className="space-y-4">
                 <h3 className="text-lg font-medium">API Configuration</h3>
                 <div className="grid gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="eleven-labs-key">Eleven Labs API Key</Label>
-                    <Input
-                      id="eleven-labs-key"
-                      type="password"
-                      placeholder="Enter your Eleven Labs API key"
-                    />
-                  </div>
+                  {provider === 'elevenlabs' && (
+                    <div className="grid gap-2">
+                      <Label htmlFor="eleven-labs-key">Eleven Labs API Key</Label>
+                      <Input
+                        id="eleven-labs-key"
+                        type="password"
+                        placeholder="Enter your Eleven Labs API key"
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {voiceStatus === 'error' && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Unable to connect to voice service. Please check your API key and internet connection.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={saveSettings}>
+                Save Settings
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Troubleshooting</CardTitle>
+            <CardDescription>
+              Voice system diagnostics and troubleshooting options
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium">Browser Compatibility</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {provider === 'webspeech' 
+                      ? ('speechSynthesis' in window 
+                        ? "Web Speech API is supported in your browser"
+                        : "Web Speech API is not supported in your browser")
+                      : "Using Eleven Labs for voice synthesis"}
+                  </p>
+                </div>
+                <Badge variant={voiceStatus === 'connected' ? "default" : "destructive"}>
+                  {voiceStatus === 'connected' ? "Compatible" : "Incompatible"}
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium">Voice Service Status</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Current status of the voice synthesis service
+                  </p>
+                </div>
+                <Badge 
+                  variant={
+                    voiceStatus === 'connected' 
+                      ? "default" 
+                      : voiceStatus === 'loading' 
+                        ? "secondary" 
+                        : "destructive"
+                  }
+                >
+                  {voiceStatus === 'connected' ? "Connected" : voiceStatus === 'loading' ? "Checking" : "Error"}
+                </Badge>
               </div>
             </div>
           </CardContent>
