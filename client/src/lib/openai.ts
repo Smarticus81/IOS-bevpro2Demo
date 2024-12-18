@@ -75,7 +75,10 @@ interface GreetingIntent {
 
 type Intent = OrderIntent | IncompleteOrderIntent | QueryIntent | GreetingIntent;
 
-// Store conversation history
+import { conversationState } from "./conversation-state";
+
+// Store conversation history with improved context management
+const MAX_HISTORY_LENGTH = 6; // Keep last 3 exchanges
 let conversationHistory: Array<{ role: string, content: string }> = [];
 
 export async function processVoiceCommand(text: string): Promise<Intent> {
@@ -93,15 +96,29 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
       throw new Error('Empty voice command received');
     }
 
-    // Maintain conversation history
-    if (conversationHistory.length > 6) {
-      // Keep last 3 exchanges (6 messages) to maintain context without too much overhead
-      conversationHistory = conversationHistory.slice(-6);
+    // Maintain conversation history with context
+    if (conversationHistory.length > MAX_HISTORY_LENGTH) {
+      conversationHistory = conversationHistory.slice(-MAX_HISTORY_LENGTH);
     }
 
-    // Create chat completion
-    // Add user's message to history
+    // Get relevant context from conversation state
+    const relevantContext = conversationState.getRelevantContext();
+    
+    // Add context and user's message to history
+    if (relevantContext) {
+      conversationHistory.push({ 
+        role: "system", 
+        content: `Previous context: ${relevantContext}`
+      });
+    }
+    
     conversationHistory.push({ role: "user", content: text });
+    
+    console.log('Processing command with context:', {
+      text,
+      relevantContext,
+      historyLength: conversationHistory.length
+    });
 
     const response = await client.chat.completions.create({
       model: "gpt-4o",
@@ -203,7 +220,8 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
       throw new Error("Invalid order format from OpenAI");
     }
 
-    // Add assistant's response to history
+    // Update conversation state and history
+    conversationState.updateContext(parsed, text);
     conversationHistory.push({ 
       role: "assistant", 
       content: JSON.stringify(parsed)
