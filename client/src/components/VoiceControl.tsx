@@ -6,6 +6,7 @@ import { voiceRecognition } from "@/lib/voice";
 import { processVoiceCommand } from "@/lib/openai";
 import { voiceSynthesis } from "@/lib/voice-synthesis";
 import { soundEffects } from "@/lib/sound-effects";
+import { transactionDebouncer } from "@/lib/debounce";
 import { VoiceAnimation } from "./VoiceAnimation";
 import fuzzysort from 'fuzzysort';
 import type { Drink } from "@db/schema";
@@ -411,42 +412,43 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         }
 
         case "complete_transaction": {
-          if (isProcessingCommand) {
-            console.log('Skipping transaction - already processing command');
-            return;
-          }
-
           try {
-            setIsProcessingCommand(true);
-            console.log('Starting transaction completion:', {
-              mode,
-              intent,
-              timestamp: new Date().toISOString(),
-              isProcessingCommand: true
-            });
+            await transactionDebouncer('complete-order', async () => {
+              console.log('Starting transaction completion:', {
+                mode,
+                intent,
+                timestamp: new Date().toISOString()
+              });
 
-            // Use a single transaction completion attempt
-            onAddToCart({ type: 'COMPLETE_TRANSACTION' });
-            
-            // Wait briefly to allow the UI to update
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            await soundEffects.playSuccess();
-            setMode('order'); // Reset to order mode after completion
-            setIsWakeWordOnly(true); // Enter wake word only mode
-            
-            const completionMessage = "Order processed successfully. Say 'hey bar' to start a new order or 'hey bev' for questions.";
-            setStatus(completionMessage);
-            
-            if (mode === 'inquiry') {
-              await handleResponse(intent.conversational_response || completionMessage);
-            }
+              setIsProcessingCommand(true);
+              
+              // Process the transaction
+              onAddToCart({ type: 'COMPLETE_TRANSACTION' });
+              
+              // Wait briefly to allow the UI to update
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              await soundEffects.playSuccess();
+              setMode('order'); // Reset to order mode after completion
+              setIsWakeWordOnly(true); // Enter wake word only mode
+              
+              const completionMessage = "Order processed successfully. Say 'hey bar' to start a new order or 'hey bev' for questions.";
+              setStatus(completionMessage);
+              
+              if (mode === 'inquiry') {
+                await handleResponse(intent.conversational_response || completionMessage);
+              }
 
-            console.log('Transaction completed successfully', {
-              timestamp: new Date().toISOString(),
-              isProcessingCommand: true
+              console.log('Transaction completed successfully', {
+                timestamp: new Date().toISOString()
+              });
             });
           } catch (error) {
+            if (error.message === 'Operation in cooldown') {
+              console.log('Transaction in cooldown period, ignoring request');
+              return;
+            }
+            
             console.error('Failed to process transaction:', error);
             await soundEffects.playError();
             const errorMessage = "Sorry, there was an issue processing your order. Please try again.";
@@ -456,10 +458,6 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
             }
           } finally {
             setIsProcessingCommand(false);
-            console.log('Transaction processing complete, resetting state', {
-              timestamp: new Date().toISOString(),
-              isProcessingCommand: false
-            });
           }
           break;
         }
