@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Mic, MicOff } from "lucide-react";
 import { voiceRecognition } from "@/lib/voice";
+import { voiceTraining } from "@/lib/voice-training";
 import { processVoiceCommand } from "@/lib/openai";
 import { realtimeVoiceSynthesis } from "@/lib/voice-realtime";
 import { soundEffects } from "@/lib/sound-effects";
@@ -21,7 +22,8 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [isSupported, setIsSupported] = useState(true);
-  const [mode, setMode] = useState<'order' | 'inquiry'>('order'); // Add mode state
+  const [mode, setMode] = useState<'order' | 'inquiry' | 'training'>('order');
+  const [showTraining, setShowTraining] = useState(false);
 
   // Constants for fuzzy matching
   const FUZZY_THRESHOLD = -2000;
@@ -180,6 +182,11 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
       let isProcessingCommand = false;
 
       voiceRecognition.on<string>('speech', async (text) => {
+        // Check if we're in training mode first
+        if (voiceTraining.isInTraining()) {
+          const handled = await voiceTraining.handleVoiceInput(text);
+          if (handled) return;
+        }
         if (!text) {
           console.error('Received empty speech text');
           await soundEffects.playError();
@@ -375,8 +382,25 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
   };
 
   return (
-    <div className="flex items-center gap-4 mb-6">
+    <div className="flex flex-col gap-4 mb-6">
       <div className="flex items-center gap-4">
+        <Button
+          onClick={() => {
+            if (!voiceTraining.isInTraining()) {
+              voiceTraining.startTraining();
+              setMode('training');
+              setShowTraining(true);
+            } else {
+              voiceTraining.stopTraining();
+              setMode('order');
+              setShowTraining(false);
+            }
+          }}
+          variant="outline"
+          className="w-40"
+        >
+          {voiceTraining.isInTraining() ? "Stop Training" : "Start Training"}
+        </Button>
         <Button
           onClick={toggleListening}
           variant={isListening ? "destructive" : "default"}
