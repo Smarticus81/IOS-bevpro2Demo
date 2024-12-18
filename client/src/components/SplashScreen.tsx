@@ -60,37 +60,8 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
         <div className="absolute inset-0 flex items-center justify-center opacity-20">
           <img src="/image.png" alt="BevPro Background" className="w-full h-full object-cover" />
         </div>
-        <div className="text-center space-y-12 max-w-2xl mx-auto px-4 relative z-10 glass-card">
-          {/* Logo Animation */}
-          <motion.div
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ 
-              scale: stage >= 1 ? 1 : 0.5, 
-              opacity: stage >= 1 ? 1 : 0,
-            }}
-            className="flex flex-col items-center space-y-6"
-          >
-            <div className="relative">
-              <Wine className="h-24 w-24 text-sky-600" />
-              <motion.div
-                className="absolute -right-2 -top-2"
-                initial={{ scale: 0 }}
-                animate={{ scale: stage >= 1 ? 1 : 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <span className="text-4xl">✨</span>
-              </motion.div>
-            </div>
-            <motion.h1 
-              className="text-6xl font-bold text-gray-900"
-              initial={{ y: 20 }}
-              animate={{ y: stage >= 1 ? 0 : 20 }}
-            >
-              BevPro
-            </motion.h1>
-          </motion.div>
-
-          {/* Sign In Button Animation - similar to iCloud's */}
+        <div className="text-center space-y-12 max-w-2xl mx-auto px-4 relative z-10">
+          {/* Sign In Button Animation */}
           <motion.button
             className="px-6 py-2 bg-black/90 backdrop-blur-sm text-white rounded-full text-sm font-medium shadow-lg border border-white/10 hover:bg-black/80 transition-all"
             initial={{ opacity: 0, y: 20 }}
@@ -107,7 +78,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
 
           {/* Tagline Animation */}
           <motion.p
-            className="text-xl font-medium text-gray-800 max-w-lg mx-auto"
+            className="text-xl font-medium text-white max-w-lg mx-auto"
             initial={{ opacity: 0, y: 20 }}
             animate={{ 
               opacity: stage >= 3 ? 1 : 0,
@@ -120,7 +91,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
 
           {/* Feature Icons Animation */}
           <motion.div 
-            className="grid grid-cols-3 gap-8 mt-12 bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20"
+            className="grid grid-cols-3 gap-8 mt-12"
             initial={{ opacity: 0, y: 20 }}
             animate={{ 
               opacity: stage >= 3 ? 1 : 0,
@@ -129,16 +100,22 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
             transition={{ delay: 0.4 }}
           >
             <div className="flex flex-col items-center space-y-2">
-              <span className="text-4xl">🎙️</span>
-              <p className="text-sm text-gray-600">Voice Control</p>
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform">
+                <span className="text-3xl">👩‍🍳</span>
+              </div>
+              <p className="text-sm text-white/90">Voice Orders</p>
             </div>
             <div className="flex flex-col items-center space-y-2">
-              <span className="text-4xl">🤖</span>
-              <p className="text-sm text-gray-600">AI Assistant</p>
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform">
+                <span className="text-3xl">🧠</span>
+              </div>
+              <p className="text-sm text-white/90">AI Assistant</p>
             </div>
             <div className="flex flex-col items-center space-y-2">
-              <span className="text-4xl">🍹</span>
-              <p className="text-sm text-gray-600">Smart Orders</p>
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform">
+                <span className="text-3xl">🥂</span>
+              </div>
+              <p className="text-sm text-white/90">Smart Menu</p>
             </div>
           </motion.div>
         </div>
