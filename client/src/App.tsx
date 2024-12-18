@@ -1,29 +1,20 @@
 import { Switch, Route } from "wouter";
 import { Home } from "@/pages/Home";
-import { Inventory } from "@/pages/Inventory";
-import { AIManagement } from "@/pages/AIManagement";
-import { Settings } from "@/pages/Settings";
-import { Layout } from "@/components/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 
 function App() {
   return (
-    <Layout>
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/inventory" component={Inventory} />
-        <Route path="/ai-management" component={AIManagement} />
-        <Route path="/settings" component={Settings} />
-        <Route component={NotFound} />
-      </Switch>
-    </Layout>
+    <Switch>
+      <Route path="/" component={Home} />
+      <Route component={NotFound} />
+    </Switch>
   );
 }
 
 function NotFound() {
   return (
-    <div className="w-full flex items-center justify-center py-12">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
       <Card className="w-full max-w-md mx-4">
         <CardContent className="pt-6">
           <div className="flex mb-4 gap-2">

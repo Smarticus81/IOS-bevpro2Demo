@@ -4,15 +4,6 @@ import { db } from "@db";
 import { drinks, orders, orderItems } from "@db/schema";
 import { eq, sql } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
-import OpenAI from "openai";
-
-const getOpenAIClient = async () => {
-  const openaiKey = process.env.OPENAI_API_KEY;
-  if (!openaiKey) {
-    throw new Error("OpenAI API key not configured");
-  }
-  return new OpenAI({ apiKey: openaiKey });
-};
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
@@ -90,15 +81,15 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get API configuration
+  // Get OpenAI API configuration
   app.get("/api/config", (_req, res) => {
     try {
       const openaiKey = process.env.OPENAI_API_KEY;
       
       // Detailed logging for debugging
       console.log({
-        hasOpenAIKey: !!openaiKey,
-        openAIKeyLength: openaiKey?.length || 0,
+        hasKey: !!openaiKey,
+        keyLength: openaiKey?.length || 0,
         timestamp: new Date().toISOString()
       });
       
@@ -110,13 +101,10 @@ export function registerRoutes(app: Express): Server {
         throw new Error("Invalid OpenAI API key format");
       }
       
-      res.json({ 
-        openaiKey,
-        voiceEnabled: true
-      });
+      res.json({ openaiKey });
     } catch (error: unknown) {
       const err = error as Error;
-      console.error("API config error:", {
+      console.error("OpenAI config error:", {
         message: err.message,
         stack: err.stack,
         timestamp: new Date().toISOString()
@@ -125,126 +113,6 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({
         error: "Configuration error",
         message: err.message,
-        timestamp: new Date().toISOString()
-      });
-    }
-  });
-
-  // Voice synthesis endpoint
-  // Voice configuration endpoints
-  app.get("/api/settings/voice", (req, res) => {
-    try {
-      // Return current voice configuration
-      res.json({
-        success: true,
-        config: {
-          provider: process.env.VOICE_PROVIDER || 'elevenlabs',
-          voiceEnabled: process.env.VOICE_ENABLED !== 'false',
-          pitch: parseFloat(process.env.VOICE_PITCH || '1.0'),
-          rate: parseFloat(process.env.VOICE_RATE || '1.0'),
-          volume: parseFloat(process.env.VOICE_VOLUME || '1.0'),
-          hasElevenLabs: !!process.env.ELEVEN_LABS_API_KEY
-        }
-      });
-    } catch (error: any) {
-      console.error('Error fetching voice settings:', error);
-      res.status(500).json({ error: 'Failed to fetch voice settings' });
-    }
-  });
-
-  // Voice settings endpoint
-  app.post("/api/settings/voice", async (req, res) => {
-    try {
-      const { voiceEnabled, volume } = req.body;
-      
-      console.log('Voice settings update:', {
-        voiceEnabled,
-        volume,
-        timestamp: new Date().toISOString()
-      });
-
-      // Store voice settings
-      process.env.VOICE_ENABLED = String(voiceEnabled);
-      process.env.VOICE_VOLUME = String(volume);
-
-      // Return success response with current configuration
-      res.json({
-        success: true,
-        config: {
-          provider: 'openai',
-          voiceEnabled,
-          volume
-        }
-      });
-    } catch (error: any) {
-      console.error('Voice settings error:', {
-        message: error.message,
-        stack: error.stack,
-        timestamp: new Date().toISOString()
-      });
-      
-      res.status(400).json({
-        error: 'Failed to update voice settings',
-        message: error.message
-      });
-    }
-  });
-
-  app.post("/api/synthesize", async (req, res) => {
-    try {
-      const { text } = req.body;
-      
-      console.log('Voice synthesis request:', {
-        text: text?.substring(0, 50) + '...',
-        timestamp: new Date().toISOString()
-      });
-      
-      if (!text) {
-        return res.status(400).json({ error: "Text is required" });
-      }
-
-      try {
-        console.log('Starting OpenAI Nova synthesis');
-        const response = await openai_client.audio.speech.create({
-          model: "tts-1",
-          voice: "nova",
-          input: text,
-          response_format: "mp3"
-        });
-        
-        if (!response || !response.content) {
-          throw new Error('Empty response from OpenAI');
-        }
-        
-        console.log('Sending audio response:', {
-          contentLength: response.content.length,
-          timestamp: new Date().toISOString()
-        });
-        
-        res.setHeader('Content-Type', 'audio/mpeg');
-        res.setHeader('Content-Length', response.content.length);
-        res.send(response.content);
-        
-        console.log('OpenAI Nova synthesis completed successfully');
-      } catch (error: any) {
-        console.error('OpenAI synthesis error:', {
-          error: error.message,
-          stack: error.stack,
-          timestamp: new Date().toISOString()
-        });
-        throw error;
-      }
-    } catch (error: any) {
-      const errorMessage = error.message || 'Unknown error occurred';
-      console.error("Voice synthesis error:", {
-        error: errorMessage,
-        stack: error.stack,
-        timestamp: new Date().toISOString()
-      });
-      
-      res.status(500).json({ 
-        error: "Voice synthesis failed",
-        message: errorMessage,
         timestamp: new Date().toISOString()
       });
     }

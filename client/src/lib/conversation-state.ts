@@ -118,7 +118,7 @@ export class ConversationState {
       }
     });
 
-    return Array.from(new Set(topics)); // Remove duplicates
+    return [...new Set(topics)]; // Remove duplicates
   }
 
   public getRelevantContext(): string {
