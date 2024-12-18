@@ -88,35 +88,66 @@ def synthesize_speech():
     try:
         data = request.json
         text = data.get('text')
+        provider = data.get('provider', 'openai')
         
         if not text:
             return jsonify({'error': 'Text is required'}), 400
 
-        logger.info(f"Voice synthesis request: {data}")
+        logger.info(f"Voice synthesis request: {text[:100]}... using {provider}")
 
-        if not eleven_labs_key:
-            return jsonify({'error': 'Eleven Labs API key not configured'}), 500
+        if provider == 'openai':
+            try:
+                response = openai_client.audio.speech.create(
+                    model="tts-1",
+                    voice="nova",
+                    input=text
+                )
+                
+                # Convert response content to file-like object
+                audio_io = io.BytesIO(response.content)
+                audio_io.seek(0)
+                
+                logger.info("Successfully generated audio with OpenAI")
+                
+                return send_file(
+                    audio_io,
+                    mimetype='audio/mpeg',
+                    as_attachment=True,
+                    download_name='speech.mp3'
+                )
+            except Exception as openai_error:
+                logger.error(f"OpenAI synthesis failed: {str(openai_error)}")
+                # Fall back to Eleven Labs if OpenAI fails
+                if eleven_labs_key:
+                    logger.info("Falling back to Eleven Labs")
+                    provider = 'elevenlabs'
+                else:
+                    raise openai_error
 
-        # Using Rachel voice ID with enhanced settings
-        audio = generate(
-            text=text,
-            voice="Rachel",
-            model="eleven_multilingual_v2",
-            optimize_streaming_latency=3
-        )
-        
-        # Convert audio bytes to file-like object
-        audio_io = io.BytesIO(audio)
-        audio_io.seek(0)
-        
-        logger.info("Successfully generated audio")
-        
-        return send_file(
-            audio_io,
-            mimetype='audio/mpeg',
-            as_attachment=True,
-            download_name='speech.mp3'
-        )
+        if provider == 'elevenlabs':
+            if not eleven_labs_key:
+                return jsonify({'error': 'Eleven Labs API key not configured'}), 500
+
+            # Using Rachel voice ID with enhanced settings
+            audio = generate(
+                text=text,
+                voice="Rachel",
+                model="eleven_multilingual_v2",
+                optimize_streaming_latency=3
+            )
+            
+            # Convert audio bytes to file-like object
+            audio_io = io.BytesIO(audio)
+            audio_io.seek(0)
+            
+            logger.info("Successfully generated audio with Eleven Labs")
+            
+            return send_file(
+                audio_io,
+                mimetype='audio/mpeg',
+                as_attachment=True,
+                download_name='speech.mp3'
+            )
 
     except Exception as e:
         logger.error(f"Voice synthesis error: {str(e)}")

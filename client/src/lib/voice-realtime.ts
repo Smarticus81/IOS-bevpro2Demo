@@ -79,30 +79,38 @@ class RealtimeVoiceSynthesis extends EventTarget {
 
     console.log('Processing speech request:', {
       text,
-      mode: this.currentMode,
-      elevenLabsAvailable: this.elevenLabsInitialized
+      mode: this.currentMode
     });
 
     try {
       console.log('Processing voice synthesis request:', { text, mode: this.currentMode });
       
-      // Use Eleven Labs when initialized, regardless of mode
-      if (this.elevenLabsInitialized) {
+      // Use OpenAI TTS for inquiry mode ("hey bev")
+      if (this.currentMode === 'inquiry') {
         try {
-          console.log('Attempting Eleven Labs synthesis...');
-          await this.synthesizeWithElevenLabs(text);
+          console.log('Using OpenAI TTS for inquiry mode...');
+          await this.synthesizeWithOpenAI(text);
         } catch (error) {
-          console.warn('Eleven Labs synthesis failed, falling back to Web Speech:', error);
-          await this.synthesizeWithWebSpeech(text);
+          console.warn('OpenAI synthesis failed, trying Eleven Labs:', error);
+          try {
+            await this.synthesizeWithElevenLabs(text);
+          } catch (elevenLabsError) {
+            console.warn('Eleven Labs synthesis failed, falling back to Web Speech:', elevenLabsError);
+            await this.synthesizeWithWebSpeech(text);
+          }
         }
       } else {
-        console.log('Using Web Speech API as fallback...');
-        try {
+        // For other modes, use Eleven Labs or Web Speech
+        if (this.elevenLabsInitialized) {
+          try {
+            await this.synthesizeWithElevenLabs(text);
+          } catch (error) {
+            console.warn('Eleven Labs synthesis failed, falling back to Web Speech:', error);
+            await this.synthesizeWithWebSpeech(text);
+          }
+        } else {
+          console.log('Using Web Speech API as fallback...');
           await this.synthesizeWithWebSpeech(text);
-        } catch (error) {
-          console.error('Web Speech synthesis failed:', error);
-          // Re-throw to ensure error is properly handled
-          throw new Error('Voice synthesis failed with both providers');
         }
       }
     } catch (error) {
@@ -117,6 +125,27 @@ class RealtimeVoiceSynthesis extends EventTarget {
     }
   }
 
+  private async synthesizeWithOpenAI(text: string) {
+    console.log('Using OpenAI for synthesis');
+    const response = await fetch('/api/synthesize', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        provider: 'openai'
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI synthesis failed: ${response.statusText}`);
+    }
+
+    const audioData = await response.arrayBuffer();
+    await this.playAudioBuffer(audioData);
+  }
+
   private async synthesizeWithElevenLabs(text: string) {
     console.log('Using Eleven Labs for synthesis');
     const response = await fetch('/api/synthesize', {
@@ -126,8 +155,7 @@ class RealtimeVoiceSynthesis extends EventTarget {
       },
       body: JSON.stringify({
         text,
-        voice: 'rachel',
-        useElevenLabs: true
+        provider: 'elevenlabs'
       }),
     });
 
