@@ -143,10 +143,12 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
           role: "system",
           content: `You are a knowledgeable and helpful AI bartender. Your tasks:
           1. Remember context from previous exchanges
-          2. Parse drink orders and queries
+          2. Parse drink orders and queries accurately with exact quantities
           3. Answer questions about drinks and menu items
           4. Maintain conversation flow
           5. Format responses as JSON
+          
+          Important: Always parse exact quantities from user input. Default to 1 only when no quantity is specified.
           
           Handle follow-up questions naturally while maintaining context.
           For example:
@@ -196,7 +198,14 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
           Response: {
             "type": "order",
             "items": [{"name": "beer", "quantity": 2}],
-            "conversational_response": "Two beers."
+            "conversational_response": "Adding two beers to your order."
+          }
+
+          User: "one corona"
+          Response: {
+            "type": "order",
+            "items": [{"name": "corona", "quantity": 1}],
+            "conversational_response": "Adding one Corona to your order."
           }
           
           User: "add three"
