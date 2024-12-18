@@ -60,18 +60,27 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         setStatus("Listening for order...");
       });
 
+      // Add debouncing to prevent multiple rapid-fire speech events
+      let processingTimeout: NodeJS.Timeout;
       voiceRecognition.on<string>('speech', async (text) => {
-        if (text) {
+        if (!text) {
+          console.error('Received empty speech text');
+          await soundEffects.playError();
+          setStatus("Sorry, I didn't hear anything");
+          return;
+        }
+
+        // Clear any pending processing
+        clearTimeout(processingTimeout);
+        
+        // Debounce the processing
+        processingTimeout = setTimeout(async () => {
           console.log('Processing speech:', text);
           setIsProcessing(true);
           await soundEffects.playListeningStop();
           await processOrder(text);
           setIsProcessing(false);
-        } else {
-          console.error('Received empty speech text');
-          await soundEffects.playError();
-          setStatus("Sorry, I didn't hear anything");
-        }
+        }, 300);
       });
 
       voiceRecognition.on<void>('start', async () => {
@@ -118,51 +127,72 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
     try {
       console.log('Starting to process order:', text);
       
-      const intent = await processVoiceCommand(text).catch(error => {
-        console.error('Voice command processing failed:', error);
-        throw error;
-      });
-      
-      if (intent.type === "order") {
-        let orderSuccess = false;
-        console.log('Processing order intent:', intent);
-        
-        for (const item of intent.items) {
-          const drink = drinks.find(d => 
-            d.name.toLowerCase().includes(item.name.toLowerCase()) || 
-            item.name.toLowerCase().includes(d.name.toLowerCase())
-          );
+      const intent = await processVoiceCommand(text);
+      console.log('Received intent:', intent);
 
-          if (drink) {
-            onAddToCart(drink, item.quantity);
-            orderSuccess = true;
-          }
-        }
+      switch (intent.type) {
+        case "order": {
+          const successfulItems: string[] = [];
+          const failedItems: string[] = [];
+          
+          for (const item of intent.items) {
+            const drink = drinks.find(d => 
+              d.name.toLowerCase().includes(item.name.toLowerCase()) || 
+              item.name.toLowerCase().includes(d.name.toLowerCase())
+            );
 
-        const response = orderSuccess ? intent.conversational_response : "Sorry, I couldn't find that drink";
-        await handleResponse(response);
-      } else if (intent.type === "query") {
-        let response = intent.conversational_response;
-        
-        if (intent.category) {
-          const categoryDrinks = drinks.filter(d => 
-            d.category.toLowerCase() === intent.category?.toLowerCase()
-          );
-          if (categoryDrinks.length > 0) {
-            const drinkNames = categoryDrinks.map(d => d.name).join(', ');
-            response += ` We have: ${drinkNames}`;
+            if (drink) {
+              onAddToCart(drink, item.quantity);
+              successfulItems.push(`${item.quantity} ${drink.name}`);
+            } else {
+              failedItems.push(item.name);
+            }
           }
+
+          if (successfulItems.length > 0) {
+            await soundEffects.playSuccess();
+            await handleResponse(intent.conversational_response);
+          } else if (failedItems.length > 0) {
+            await soundEffects.playError();
+            await handleResponse(`Sorry, I couldn't find ${failedItems.join(', ')} in our menu.`);
+          }
+          break;
         }
         
-        await handleResponse(response);
+        case "query": {
+          let response = intent.conversational_response;
+          
+          if (intent.category) {
+            const categoryDrinks = drinks.filter(d => 
+              d.category.toLowerCase() === intent.category?.toLowerCase()
+            );
+            if (categoryDrinks.length > 0) {
+              const drinkNames = categoryDrinks.map(d => d.name).join(', ');
+              response += ` We have: ${drinkNames}`;
+            }
+          }
+          
+          await handleResponse(response);
+          break;
+        }
+
+        default: {
+          console.log('Unknown intent type:', intent);
+          await soundEffects.playError();
+          await handleResponse("I didn't understand that request. Could you please try again?");
+        }
       }
     } catch (error) {
       console.error("Error processing voice command:", error);
-      await handleResponse("Sorry, I didn't catch that. Could you please repeat?");
+      await soundEffects.playError();
+      await handleResponse("Sorry, I had trouble processing that request. Could you please repeat?");
     }
 
+    // Reset status after a delay
     setTimeout(() => {
-      setStatus("Waiting for 'hey bar'...");
+      if (isListening) {
+        setStatus("Waiting for 'hey bar'...");
+      }
     }, 5000);
   };
 
