@@ -36,32 +36,39 @@ type Intent = OrderIntent | QueryIntent;
 export async function processVoiceCommand(text: string): Promise<Intent> {
   try {
     const client = await getOpenAIClient();
+    console.log('Processing voice command:', text);
     const response = await client.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: `You are a friendly and helpful AI bartender. Your task is to:
+          content: `You are a friendly and helpful AI bartender assistant. Your task is to:
           1. Parse customer drink orders and queries naturally
           2. Extract order details or query information
           3. Generate a natural, conversational response
           4. Format the entire response as JSON
           
-          Examples:
-          - "I'll have two beers" -> Order for 2 beers with response like "Coming right up! Two beers for you."
-          - "What wines do you have?" -> Query about wine category with response like "We have a great selection of wines, including reds, whites, and sparkling options."
+          Always respond with "Sorry, I didn't catch that" for unclear requests.
           
-          Respond with JSON in one of these formats:
-          Order: { 
-            "type": "order", 
-            "items": [{ "name": string, "quantity": number }],
-            "conversational_response": string
+          Examples:
+          User: "I'll have two beers"
+          Response: {
+            "type": "order",
+            "items": [{"name": "beer", "quantity": 2}],
+            "conversational_response": "Coming right up! Two beers for you."
           }
-          Query: { 
-            "type": "query", 
-            "category": string?,
-            "attribute": string?,
-            "conversational_response": string
+          
+          User: "What wines do you have?"
+          Response: {
+            "type": "query",
+            "category": "Wine",
+            "conversational_response": "We have a great selection of wines, including reds, whites, and sparkling options."
+          }
+          
+          User: "unclear mumbling"
+          Response: {
+            "type": "query",
+            "conversational_response": "Sorry, I didn't catch that. Could you please repeat?"
           }`
         },
         {
@@ -69,16 +76,42 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
           content: text
         }
       ],
+      temperature: 0.7,
+      max_tokens: 150,
       response_format: { type: "json_object" }
     });
 
-    const content = response.choices[0].message.content;
+    console.log('OpenAI response:', response.choices[0]?.message?.content);
+
+    const content = response.choices[0]?.message?.content;
     if (!content) {
       throw new Error("No response content from OpenAI");
     }
-    return JSON.parse(content);
-  } catch (error) {
+
+    const parsed = JSON.parse(content);
+    
+    // Validate response format
+    if (!parsed.type || !parsed.conversational_response) {
+      console.error('Invalid response format:', parsed);
+      throw new Error("Invalid response format from OpenAI");
+    }
+
+    if (parsed.type === 'order' && (!Array.isArray(parsed.items) || parsed.items.length === 0)) {
+      console.error('Invalid order format:', parsed);
+      throw new Error("Invalid order format from OpenAI");
+    }
+
+    return parsed;
+  } catch (error: any) {
     console.error("Failed to process voice command:", error);
-    throw new Error("Failed to process voice command");
+    
+    // Provide more specific error messages
+    if (error.message.includes('fetch')) {
+      throw new Error("Failed to connect to OpenAI API");
+    } else if (error.message.includes('JSON')) {
+      throw new Error("Failed to parse OpenAI response");
+    } else {
+      throw new Error(`Voice command processing failed: ${error.message}`);
+    }
   }
 }
