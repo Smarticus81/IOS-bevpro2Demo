@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Mic, MicOff } from "lucide-react";
 import { voiceRecognition } from "@/lib/voice";
 import { processVoiceCommand } from "@/lib/openai";
+import { voiceSynthesis } from "@/lib/voice-synthesis";
 import type { Drink } from "@db/schema";
 
 interface VoiceControlProps {
@@ -15,6 +16,16 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
   const [isListening, setIsListening] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [isSupported, setIsSupported] = useState(true);
+
+  const handleResponse = async (response: string) => {
+    try {
+      setStatus(response);
+      await voiceSynthesis.speak(response);
+    } catch (error) {
+      console.error('Voice synthesis error:', error);
+      setStatus(response); // Still show text response even if voice fails
+    }
+  };
 
   useEffect(() => {
     setIsSupported(voiceRecognition.isSupported());
@@ -88,7 +99,8 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
           }
         }
 
-        setStatus(orderSuccess ? intent.conversational_response : "Sorry, I couldn't find that drink");
+        const response = orderSuccess ? intent.conversational_response : "Sorry, I couldn't find that drink";
+        await handleResponse(response);
       } else if (intent.type === "query") {
         let response = intent.conversational_response;
         
@@ -102,11 +114,11 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
           }
         }
         
-        setStatus(response);
+        await handleResponse(response);
       }
     } catch (error) {
       console.error("Error processing voice command:", error);
-      setStatus("Sorry, I didn't catch that. Could you please repeat?");
+      await handleResponse("Sorry, I didn't catch that. Could you please repeat?");
     }
 
     setTimeout(() => {

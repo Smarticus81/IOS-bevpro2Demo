@@ -3,7 +3,7 @@ import OpenAI from "openai";
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 let openai: OpenAI | null = null;
 
-async function getOpenAIClient(): Promise<OpenAI> {
+export async function getOpenAIClient(): Promise<OpenAI> {
   if (!openai) {
     try {
       console.log('Initializing OpenAI client...');
