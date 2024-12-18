@@ -19,23 +19,39 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
   useEffect(() => {
     setIsSupported(voiceRecognition.isSupported());
 
-    voiceRecognition.on('wakeWord', () => {
-      setStatus("Listening for order...");
-    });
+    const setupVoiceRecognition = () => {
+      voiceRecognition.on('wakeWord', () => {
+        setStatus("Listening for order...");
+      });
 
-    voiceRecognition.on('speech', (text: string) => {
-      processOrder(text);
-    });
+      voiceRecognition.on('speech', (text: string) => {
+        console.log('Processing speech:', text);
+        processOrder(text);
+      });
 
-    voiceRecognition.on('start', () => {
-      setIsListening(true);
-      setStatus("Waiting for 'hey bar'...");
-    });
+      voiceRecognition.on('start', () => {
+        setIsListening(true);
+        setStatus("Waiting for 'hey bar'...");
+      });
 
-    voiceRecognition.on('stop', () => {
-      setIsListening(false);
-      setStatus("");
-    });
+      voiceRecognition.on('stop', () => {
+        setIsListening(false);
+        setStatus("");
+      });
+
+      voiceRecognition.on('error', (errorMessage: string) => {
+        console.error('Voice recognition error:', errorMessage);
+        setStatus(`Error: ${errorMessage}`);
+        setIsListening(false);
+        
+        // Reset status after error message
+        setTimeout(() => {
+          setStatus("");
+        }, 3000);
+      });
+    };
+
+    setupVoiceRecognition();
 
     return () => {
       voiceRecognition.stop();

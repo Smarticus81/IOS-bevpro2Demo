@@ -1,23 +1,23 @@
-type EventCallback = (data?: any) => void;
+type EventCallback<T = any> = (data?: T) => void;
 type EventMap = { [key: string]: EventCallback[] };
 
 class EventHandler {
   private events: EventMap = {};
 
-  on(event: string, callback: EventCallback) {
+  on<T>(event: string, callback: EventCallback<T>) {
     if (!this.events[event]) {
       this.events[event] = [];
     }
-    this.events[event].push(callback);
+    this.events[event].push(callback as EventCallback);
   }
 
-  emit(event: string, data?: any) {
+  emit<T>(event: string, data?: T) {
     if (this.events[event]) {
       this.events[event].forEach(callback => callback(data));
     }
   }
 
-  off(event: string, callback: EventCallback) {
+  off<T>(event: string, callback: EventCallback<T>) {
     if (this.events[event]) {
       this.events[event] = this.events[event].filter(cb => cb !== callback);
     }
@@ -28,64 +28,111 @@ class VoiceRecognition extends EventHandler {
   private recognition: SpeechRecognition | null = null;
   private isListening = false;
   private wakeWord = "hey bar";
+  private retryCount = 0;
+  private maxRetries = 3;
 
   constructor() {
     super();
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
+    try {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        throw new Error('Speech recognition not supported in this browser');
+      }
+      
       this.recognition = new SpeechRecognition();
       this.recognition.continuous = true;
       this.recognition.interimResults = false;
       this.recognition.lang = 'en-US';
       this.setupRecognition();
-    } else {
-      console.error('Speech recognition not supported');
+    } catch (error) {
+      console.error('Failed to initialize speech recognition:', error);
+      this.emit('error', 'Speech recognition initialization failed');
     }
   }
 
   private setupRecognition() {
     if (!this.recognition) return;
 
-    this.recognition.onresult = (event) => {
-      const text = event.results[event.results.length - 1][0].transcript.toLowerCase();
-      if (text.includes(this.wakeWord)) {
-        this.emit('wakeWord');
-      } else {
-        this.emit('speech', text);
+    this.recognition.onresult = (event: SpeechRecognitionEvent) => {
+      try {
+        const result = event.results[event.results.length - 1];
+        if (!result?.[0]?.transcript) {
+          throw new Error('Invalid speech recognition result');
+        }
+
+        const text = result[0].transcript.toLowerCase();
+        console.log('Recognized text:', text);
+
+        if (text.includes(this.wakeWord)) {
+          this.emit('wakeWord');
+          this.retryCount = 0; // Reset retry count on successful recognition
+        } else {
+          this.emit('speech', text);
+        }
+      } catch (error) {
+        console.error('Error processing speech result:', error);
+        this.emit('error', 'Failed to process speech input');
       }
     };
 
-    this.recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      if (this.isListening) {
+    this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error('Speech recognition error:', event.error, event.message);
+      this.emit('error', `Recognition error: ${event.error}`);
+
+      if (this.isListening && this.retryCount < this.maxRetries) {
+        this.retryCount++;
+        console.log(`Retrying speech recognition (${this.retryCount}/${this.maxRetries})`);
         setTimeout(() => this.start(), 1000);
+      } else if (this.retryCount >= this.maxRetries) {
+        console.error('Max retry attempts reached');
+        this.emit('error', 'Speech recognition failed after multiple attempts');
+        this.stop();
       }
     };
 
     this.recognition.onend = () => {
-      if (this.isListening) {
+      if (this.isListening && this.retryCount < this.maxRetries) {
+        console.log('Recognition ended, restarting...');
         this.recognition?.start();
       }
     };
   }
 
   start() {
-    if (this.recognition && !this.isListening) {
-      this.isListening = true;
-      this.recognition.start();
-      this.emit('start');
+    if (!this.recognition) {
+      this.emit('error', 'Speech recognition not available');
+      return;
+    }
+
+    if (!this.isListening) {
+      try {
+        this.isListening = true;
+        this.retryCount = 0;
+        this.recognition.start();
+        this.emit('start');
+      } catch (error) {
+        console.error('Error starting speech recognition:', error);
+        this.emit('error', 'Failed to start speech recognition');
+        this.isListening = false;
+      }
     }
   }
 
   stop() {
     if (this.recognition && this.isListening) {
-      this.isListening = false;
-      this.recognition.stop();
-      this.emit('stop');
+      try {
+        this.isListening = false;
+        this.retryCount = 0;
+        this.recognition.stop();
+        this.emit('stop');
+      } catch (error) {
+        console.error('Error stopping speech recognition:', error);
+        this.emit('error', 'Failed to stop speech recognition');
+      }
     }
   }
 
-  isSupported() {
+  isSupported(): boolean {
     return !!this.recognition;
   }
 }
