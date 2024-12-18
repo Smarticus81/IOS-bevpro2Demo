@@ -20,26 +20,31 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
     setIsSupported(voiceRecognition.isSupported());
 
     const setupVoiceRecognition = () => {
-      voiceRecognition.on('wakeWord', () => {
+      voiceRecognition.on<void>('wakeWord', () => {
         setStatus("Listening for order...");
       });
 
-      voiceRecognition.on('speech', (text: string) => {
-        console.log('Processing speech:', text);
-        processOrder(text);
+      voiceRecognition.on<string>('speech', (text) => {
+        if (text) {
+          console.log('Processing speech:', text);
+          processOrder(text);
+        } else {
+          console.error('Received empty speech text');
+          setStatus("Sorry, I didn't hear anything");
+        }
       });
 
-      voiceRecognition.on('start', () => {
+      voiceRecognition.on<void>('start', () => {
         setIsListening(true);
         setStatus("Waiting for 'hey bar'...");
       });
 
-      voiceRecognition.on('stop', () => {
+      voiceRecognition.on<void>('stop', () => {
         setIsListening(false);
         setStatus("");
       });
 
-      voiceRecognition.on('error', (errorMessage: string) => {
+      voiceRecognition.on<string>('error', (errorMessage) => {
         console.error('Voice recognition error:', errorMessage);
         setStatus(`Error: ${errorMessage}`);
         setIsListening(false);
@@ -60,10 +65,16 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
 
   const processOrder = async (text: string) => {
     try {
-      const intent = await processVoiceCommand(text);
+      console.log('Starting to process order:', text);
+      
+      const intent = await processVoiceCommand(text).catch(error => {
+        console.error('Voice command processing failed:', error);
+        throw error;
+      });
       
       if (intent.type === "order") {
         let orderSuccess = false;
+        console.log('Processing order intent:', intent);
         
         for (const item of intent.items) {
           const drink = drinks.find(d => 

@@ -35,8 +35,20 @@ type Intent = OrderIntent | QueryIntent;
 
 export async function processVoiceCommand(text: string): Promise<Intent> {
   try {
-    const client = await getOpenAIClient();
+    // Get OpenAI client
+    const client = await getOpenAIClient().catch(error => {
+      console.error('Failed to initialize OpenAI client:', error);
+      throw new Error('OpenAI client initialization failed');
+    });
+
     console.log('Processing voice command:', text);
+    
+    // Validate input
+    if (!text || text.trim().length === 0) {
+      throw new Error('Empty voice command received');
+    }
+
+    // Create chat completion
     const response = await client.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -107,11 +119,14 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
     
     // Provide more specific error messages
     if (error.message.includes('fetch')) {
-      throw new Error("Failed to connect to OpenAI API");
+      throw new Error("Could not connect to the AI service. Please try again.");
     } else if (error.message.includes('JSON')) {
-      throw new Error("Failed to parse OpenAI response");
+      console.error('Raw response:', error.response?.data);
+      throw new Error("The AI service returned an invalid response. Please try again.");
+    } else if (error.message.includes('format')) {
+      throw new Error("Sorry, I couldn't understand that. Could you rephrase?");
     } else {
-      throw new Error(`Voice command processing failed: ${error.message}`);
+      throw new Error("Sorry, I couldn't process that request. Please try again.");
     }
   }
 }
