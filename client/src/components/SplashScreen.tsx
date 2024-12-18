@@ -57,13 +57,14 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0, transition: { duration: 0.3 } }}
       >
-        <div className="absolute inset-0 flex items-center justify-center opacity-20">
-          <img src="/image.png" alt="BevPro Background" className="w-full h-full object-cover" />
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-[#1e2024]/90" />
+          <img src="/image.png" alt="BevPro Background" className="w-full h-full object-contain" />
         </div>
         <div className="text-center space-y-12 max-w-2xl mx-auto px-4 relative z-10">
           {/* Sign In Button Animation */}
           <motion.button
-            className="px-6 py-2 bg-black/90 backdrop-blur-sm text-white rounded-full text-sm font-medium shadow-lg border border-white/10 hover:bg-black/80 transition-all"
+            className="px-6 py-2 bg-gradient-to-b from-zinc-800 to-black text-white rounded-full text-sm font-medium shadow-[0_4px_10px_rgba(0,0,0,0.3)] border border-white/10 backdrop-blur-sm hover:shadow-[0_6px_20px_rgba(0,0,0,0.4)] hover:from-zinc-700 hover:to-zinc-900 transition-all duration-300"
             initial={{ opacity: 0, y: 20 }}
             animate={{ 
               opacity: stage >= 2 ? 1 : 0,
