@@ -67,8 +67,9 @@ class VoiceRecognition extends EventHandler {
         console.log('Recognized text:', text);
 
         // Check for wake words
-        const hasOrderWake = text.includes(this.orderWakeWord);
-        const hasInquiryWake = text.includes(this.inquiryWakeWord);
+        // Case insensitive wake word detection
+        const hasOrderWake = text.toLowerCase().includes(this.orderWakeWord);
+        const hasInquiryWake = text.toLowerCase().includes(this.inquiryWakeWord);
         
         console.log('Wake word detection:', {
           text,
@@ -78,14 +79,32 @@ class VoiceRecognition extends EventHandler {
           inquiryWakeWord: this.inquiryWakeWord
         });
 
+        // Extract just the command part after wake word if present
+        let commandText = text;
+        let detectedMode: 'order' | 'inquiry' | null = null;
+
         if (hasOrderWake) {
-          console.log('Order wake word detected, emitting order mode');
-          this.emit('wakeWord', { mode: 'order' });
-          this.retryCount = 0;
+          console.log('Order wake word detected');
+          detectedMode = 'order';
+          commandText = text.toLowerCase().replace(this.orderWakeWord, '').trim();
         } else if (hasInquiryWake) {
-          console.log('Inquiry wake word detected, emitting inquiry mode');
-          this.emit('wakeWord', { mode: 'inquiry' });
+          console.log('Inquiry wake word detected');
+          detectedMode = 'inquiry';
+          commandText = text.toLowerCase().replace(this.inquiryWakeWord, '').trim();
+        }
+
+        if (detectedMode) {
+          console.log('Wake word detected, emitting mode:', detectedMode);
+          this.emit('wakeWord', { mode: detectedMode });
           this.retryCount = 0;
+          
+          // If there's a command after the wake word, emit it after a short delay
+          if (commandText) {
+            setTimeout(() => {
+              console.log('Processing command after wake word:', commandText);
+              this.emit('speech', commandText);
+            }, 500);
+          }
         } else {
           console.log('No wake word detected, emitting speech');
           this.emit('speech', text);

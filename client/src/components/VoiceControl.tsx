@@ -178,15 +178,18 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         }
 
         // In wake word only mode, only process wake word commands
+        // Only check for wake words in wake word only mode
         if (isWakeWordOnly) {
-          const hasOrderWake = text.toLowerCase().includes("hey bar");
-          const hasInquiryWake = text.toLowerCase().includes("hey bev");
-          
-          if (!hasOrderWake && !hasInquiryWake) {
-            console.log('Ignoring non-wake word command in wake word only mode');
-            return;
-          }
+          console.log('In wake word only mode, waiting for wake word...');
+          return; // Let the voice.ts handle wake word detection
         }
+        
+        // If we're here, we're not in wake word only mode, so process the command
+        console.log('Processing command in active mode:', {
+          text,
+          mode,
+          isWakeWordOnly
+        });
 
         clearTimeout(processingTimeout);
 
