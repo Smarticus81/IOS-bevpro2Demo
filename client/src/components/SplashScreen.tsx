@@ -52,12 +52,15 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
   return (
     <AnimatePresence mode="wait">
       <motion.div
-        className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-sky-100 to-sky-300"
+        className="fixed inset-0 flex flex-col items-center justify-center bg-[#1e2024] overflow-hidden"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0, transition: { duration: 0.3 } }}
       >
-        <div className="text-center space-y-12 max-w-2xl mx-auto px-4">
+        <div className="absolute inset-0 flex items-center justify-center opacity-20">
+          <img src="/image.png" alt="BevPro Background" className="w-full h-full object-cover" />
+        </div>
+        <div className="text-center space-y-12 max-w-2xl mx-auto px-4 relative z-10 glass-card">
           {/* Logo Animation */}
           <motion.div
             initial={{ scale: 0.5, opacity: 0 }}
@@ -89,7 +92,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
 
           {/* Sign In Button Animation - similar to iCloud's */}
           <motion.button
-            className="px-6 py-2 bg-black text-white rounded-full text-sm font-medium"
+            className="px-6 py-2 bg-black/90 backdrop-blur-sm text-white rounded-full text-sm font-medium shadow-lg border border-white/10 hover:bg-black/80 transition-all"
             initial={{ opacity: 0, y: 20 }}
             animate={{ 
               opacity: stage >= 2 ? 1 : 0,
@@ -117,7 +120,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
 
           {/* Feature Icons Animation */}
           <motion.div 
-            className="grid grid-cols-3 gap-8 mt-12"
+            className="grid grid-cols-3 gap-8 mt-12 bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20"
             initial={{ opacity: 0, y: 20 }}
             animate={{ 
               opacity: stage >= 3 ? 1 : 0,
