@@ -9,7 +9,7 @@ import { soundEffects } from "@/lib/sound-effects";
 import { VoiceAnimation } from "./VoiceAnimation";
 import fuzzysort from 'fuzzysort';
 import type { Drink } from "@db/schema";
-import type { ErrorType, VoiceError } from "@/types/speech";
+import type { ErrorType, VoiceError, WakeWordEvent } from "@/types/speech";
 
 interface VoiceControlProps {
   drinks: Drink[];
@@ -54,17 +54,16 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
     if (directMatch) return directMatch;
 
     // Strategy 2: Fuzzy matching with prepared targets
-    const fuzzyResults = fuzzysort.go(normalizedTarget, menuItems.map(item => ({
-      ...item,
-      searchStr: normalizeText(item.name)
-    })), {
-      keys: ['searchStr'],
+    const fuzzyResults = fuzzysort.go(normalizedTarget, menuItems.map(item => 
+      normalizeText(item.name)
+    ), {
       threshold: FUZZY_THRESHOLD,
-      allowTypo: true
+      all: true
     });
 
-    if (fuzzyResults.length > 0 && fuzzyResults[0].obj) {
-      return fuzzyResults[0].obj as Drink;
+    if (fuzzyResults.length > 0 && fuzzyResults[0]) {
+      const matchIndex = fuzzyResults[0].target;
+      return menuItems.find(item => normalizeText(item.name) === matchIndex) || null;
     }
 
     // Strategy 3: Brand-focused matching
