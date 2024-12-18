@@ -239,30 +239,54 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         clearTimeout(processingTimeout);
 
         const now = Date.now();
-        const commandHash = `${text}-${Math.floor(now / 2000)}`;
+        // Create a more robust command hash that includes the entire command and timestamp
+        const commandHash = `${text.trim()}-${Math.floor(now / 1000)}`;
 
-        if (commandHash === lastProcessedCommand || isProcessingCommand) {
-          console.log('Skipping duplicate command or processing in progress');
+        // Skip if this exact command was processed in the last second
+        if (commandHash === lastProcessedCommand) {
+          console.log('Skipping duplicate command (processed within last second)');
           return;
         }
 
-        processingTimeout = setTimeout(async () => {
-          if (isProcessingCommand) return;
+        // Skip if any command is currently being processed
+        if (isProcessingCommand) {
+          console.log('Skipping command - another command is being processed');
+          return;
+        }
 
+        // Clear any pending timeout
+        if (processingTimeout) {
+          clearTimeout(processingTimeout);
+        }
+
+        processingTimeout = setTimeout(async () => {
           try {
             isProcessingCommand = true;
             lastProcessedCommand = commandHash;
             lastProcessedTime = now;
 
-            console.log('Processing speech:', text);
+            console.log('Processing speech:', {
+              text,
+              timestamp: new Date(now).toISOString(),
+              commandHash
+            });
+            
             setIsProcessing(true);
             await soundEffects.playListeningStop();
             await processVoiceInput(text);
+          } catch (error) {
+            console.error('Error processing voice command:', error);
           } finally {
             isProcessingCommand = false;
             setIsProcessing(false);
+            // Reset the last processed command after a delay
+            setTimeout(() => {
+              if (lastProcessedCommand === commandHash) {
+                lastProcessedCommand = '';
+              }
+            }, 1000);
           }
-        }, 300);
+        }, 500); // Increased debounce time to 500ms
       });
 
       voiceRecognition.on<void>('start', async () => {
