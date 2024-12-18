@@ -1,0 +1,57 @@
+Processing speech: 
+Object {text: " cucumber cooler to the order please", timestamp: "2024-12-18T20:42:34.592Z", commandHash: "cucumber cooler to the order please-1734554554"}
+Processing voice input:  cucumber cooler to the order please
+Current mode: order Attempting response: What would you like to order?
+HandleResponse - Current mode: order Response: What would you like to order?
+Attempting voice synthesis: 
+Object {mode: "order", response: "What would you like to order?", audioContext: true, webAudioEnabled: true, timestamp: "2024-12-18T20:42:35.093Z"}
+Processing speech: 
+Object {text: " cucumber cooler to the order please", timestamp: "2024-12-18T20:42:34.592Z", commandHash: "cucumber cooler to the order please-1734554554"}
+Processing voice input:  cucumber cooler to the order please
+Current mode: order Attempting response: What would you like to order?
+HandleResponse - Current mode: order Response: What would you like to order?
+Attempting voice synthesis: 
+Object {mode: "order", response: "What would you like to order?", audioContext: true, webAudioEnabled: true, timestamp: "2024-12-18T20:42:35.093Z"}
+Starting voice synthesis: 
+Object {text: "What would you like to order?", mode: "order", timestamp: "2024-12-18T20:42:35.193Z"}
+Using OpenAI Nova for synthesis
+Starting voice synthesis: 
+Object {text: "What would you like to order?", mode: "order", timestamp: "2024-12-18T20:42:35.193Z"}
+Using OpenAI Nova for synthesis
+Starting voice synthesis: 
+Object {text: "What would you like to order?", mode: "order", timestamp: "2024-12-18T20:42:35.194Z"}
+Using OpenAI Nova for synthesis
+OpenAI Nova synthesis failed: 
+Object {status: 500, statusText: "Internal Server Error", error: "{"error":"Voice synthesis failed","message":"Eleven Labs API error: Unauthorized -…"}
+
+OpenAI Nova synthesis error details: 
+Error {}
+
+Voice synthesis failed: 
+Object {error: Error, mode: "order", text: "What would you like to order?", timestamp: "2024-12-18T20:42:35.310Z"}
+
+Voice synthesis completed successfully
+OpenAI Nova synthesis failed: 
+Object {status: 500, statusText: "Internal Server Error", error: "{"error":"Voice synthesis failed","message":"Eleven Labs API error: Unauthorized -…"}
+
+OpenAI Nova synthesis error details: 
+Error {}
+
+Voice synthesis failed: 
+Object {error: Error, mode: "order", text: "What would you like to order?", timestamp: "2024-12-18T20:42:35.313Z"}
+
+Voice synthesis completed successfully
+OpenAI Nova synthesis failed: 
+Object {status: 500, statusText: "Internal Server Error", error: "{"error":"Voice synthesis failed","message":"Eleven Labs API error: Unauthorized -…"}
+
+OpenAI Nova synthesis error details: 
+Error {}
+
+at t.value (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400
+Voice synthesis failed: 
+Object {error: Error, mode: "order", text: "What would you like to order?", timestamp: "2024-12-18T20:42:35.318Z"}
+
+Voice synthesis completed successfully

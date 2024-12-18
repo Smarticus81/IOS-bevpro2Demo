@@ -11,10 +11,7 @@ export interface WakeWordEvent {
 }
 
 export interface VoiceSettings {
-  provider: 'elevenlabs' | 'webspeech';
+  provider: 'openai';
   voiceEnabled: boolean;
-  pitch: number;
-  rate: number;
   volume: number;
-  hasElevenLabs?: boolean;
 }

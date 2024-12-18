@@ -94,14 +94,11 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/config", (_req, res) => {
     try {
       const openaiKey = process.env.OPENAI_API_KEY;
-      const elevenLabsKey = process.env.ELEVEN_LABS_API_KEY;
       
       // Detailed logging for debugging
       console.log({
         hasOpenAIKey: !!openaiKey,
-        hasElevenLabsKey: !!elevenLabsKey,
         openAIKeyLength: openaiKey?.length || 0,
-        elevenLabsKeyLength: elevenLabsKey?.length || 0,
         timestamp: new Date().toISOString()
       });
       
@@ -115,7 +112,7 @@ export function registerRoutes(app: Express): Server {
       
       res.json({ 
         openaiKey,
-        elevenLabsKey: !!elevenLabsKey  // Only send boolean indicating if key exists
+        voiceEnabled: true
       });
     } catch (error: unknown) {
       const err = error as Error;
@@ -158,51 +155,25 @@ export function registerRoutes(app: Express): Server {
   // Voice settings endpoint
   app.post("/api/settings/voice", async (req, res) => {
     try {
-      const { provider, voiceEnabled, pitch, rate, volume, apiKey } = req.body;
+      const { voiceEnabled, volume } = req.body;
       
       console.log('Voice settings update:', {
-        provider,
         voiceEnabled,
-        pitch,
-        rate,
         volume,
-        hasApiKey: !!apiKey,
         timestamp: new Date().toISOString()
       });
 
-      // Validate provider
-      if (!['elevenlabs', 'webspeech'].includes(provider)) {
-        throw new Error('Invalid voice provider');
-      }
-
-      // If Eleven Labs is selected, validate and update API key
-      if (provider === 'elevenlabs' && apiKey) {
-        // Validate Eleven Labs API key format
-        if (!apiKey.match(/^[a-zA-Z0-9]{32}$/)) {
-          throw new Error('Invalid Eleven Labs API key format');
-        }
-
-        // Store the API key securely
-        process.env.ELEVEN_LABS_API_KEY = apiKey;
-      }
-
-      // Store all voice settings
-      process.env.VOICE_PROVIDER = provider;
+      // Store voice settings
       process.env.VOICE_ENABLED = String(voiceEnabled);
-      process.env.VOICE_PITCH = String(pitch);
-      process.env.VOICE_RATE = String(rate);
       process.env.VOICE_VOLUME = String(volume);
 
       // Return success response with current configuration
       res.json({
         success: true,
         config: {
-          provider,
+          provider: 'openai',
           voiceEnabled,
-          pitch,
-          rate,
-          volume,
-          hasElevenLabs: !!process.env.ELEVEN_LABS_API_KEY
+          volume
         }
       });
     } catch (error: any) {
@@ -221,13 +192,10 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/synthesize", async (req, res) => {
     try {
-      const { text, voice, speed, useElevenLabs } = req.body;
+      const { text } = req.body;
       
       console.log('Voice synthesis request:', {
-        text,
-        voice,
-        speed,
-        useElevenLabs,
+        text: text?.substring(0, 50) + '...',
         timestamp: new Date().toISOString()
       });
       
@@ -235,65 +203,37 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "Text is required" });
       }
 
-      const elevenLabsKey = process.env.ELEVEN_LABS_API_KEY;
-      if (!elevenLabsKey) {
-        throw new Error('Eleven Labs API key not configured');
-      }
-
-      console.log('Starting Eleven Labs synthesis:', {
-        text: text.substring(0, 50) + '...',
-        timestamp: new Date().toISOString()
-      });
-
-      // Using Rachel voice ID with enhanced settings
-      const elevenLabsResponse = await fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM/stream', {
-        method: 'POST',
-        headers: {
-          'Accept': 'audio/mpeg',
-          'xi-api-key': elevenLabsKey,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text,
-          model_id: "eleven_multilingual_v2",
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-            style: 0.0,
-            use_speaker_boost: true
-          },
-          optimize_streaming_latency: 3
-        })
-      });
-
-      if (!elevenLabsResponse.ok) {
-        const errorText = await elevenLabsResponse.text();
-        console.error('Eleven Labs API error:', {
-          status: elevenLabsResponse.status,
-          statusText: elevenLabsResponse.statusText,
-          error: errorText,
+      try {
+        console.log('Starting OpenAI Nova synthesis');
+        const response = await openai_client.audio.speech.create({
+          model: "tts-1",
+          voice: "nova",
+          input: text,
+          response_format: "mp3"
+        });
+        
+        if (!response || !response.content) {
+          throw new Error('Empty response from OpenAI');
+        }
+        
+        console.log('Sending audio response:', {
+          contentLength: response.content.length,
           timestamp: new Date().toISOString()
         });
-        throw new Error(`Eleven Labs API error: ${elevenLabsResponse.statusText} - ${errorText}`);
+        
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Content-Length', response.content.length);
+        res.send(response.content);
+        
+        console.log('OpenAI Nova synthesis completed successfully');
+      } catch (error: any) {
+        console.error('OpenAI synthesis error:', {
+          error: error.message,
+          stack: error.stack,
+          timestamp: new Date().toISOString()
+        });
+        throw error;
       }
-
-      console.log('Successfully received response from Eleven Labs');
-      const audioBuffer = await elevenLabsResponse.arrayBuffer();
-      const buffer = Buffer.from(audioBuffer);
-      
-      console.log('Sending audio response:', {
-        contentLength: buffer.length,
-        timestamp: new Date().toISOString()
-      });
-      
-      res.setHeader('Content-Type', 'audio/mpeg');
-      res.setHeader('Content-Length', buffer.length);
-      res.send(buffer);
-      
-      console.log('Eleven Labs synthesis completed successfully:', {
-        responseSize: buffer.length,
-        timestamp: new Date().toISOString()
-      });
     } catch (error: any) {
       const errorMessage = error.message || 'Unknown error occurred';
       console.error("Voice synthesis error:", {
