@@ -155,8 +155,13 @@ export function registerRoutes(app: Express): Server {
         throw new Error('Eleven Labs API key not configured');
       }
 
-      console.log('Starting Eleven Labs synthesis...');
-      const elevenLabsResponse = await fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM', {
+      console.log('Starting Eleven Labs synthesis:', {
+        text: text.substring(0, 50) + '...',
+        timestamp: new Date().toISOString()
+      });
+
+      // Using Rachel voice ID with enhanced settings
+      const elevenLabsResponse = await fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM/stream', {
         method: 'POST',
         headers: {
           'Accept': 'audio/mpeg',
@@ -165,20 +170,36 @@ export function registerRoutes(app: Express): Server {
         },
         body: JSON.stringify({
           text,
-          model_id: "eleven_monolingual_v1",
+          model_id: "eleven_multilingual_v2",
           voice_settings: {
             stability: 0.5,
-            similarity_boost: 0.75
-          }
+            similarity_boost: 0.75,
+            style: 0.0,
+            use_speaker_boost: true
+          },
+          optimize_streaming_latency: 3
         })
       });
 
       if (!elevenLabsResponse.ok) {
-        throw new Error(`Eleven Labs API error: ${elevenLabsResponse.statusText}`);
+        const errorText = await elevenLabsResponse.text();
+        console.error('Eleven Labs API error:', {
+          status: elevenLabsResponse.status,
+          statusText: elevenLabsResponse.statusText,
+          error: errorText,
+          timestamp: new Date().toISOString()
+        });
+        throw new Error(`Eleven Labs API error: ${elevenLabsResponse.statusText} - ${errorText}`);
       }
 
+      console.log('Successfully received response from Eleven Labs');
       const audioBuffer = await elevenLabsResponse.arrayBuffer();
       const buffer = Buffer.from(audioBuffer);
+      
+      console.log('Sending audio response:', {
+        contentLength: buffer.length,
+        timestamp: new Date().toISOString()
+      });
       
       res.setHeader('Content-Type', 'audio/mpeg');
       res.setHeader('Content-Length', buffer.length);

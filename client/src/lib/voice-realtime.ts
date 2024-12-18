@@ -48,14 +48,33 @@ class RealtimeVoiceSynthesis extends EventTarget {
 
   private async initializeElevenLabs() {
     try {
+      console.log('Initializing Eleven Labs...');
       const response = await fetch('/api/config');
+      if (!response.ok) {
+        throw new Error(`Config API error: ${response.statusText}`);
+      }
+      
       const data = await response.json();
+      console.log('Config API response:', {
+        hasElevenLabsKey: data.elevenLabsKey,
+        timestamp: new Date().toISOString()
+      });
+      
       if (data.elevenLabsKey) {
         this.elevenLabsInitialized = true;
         console.log('Eleven Labs initialized successfully');
+      } else {
+        throw new Error('Eleven Labs API key not found in configuration');
       }
     } catch (error) {
       console.error('Failed to initialize Eleven Labs:', error);
+      this.dispatchEvent(new CustomEvent('error', {
+        detail: {
+          type: 'synthesis' as const,
+          message: 'Failed to initialize voice synthesis'
+        }
+      }));
+      throw error;
     }
   }
 
@@ -90,6 +109,11 @@ class RealtimeVoiceSynthesis extends EventTarget {
     });
 
     try {
+      console.log('Requesting voice synthesis:', {
+        text: text.substring(0, 50) + '...',
+        timestamp: new Date().toISOString()
+      });
+
       const response = await fetch('/api/synthesize', {
         method: 'POST',
         headers: {
@@ -103,9 +127,17 @@ class RealtimeVoiceSynthesis extends EventTarget {
       });
 
       if (!response.ok) {
-        throw new Error(`Synthesis failed: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('Synthesis request failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+          timestamp: new Date().toISOString()
+        });
+        throw new Error(`Synthesis failed: ${response.statusText} - ${errorText}`);
       }
 
+      console.log('Received synthesis response, processing audio...');
       const audioBuffer = await response.arrayBuffer();
       if (!this.audioContext) {
         await this.initAudioContext();

@@ -1,0 +1,75 @@
+Predicted intent: 
+Object {type: "query", category: "drinks", attribute: "menu", conversational_response: "Here is the list of drinks available on our menu."}
+Updating conversation context: 
+Object {previousContext: {…}, newIntent: {…}, query: " what drinks do we have in our menu"}
+Updated context: 
+Object {timestamp: 1734506433595, topics: Array(0), relevantDrinks: Array(1), contextExpiry: 300000, lastIntent: {…}, …}
+Processing intent: {
+  "type": "query",
+  "category": "drinks",
+  "attribute": "menu",
+  "conversational_response": "Here is the list of drinks available on our menu."
+}
+Recognized text:  can you add a truly seltzer and a moscato please
+Wake word detection: 
+Object {text: " can you add a truly seltzer and a moscato please", hasOrderWake: false, hasInquiryWake: false, orderWakeWord: "hey bar", inquiryWakeWord: "hey bev"}
+No wake word detected, emitting speech
+Processing speech:  can you add a truly seltzer and a moscato please
+Processing voice input:  can you add a truly seltzer and a moscato please
+Processing voice command:  can you add a truly seltzer and a moscato please
+Processing command with context: 
+Object {text: " can you add a truly seltzer and a moscato please", relevantContext: "Discussed drinks: drinks. Last query:  what drinks do we have in our menu", historyLength: 8}
+Processing speech:  can you add a truly seltzer and a moscato please
+Processing voice input:  can you add a truly seltzer and a moscato please
+Processing voice command:  can you add a truly seltzer and a moscato please
+Processing command with context: 
+Object {text: " can you add a truly seltzer and a moscato please", relevantContext: "Discussed drinks: drinks. Last query:  what drinks do we have in our menu", historyLength: 8}
+Processing speech:  can you add a truly seltzer and a moscato please
+Processing voice input:  can you add a truly seltzer and a moscato please
+Processing voice command:  can you add a truly seltzer and a moscato please
+Processing command with context: 
+Object {text: " can you add a truly seltzer and a moscato please", relevantContext: "Discussed drinks: drinks. Last query:  what drinks do we have in our menu", historyLength: 8}
+historyLength: 8
+relevantContext: "Discussed drinks: drinks. Last query: what drinks do we have in our menu"
+text: " can you add a truly seltzer and a moscato please"
+[[Prototype]]: Object
+Predicted intent: 
+Object {type: "order", items: Array(2), conversational_response: "Sure, I've added a Truly Seltzer and a Moscato to your order."}
+Updating conversation context: 
+Object {previousContext: {…}, newIntent: {…}, query: " can you add a truly seltzer and a moscato please"}
+Updated context: 
+Object {timestamp: 1734506448779, topics: Array(1), relevantDrinks: Array(1), contextExpiry: 300000, lastIntent: {…}, …}
+Processing intent: {
+  "type": "order",
+  "items": [
+    {
+      "name": "truly seltzer",
+      "quantity": 1
+    },
+    {
+      "name": "moscato",
+      "quantity": 1
+    }
+  ],
+  "conversational_response": "Sure, I've added a Truly Seltzer and a Moscato to your order."
+}
+Predicted intent: 
+Object {type: "order", items: Array(2), conversational_response: "Sure, I've added a Truly Seltzer and a Moscato to your order."}
+Updating conversation context: 
+Object {previousContext: {…}, newIntent: {…}, query: " can you add a truly seltzer and a moscato please"}
+Updated context: 
+Object {timestamp: 1734506449086, topics: Array(1), relevantDrinks: Array(1), contextExpiry: 300000, lastIntent: {…}, …}
+Processing intent: {
+  "type": "order",
+  "items": [
+    {
+      "name": "truly seltzer",
+      "quantity": 1
+    },
+    {
+      "name": "moscato",
+      "quantity": 1
+    }
+  ],
+  "conversational_response": "Sure, I've added a Truly Seltzer and a Moscato to your order."
+}
