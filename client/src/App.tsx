@@ -2,8 +2,16 @@ import { Switch, Route } from "wouter";
 import { Home } from "@/pages/Home";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
+import { useState } from "react";
+import { SplashScreen } from "@/components/SplashScreen";
 
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
+  if (showSplash) {
+    return <SplashScreen onComplete={() => setShowSplash(false)} />;
+  }
+
   return (
     <Switch>
       <Route path="/" component={Home} />
