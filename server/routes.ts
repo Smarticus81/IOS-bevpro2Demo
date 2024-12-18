@@ -90,15 +90,18 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get OpenAI API configuration
+  // Get API configuration
   app.get("/api/config", (_req, res) => {
     try {
       const openaiKey = process.env.OPENAI_API_KEY;
+      const elevenLabsKey = process.env.ELEVEN_LABS_API_KEY;
       
       // Detailed logging for debugging
       console.log({
-        hasKey: !!openaiKey,
-        keyLength: openaiKey?.length || 0,
+        hasOpenAIKey: !!openaiKey,
+        hasElevenLabsKey: !!elevenLabsKey,
+        openAIKeyLength: openaiKey?.length || 0,
+        elevenLabsKeyLength: elevenLabsKey?.length || 0,
         timestamp: new Date().toISOString()
       });
       
@@ -110,10 +113,13 @@ export function registerRoutes(app: Express): Server {
         throw new Error("Invalid OpenAI API key format");
       }
       
-      res.json({ openaiKey });
+      res.json({ 
+        openaiKey,
+        elevenLabsKey: !!elevenLabsKey  // Only send boolean indicating if key exists
+      });
     } catch (error: unknown) {
       const err = error as Error;
-      console.error("OpenAI config error:", {
+      console.error("API config error:", {
         message: err.message,
         stack: err.stack,
         timestamp: new Date().toISOString()
@@ -130,12 +136,13 @@ export function registerRoutes(app: Express): Server {
   // Voice synthesis endpoint
   app.post("/api/synthesize", async (req, res) => {
     try {
-      const { text, voice, speed } = req.body;
+      const { text, voice, speed, useElevenLabs } = req.body;
       
       console.log('Voice synthesis request:', {
         text,
         voice,
         speed,
+        useElevenLabs,
         timestamp: new Date().toISOString()
       });
       
@@ -143,28 +150,68 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "Text is required" });
       }
 
-      const openai = await getOpenAIClient();
-      console.log('Starting OpenAI speech synthesis...');
-      
-      const response = await openai.audio.speech.create({
-        model: "tts-1",
-        voice: voice || "alloy",
-        input: text,
-        speed: speed || 1.2
-      });
+      if (useElevenLabs) {
+        const elevenLabsKey = process.env.ELEVEN_LABS_API_KEY;
+        if (!elevenLabsKey) {
+          throw new Error('Eleven Labs API key not configured');
+        }
 
-      console.log('OpenAI synthesis successful, streaming response...');
-      
-      // Convert response to array buffer and stream
-      const buffer = Buffer.from(await response.arrayBuffer());
-      res.setHeader('Content-Type', 'audio/mpeg');
-      res.setHeader('Content-Length', buffer.length);
-      res.send(buffer);
-      
-      console.log('Voice synthesis completed successfully:', {
-        responseSize: buffer.length,
-        timestamp: new Date().toISOString()
-      });
+        const elevenLabsResponse = await fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM', {
+          method: 'POST',
+          headers: {
+            'Accept': 'audio/mpeg',
+            'xi-api-key': elevenLabsKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text,
+            model_id: "eleven_monolingual_v1",
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.75
+            }
+          })
+        });
+
+        if (!elevenLabsResponse.ok) {
+          throw new Error(`Eleven Labs API error: ${elevenLabsResponse.statusText}`);
+        }
+
+        const audioBuffer = await elevenLabsResponse.arrayBuffer();
+        const buffer = Buffer.from(audioBuffer);
+        
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Content-Length', buffer.length);
+        res.send(buffer);
+        
+        console.log('Eleven Labs synthesis completed successfully:', {
+          responseSize: buffer.length,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        const openai = await getOpenAIClient();
+        console.log('Starting OpenAI speech synthesis...');
+        
+        const response = await openai.audio.speech.create({
+          model: "tts-1",
+          voice: voice || "alloy",
+          input: text,
+          speed: speed || 1.2
+        });
+
+        console.log('OpenAI synthesis successful, streaming response...');
+        
+        // Convert response to array buffer and stream
+        const buffer = Buffer.from(await response.arrayBuffer());
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Content-Length', buffer.length);
+        res.send(buffer);
+        
+        console.log('Voice synthesis completed successfully:', {
+          responseSize: buffer.length,
+          timestamp: new Date().toISOString()
+        });
+      }
     } catch (error: any) {
       const errorMessage = error.message || 'Unknown error occurred';
       console.error("Voice synthesis error:", {

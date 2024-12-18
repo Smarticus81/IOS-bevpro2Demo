@@ -1,60 +1,52 @@
-import type { VoiceError } from "@/types/speech";
-import { getOpenAIClient } from "./openai";
+import { getOpenAIClient } from './openai';
+import type { VoiceError } from '@/types/speech';
 
-type EventCallback<T = any> = (data?: T) => void;
-type EventMap = { [key: string]: EventCallback[] };
-
-class EventHandler {
-  private events: EventMap = {};
-
-  on<T>(event: string, callback: EventCallback<T>) {
-    if (!this.events[event]) {
-      this.events[event] = [];
-    }
-    this.events[event].push(callback as EventCallback);
-  }
-
-  emit<T>(event: string, data?: T) {
-    if (this.events[event]) {
-      this.events[event].forEach(callback => callback(data));
-    }
+// Use browser's native WebSocket and EventTarget
+declare global {
+  interface Window {
+    AudioContext: typeof AudioContext;
+    webkitAudioContext: typeof AudioContext;
   }
 }
 
-class RealtimeVoiceSynthesis extends EventHandler {
+class RealtimeVoiceSynthesis extends EventTarget {
   private static instance: RealtimeVoiceSynthesis;
+  private audioContext: AudioContext | null = null;
   private ws: WebSocket | null = null;
+  private messageQueue: string[] = [];
+  private audioQueue: AudioBuffer[] = [];
   private isConnected = false;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 3;
-  private messageQueue: string[] = [];
-  private audioContext: AudioContext | null = null;
-  private audioQueue: AudioBuffer[] = [];
+  private readonly maxReconnectAttempts = 3;
   private isPlaying = false;
   private connectionPromise: Promise<void> | null = null;
+  private currentMode: 'order' | 'inquiry' = 'order';
+  private elevenLabsInitialized = false;
 
   private constructor() {
     super();
     // Initialize Web Audio API context on first user interaction
-    const initAudio = () => {
+    const initAudio = async () => {
       if (!this.audioContext) {
         try {
-          this.audioContext = new AudioContext();
+          this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
           console.log('Audio context initialized on user interaction');
+          // Initialize Eleven Labs
+          await this.initializeElevenLabs();
           // After audio context is initialized, attempt WebSocket connection
           this.connectionPromise = this.connect().catch(error => {
             console.error('Failed to establish connection:', error);
-            this.emit<VoiceError>('error', {
-              type: 'synthesis',
-              message: 'Failed to initialize voice synthesis'
-            });
+            this.dispatchEvent(new CustomEvent('error', {
+              detail: {
+                type: 'synthesis' as const,
+                message: 'Failed to initialize voice synthesis'
+              }
+            }));
+            throw error;
           });
         } catch (error) {
           console.error('Failed to initialize audio context:', error);
-          this.emit<VoiceError>('error', {
-            type: 'synthesis',
-            message: 'Failed to initialize audio playback'
-          });
+          throw error;
         }
       }
     };
@@ -71,10 +63,23 @@ class RealtimeVoiceSynthesis extends EventHandler {
     return RealtimeVoiceSynthesis.instance;
   }
 
+  private async initializeElevenLabs() {
+    try {
+      const response = await fetch('/api/config');
+      const data = await response.json();
+      if (data.elevenLabsKey) {
+        this.elevenLabsInitialized = true;
+        console.log('Eleven Labs initialized successfully');
+      }
+    } catch (error) {
+      console.error('Failed to initialize Eleven Labs:', error);
+    }
+  }
+
   private async initAudioContext() {
     if (!this.audioContext) {
       try {
-        this.audioContext = new AudioContext();
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
         console.log('Audio context initialized');
       } catch (error) {
         console.error('Failed to initialize audio context:', error);
@@ -82,6 +87,11 @@ class RealtimeVoiceSynthesis extends EventHandler {
       }
     }
     return this.audioContext;
+  }
+
+  setMode(mode: 'order' | 'inquiry') {
+    this.currentMode = mode;
+    console.log('Voice synthesis mode set to:', mode);
   }
 
   private async connect(): Promise<void> {
@@ -97,12 +107,12 @@ class RealtimeVoiceSynthesis extends EventHandler {
       console.log('Initializing WebSocket connection...');
       
       // Get OpenAI API key from server first to ensure we have credentials
-      const client = await getOpenAIClient().catch(error => {
+      await getOpenAIClient().catch(error => {
         console.error('Failed to initialize OpenAI client:', error);
         throw new Error('OpenAI client initialization failed');
       });
 
-      // Connect to our server's WebSocket proxy instead of OpenAI directly
+      // Connect to our server's WebSocket proxy
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const url = `${protocol}//${window.location.host}/api/realtime`;
       
@@ -135,48 +145,53 @@ class RealtimeVoiceSynthesis extends EventHandler {
 
       this.ws.onerror = (error) => {
         console.error('WebSocket error:', error);
-        this.emit<VoiceError>('error', {
-          type: 'synthesis',
-          message: 'Voice synthesis connection error'
-        });
+        this.dispatchEvent(new CustomEvent('error', {
+          detail: {
+            type: 'synthesis' as const,
+            message: 'Voice synthesis connection error'
+          }
+        }));
       };
 
       this.ws.onmessage = async (event) => {
         try {
-          if (event.data instanceof Blob) {
-            // Handle binary audio data
+          const data = JSON.parse(event.data);
+          console.log('Received message:', data);
+          
+          if (data.type === 'error') {
+            this.dispatchEvent(new CustomEvent('error', {
+              detail: {
+                type: 'synthesis' as const,
+                message: data.error || 'Unknown synthesis error'
+              }
+            }));
+          } else if (data.type === 'audio') {
+            // Convert base64 to ArrayBuffer
+            const binaryString = atob(data.chunk);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            
             if (!this.audioContext) {
-              console.warn('Audio context not initialized');
-              return;
+              throw new Error('Audio context not initialized');
             }
 
-            const arrayBuffer = await event.data.arrayBuffer();
-            const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+            const audioBuffer = await this.audioContext.decodeAudioData(bytes.buffer);
             this.audioQueue.push(audioBuffer);
             
             if (!this.isPlaying) {
               await this.playNextChunk();
             }
-          } else {
-            // Handle JSON messages
-            const data = JSON.parse(event.data);
-            console.log('Received message:', data);
-            
-            if (data.type === 'error') {
-              this.emit<VoiceError>('error', {
-                type: 'synthesis',
-                message: data.error || 'Unknown synthesis error'
-              });
-            } else if (data.type === 'status') {
-              console.log('WebSocket status:', data.status);
-            }
           }
         } catch (error) {
           console.error('Error processing WebSocket message:', error);
-          this.emit<VoiceError>('error', {
-            type: 'synthesis',
-            message: 'Failed to process audio data'
-          });
+          this.dispatchEvent(new CustomEvent('error', {
+            detail: {
+              type: 'synthesis' as const,
+              message: 'Failed to process audio data'
+            }
+          }));
         }
       };
     } catch (error) {
@@ -196,21 +211,24 @@ class RealtimeVoiceSynthesis extends EventHandler {
           await this.connect();
         } catch (error) {
           console.error('Reconnection attempt failed:', error);
-          // Only emit error on final attempt
           if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            this.emit<VoiceError>('error', {
-              type: 'synthesis',
-              message: 'Failed to connect to voice synthesis service after multiple attempts'
-            });
+            this.dispatchEvent(new CustomEvent('error', {
+              detail: {
+                type: 'synthesis' as const,
+                message: 'Failed to connect to voice synthesis service after multiple attempts'
+              }
+            }));
           }
         }
       }, delay);
     } else {
       console.error('Max reconnection attempts reached');
-      this.emit<VoiceError>('error', {
-        type: 'synthesis',
-        message: 'Failed to connect to voice synthesis service after multiple attempts'
-      });
+      this.dispatchEvent(new CustomEvent('error', {
+        detail: {
+          type: 'synthesis' as const,
+          message: 'Failed to connect to voice synthesis service after multiple attempts'
+        }
+      }));
     }
   }
 
@@ -223,39 +241,25 @@ class RealtimeVoiceSynthesis extends EventHandler {
         if (!text || this.ws?.readyState !== WebSocket.OPEN) break;
         
         console.log('Processing text:', text);
-        const event = {
-          type: "audio.create",
-          audio: {
-            text,
-            voice: "alloy",
-            model: "tts-1",
-            stream: true
-          }
-        };
         
-        await new Promise<void>((resolve, reject) => {
-          if (!this.ws) {
-            reject(new Error('WebSocket not available'));
-            return;
-          }
-          
-          try {
-            this.ws.send(JSON.stringify(event));
-            // Only remove the message from queue after successful send
-            this.messageQueue.shift();
-            resolve();
-          } catch (error) {
-            console.error('Failed to send message:', error);
-            reject(error);
-          }
-        });
+        this.ws.send(JSON.stringify({
+          type: 'synthesis',
+          text,
+          voice: 'alloy',
+          speed: 1.2
+        }));
+        
+        // Only remove the message from queue after successful send
+        this.messageQueue.shift();
       }
     } catch (error) {
       console.error('Error processing message queue:', error);
-      this.emit<VoiceError>('error', {
-        type: 'synthesis',
-        message: 'Failed to process voice synthesis queue'
-      });
+      this.dispatchEvent(new CustomEvent('error', {
+        detail: {
+          type: 'synthesis' as const,
+          message: 'Failed to process voice synthesis queue'
+        }
+      }));
     }
   }
 
@@ -265,18 +269,63 @@ class RealtimeVoiceSynthesis extends EventHandler {
       return;
     }
 
-    console.log('Queueing text for synthesis:', text);
+    console.log('Queueing text for synthesis:', {
+      text,
+      mode: this.currentMode,
+      elevenLabsAvailable: this.elevenLabsInitialized
+    });
+
+    if (this.currentMode === 'inquiry' && this.elevenLabsInitialized) {
+      try {
+        const response = await fetch('/api/synthesize', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text,
+            voice: 'rachel',
+            useElevenLabs: true
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Synthesis failed: ${response.statusText}`);
+        }
+
+        const audioBuffer = await response.arrayBuffer();
+        if (!this.audioContext) {
+          throw new Error('Audio context not initialized');
+        }
+
+        const decodedBuffer = await this.audioContext.decodeAudioData(audioBuffer);
+        this.audioQueue.push(decodedBuffer);
+        
+        if (!this.isPlaying) {
+          await this.playNextChunk();
+        }
+      } catch (error) {
+        console.error('Error using Eleven Labs synthesis:', error);
+        // Fallback to OpenAI synthesis
+        await this.synthesizeWithOpenAI(text);
+      }
+    } else {
+      await this.synthesizeWithOpenAI(text);
+    }
+  }
+
+  private async synthesizeWithOpenAI(text: string) {
     this.messageQueue.push(text);
     
     if (this.isConnected) {
       try {
         await this.processQueue();
       } catch (error) {
-        console.error('Error in speak:', error);
+        console.error('Error in OpenAI synthesis:', error);
         throw error;
       }
     } else {
-      console.log('Not connected, message queued for later processing');
+      console.log('Not connected to OpenAI, message queued for later processing');
     }
   }
 
@@ -330,10 +379,12 @@ class RealtimeVoiceSynthesis extends EventHandler {
     } catch (error) {
       console.error('Error playing audio chunk:', error);
       this.isPlaying = false;
-      this.emit<VoiceError>('error', {
-        type: 'synthesis',
-        message: 'Failed to play audio'
-      });
+      this.dispatchEvent(new CustomEvent('error', {
+        detail: {
+          type: 'synthesis' as const,
+          message: 'Failed to play audio'
+        }
+      }));
     }
   }
 }
