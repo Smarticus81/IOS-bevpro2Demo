@@ -33,15 +33,14 @@ export function setupRealtimeProxy(server: Server) {
         throw new Error('OpenAI API key not configured');
       }
 
-      // Connect to OpenAI's realtime API
+      // Connect to OpenAI's TTS realtime API
       const openaiWs = new WebSocket(
-        "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17",
+        "wss://api.openai.com/v1/audio/speech",
         [
-          "realtime",
           // Auth
-          `openai-api-key.${process.env.OPENAI_API_KEY}`,
-          // Beta protocol, required
-          "openai-beta.realtime-v1"
+          `Bearer ${process.env.OPENAI_API_KEY}`,
+          // Audio streaming protocol
+          "audio.speech.beta.1"
         ]
       );
 
@@ -92,12 +91,49 @@ export function setupRealtimeProxy(server: Server) {
           try {
             const message = JSON.parse(data.toString());
             console.log('Client message:', message);
-            openaiWs.send(JSON.stringify(message));
+            
+            if (message.type === 'synthesis') {
+              // Send TTS request to OpenAI
+              openaiWs.send(JSON.stringify({
+                model: "tts-1",
+                voice: message.voice || "alloy",
+                input: message.text,
+                speed: message.speed || 1.2,
+                stream: true
+              }));
+            }
           } catch (error) {
             console.error('Failed to parse client message:', error);
+            ws.send(JSON.stringify({
+              type: 'error',
+              error: 'Invalid message format'
+            }));
           }
         }
       });
+
+      // Handle binary audio data from OpenAI
+      openaiWs.binaryType = 'arraybuffer';
+      openaiWs.onmessage = (event) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          if (event.data instanceof ArrayBuffer) {
+            // Send audio chunk to client
+            ws.send(JSON.stringify({
+              type: 'audio',
+              chunk: Buffer.from(event.data).toString('base64')
+            }));
+          } else {
+            try {
+              const data = JSON.parse(event.data);
+              if (data.type === 'end') {
+                ws.send(JSON.stringify({ type: 'end' }));
+              }
+            } catch (error) {
+              console.error('Failed to parse OpenAI message:', error);
+            }
+          }
+        }
+      };
 
       ws.on('close', () => {
         console.log('Client disconnected from realtime proxy');

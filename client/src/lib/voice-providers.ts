@@ -170,23 +170,75 @@ class VoiceProviders {
 
   private async synthesizeWithOpenAI(text: string, options: VoiceOptions): Promise<ArrayBuffer> {
     try {
-      const response = await fetch('/api/synthesize', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text,
-          voice: options.voice || 'alloy',
-          speed: options.speed || 1.2
-        }),
+      // Connect to realtime WebSocket endpoint
+      const ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/realtime`);
+      
+      return new Promise((resolve, reject) => {
+        const audioChunks: Uint8Array[] = [];
+        
+        ws.onopen = () => {
+          console.log('Connected to realtime synthesis WebSocket');
+          ws.send(JSON.stringify({
+            type: 'synthesis',
+            text,
+            voice: options.voice || 'alloy',
+            speed: options.speed || 1.2
+          }));
+        };
+
+        ws.onmessage = async (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'error') {
+              reject(new Error(data.error));
+              return;
+            }
+            
+            if (data.type === 'audio') {
+              // Convert base64 to Uint8Array
+              const chunk = new Uint8Array(atob(data.chunk)
+                .split('')
+                .map(char => char.charCodeAt(0)));
+              audioChunks.push(chunk);
+            }
+            
+            if (data.type === 'end') {
+              // Combine all chunks into a single ArrayBuffer
+              const totalLength = audioChunks.reduce((acc, chunk) => acc + chunk.length, 0);
+              const combined = new Uint8Array(totalLength);
+              let offset = 0;
+              
+              for (const chunk of audioChunks) {
+                combined.set(chunk, offset);
+                offset += chunk.length;
+              }
+              
+              resolve(combined.buffer);
+              ws.close();
+            }
+          } catch (error) {
+            reject(error);
+          }
+        };
+
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          reject(new Error('WebSocket connection failed'));
+        };
+
+        ws.onclose = () => {
+          console.log('WebSocket connection closed');
+        };
+
+        // Add timeout
+        setTimeout(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.close();
+            reject(new Error('Synthesis timeout'));
+          }
+        }, 10000);
       });
-
-      if (!response.ok) {
-        throw new Error(`OpenAI synthesis failed: ${response.statusText}`);
-      }
-
-      return await response.arrayBuffer();
     } catch (error) {
       console.error('OpenAI synthesis error:', error);
       throw new Error('OpenAI synthesis failed');

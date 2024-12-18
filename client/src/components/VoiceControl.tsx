@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Mic, MicOff } from "lucide-react";
 import { voiceRecognition } from "@/lib/voice";
 import { processVoiceCommand } from "@/lib/openai";
-import { voiceSynthesis } from "@/lib/voice-synthesis";
+import { realtimeVoiceSynthesis } from "@/lib/voice-realtime";
 import { soundEffects } from "@/lib/sound-effects";
 import { VoiceAnimation } from "./VoiceAnimation";
 import fuzzysort from 'fuzzysort';
@@ -131,7 +131,7 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
             // Add a small delay to ensure audio context is ready
             await new Promise(resolve => setTimeout(resolve, 100));
             
-            await voiceSynthesis.speak(finalResponse, "alloy");
+            await realtimeVoiceSynthesis.speak(finalResponse);
             console.log('Voice synthesis completed successfully');
           } else {
             console.log('Empty response, skipping voice synthesis');
