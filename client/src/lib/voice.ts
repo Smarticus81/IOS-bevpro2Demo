@@ -77,15 +77,39 @@ class VoiceRecognition extends EventHandler {
 
     this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error:', event.error, event.message);
-      this.emit('error', `Recognition error: ${event.error}`);
+      
+      // Map Web Speech API error types to our error types
+      const errorTypeMap: { [key: string]: ErrorType } = {
+        'network': 'network',
+        'no-speech': 'recognition',
+        'audio-capture': 'recognition',
+        'not-allowed': 'recognition',
+        'service-not-allowed': 'network',
+        'bad-grammar': 'processing',
+        'aborted': 'processing'
+      };
+      
+      const errorType = errorTypeMap[event.error] || 'processing';
+      const errorMessage = event.message || `Recognition error: ${event.error}`;
+      
+      this.emit('error', { type: errorType, message: errorMessage });
 
+      if (errorType === 'network') {
+        console.error('Network error detected, stopping recognition');
+        this.stop();
+        return;
+      }
+      
       if (this.isListening && this.retryCount < this.maxRetries) {
         this.retryCount++;
         console.log(`Retrying speech recognition (${this.retryCount}/${this.maxRetries})`);
         setTimeout(() => this.start(), 1000);
       } else if (this.retryCount >= this.maxRetries) {
         console.error('Max retry attempts reached');
-        this.emit('error', 'Speech recognition failed after multiple attempts');
+        this.emit('error', { 
+          type: 'recognition', 
+          message: 'Speech recognition failed after multiple attempts. Please try again.'
+        });
         this.stop();
       }
     };

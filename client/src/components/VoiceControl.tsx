@@ -17,13 +17,33 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
   const [status, setStatus] = useState<string>("");
   const [isSupported, setIsSupported] = useState(true);
 
-  const handleResponse = async (response: string) => {
+  // Error types for better error handling
+  type ErrorType = 'recognition' | 'synthesis' | 'network' | 'processing';
+  
+  const handleResponse = async (response: string, errorType?: ErrorType) => {
     try {
-      setStatus(response);
-      await voiceSynthesis.speak(response);
+      let finalResponse = response;
+      
+      if (errorType) {
+        const errorMessages = {
+          recognition: "I'm having trouble understanding you. Could you speak more clearly?",
+          synthesis: "I understood you, but I'm having trouble responding. I'll display my response instead.",
+          network: "I'm having connection issues. Please check your internet connection.",
+          processing: "I'm having trouble processing your request. Could you try again?"
+        };
+        
+        finalResponse = errorMessages[errorType];
+        console.warn(`${errorType} error occurred:`, response);
+      }
+      
+      setStatus(finalResponse);
+      
+      if (!errorType || errorType !== 'synthesis') {
+        await voiceSynthesis.speak(finalResponse, "alloy");
+      }
     } catch (error) {
       console.error('Voice synthesis error:', error);
-      setStatus(response); // Still show text response even if voice fails
+      setStatus(response); // Fallback to visual feedback
     }
   };
 
@@ -55,15 +75,18 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         setStatus("");
       });
 
-      voiceRecognition.on<string>('error', (errorMessage) => {
-        console.error('Voice recognition error:', errorMessage);
-        setStatus(`Error: ${errorMessage}`);
-        setIsListening(false);
+      voiceRecognition.on<{ type: ErrorType; message: string }>('error', (error) => {
+        console.error('Voice recognition error:', error);
+        handleResponse(error.message, error.type);
         
-        // Reset status after error message
-        setTimeout(() => {
-          setStatus("");
-        }, 3000);
+        if (error.type === 'network') {
+          setIsListening(false);
+        } else {
+          // For other errors, keep listening but show the error temporarily
+          setTimeout(() => {
+            setStatus("Waiting for 'hey bar'...");
+          }, 3000);
+        }
       });
     };
 
