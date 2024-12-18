@@ -167,6 +167,26 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
   useEffect(() => {
     setIsSupported(voiceRecognition.isSupported());
 
+    // Initialize voice synthesis on component mount
+    const initializeVoice = async () => {
+      try {
+        // Load voice settings
+        const response = await fetch('/api/settings/voice');
+        if (response.ok) {
+          const { config } = await response.json();
+          setProvider(config.provider);
+          setVoiceEnabled(config.voiceEnabled);
+          setPitch([config.pitch]);
+          setRate([config.rate]);
+          setVolume([config.volume]);
+        }
+      } catch (error) {
+        console.error('Failed to load voice settings:', error);
+      }
+    };
+
+    initializeVoice();
+
     const setupVoiceRecognition = () => {
       voiceRecognition.on<WakeWordEvent>('wakeWord', async (event) => {
         console.log('Wake word event received:', event);
@@ -322,21 +342,48 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         }
 
         case "query": {
-          // Always respond to queries in inquiry mode
-          if (mode === 'inquiry') {
-            let response = intent.conversational_response;
-
-            if (intent.category) {
-              const categoryDrinks = drinks.filter(d =>
-                d.category.toLowerCase() === intent.category?.toLowerCase()
-              );
-              if (categoryDrinks.length > 0) {
-                const drinkNames = categoryDrinks.map(d => d.name).join(', ');
-                response += ` We have: ${drinkNames}`;
+          // Always speak in inquiry mode
+          if (mode === 'inquiry') { 
+            try {
+              if (intent.conversational_response?.trim()) {
+                console.log('Attempting voice synthesis in inquiry mode:', {
+                  mode,
+                  response: intent.conversational_response,
+                  audioContext: !!window.AudioContext,
+                  webAudioEnabled: 'AudioContext' in window,
+                  timestamp: new Date().toISOString()
+                });
+                
+                // Ensure audioContext is initialized by user interaction
+                await soundEffects.playListeningStop();
+                
+                // Add a small delay to ensure audio context is ready
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                await realtimeVoiceSynthesis.speak(intent.conversational_response);
+                console.log('Voice synthesis completed successfully');
+              } else {
+                console.log('Empty response, skipping voice synthesis');
+              }
+            } catch (error) {
+              console.error('Voice synthesis error:', {
+                error,
+                mode,
+                response: intent.conversational_response,
+                timestamp: new Date().toISOString()
+              });
+              setStatus('Voice response failed. ' + intent.conversational_response);
+              
+              // Try fallback to Web Speech API
+              try {
+                const utterance = new SpeechSynthesisUtterance(intent.conversational_response);
+                window.speechSynthesis.speak(utterance);
+              } catch (fallbackError) {
+                console.error('Fallback synthesis failed:', fallbackError);
               }
             }
-
-            await handleResponse(response);
+          } else {
+            console.log('Skipping voice response - currently in order mode');
           }
           break;
         }

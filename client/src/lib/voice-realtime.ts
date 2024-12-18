@@ -84,6 +84,8 @@ class RealtimeVoiceSynthesis extends EventTarget {
     });
 
     try {
+      console.log('Processing voice synthesis request:', { text, mode: this.currentMode });
+      
       // Use Eleven Labs when initialized, regardless of mode
       if (this.elevenLabsInitialized) {
         try {
@@ -95,7 +97,13 @@ class RealtimeVoiceSynthesis extends EventTarget {
         }
       } else {
         console.log('Using Web Speech API as fallback...');
-        await this.synthesizeWithWebSpeech(text);
+        try {
+          await this.synthesizeWithWebSpeech(text);
+        } catch (error) {
+          console.error('Web Speech synthesis failed:', error);
+          // Re-throw to ensure error is properly handled
+          throw new Error('Voice synthesis failed with both providers');
+        }
       }
     } catch (error) {
       console.error('Speech synthesis failed:', error);
@@ -137,7 +145,13 @@ class RealtimeVoiceSynthesis extends EventTarget {
 
   private async synthesizeWithWebSpeech(text: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      console.log('Using Web Speech API for synthesis');
+      if (!text) {
+        console.warn('Empty text provided to Web Speech synthesis');
+        resolve();
+        return;
+      }
+      
+      console.log('Using Web Speech API for synthesis:', { text });
       const utterance = new SpeechSynthesisUtterance(text);
 
       // Configure base settings
