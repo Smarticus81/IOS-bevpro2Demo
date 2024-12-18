@@ -84,15 +84,17 @@ class RealtimeVoiceSynthesis extends EventTarget {
     });
 
     try {
-      // Only use Eleven Labs in inquiry mode when available
-      if (this.currentMode === 'inquiry' && this.elevenLabsInitialized) {
+      // Use Eleven Labs when initialized, regardless of mode
+      if (this.elevenLabsInitialized) {
         try {
+          console.log('Attempting Eleven Labs synthesis...');
           await this.synthesizeWithElevenLabs(text);
         } catch (error) {
           console.warn('Eleven Labs synthesis failed, falling back to Web Speech:', error);
           await this.synthesizeWithWebSpeech(text);
         }
       } else {
+        console.log('Using Web Speech API as fallback...');
         await this.synthesizeWithWebSpeech(text);
       }
     } catch (error) {

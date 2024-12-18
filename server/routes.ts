@@ -134,6 +134,27 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Voice synthesis endpoint
+  // Voice configuration endpoints
+  app.get("/api/settings/voice", (req, res) => {
+    try {
+      // Return current voice configuration
+      res.json({
+        success: true,
+        config: {
+          provider: process.env.VOICE_PROVIDER || 'elevenlabs',
+          voiceEnabled: process.env.VOICE_ENABLED !== 'false',
+          pitch: parseFloat(process.env.VOICE_PITCH || '1.0'),
+          rate: parseFloat(process.env.VOICE_RATE || '1.0'),
+          volume: parseFloat(process.env.VOICE_VOLUME || '1.0'),
+          hasElevenLabs: !!process.env.ELEVEN_LABS_API_KEY
+        }
+      });
+    } catch (error: any) {
+      console.error('Error fetching voice settings:', error);
+      res.status(500).json({ error: 'Failed to fetch voice settings' });
+    }
+  });
+
   // Voice settings endpoint
   app.post("/api/settings/voice", async (req, res) => {
     try {
@@ -164,6 +185,13 @@ export function registerRoutes(app: Express): Server {
         // Store the API key securely
         process.env.ELEVEN_LABS_API_KEY = apiKey;
       }
+
+      // Store all voice settings
+      process.env.VOICE_PROVIDER = provider;
+      process.env.VOICE_ENABLED = String(voiceEnabled);
+      process.env.VOICE_PITCH = String(pitch);
+      process.env.VOICE_RATE = String(rate);
+      process.env.VOICE_VOLUME = String(volume);
 
       // Return success response with current configuration
       res.json({

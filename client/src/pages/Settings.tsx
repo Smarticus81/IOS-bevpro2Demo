@@ -24,8 +24,26 @@ export function Settings() {
   const [isTestingVoice, setIsTestingVoice] = useState(false);
 
   useEffect(() => {
+    // Load existing settings on mount
+    const loadSettings = async () => {
+      try {
+        const response = await fetch('/api/settings/voice');
+        if (response.ok) {
+          const { config } = await response.json();
+          setProvider(config.provider);
+          setVoiceEnabled(config.voiceEnabled);
+          setPitch([config.pitch]);
+          setRate([config.rate]);
+          setVolume([config.volume]);
+        }
+      } catch (error) {
+        console.error('Failed to load voice settings:', error);
+      }
+    };
+
+    loadSettings();
     checkVoiceStatus();
-  }, [provider]);
+  }, []);
 
   const checkVoiceStatus = async () => {
     try {
