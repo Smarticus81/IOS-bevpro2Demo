@@ -134,6 +134,63 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Voice synthesis endpoint
+  // Voice settings endpoint
+  app.post("/api/settings/voice", async (req, res) => {
+    try {
+      const { provider, voiceEnabled, pitch, rate, volume, apiKey } = req.body;
+      
+      console.log('Voice settings update:', {
+        provider,
+        voiceEnabled,
+        pitch,
+        rate,
+        volume,
+        hasApiKey: !!apiKey,
+        timestamp: new Date().toISOString()
+      });
+
+      // Validate provider
+      if (!['elevenlabs', 'webspeech'].includes(provider)) {
+        throw new Error('Invalid voice provider');
+      }
+
+      // If Eleven Labs is selected, validate and update API key
+      if (provider === 'elevenlabs' && apiKey) {
+        // Validate Eleven Labs API key format
+        if (!apiKey.match(/^[a-zA-Z0-9]{32}$/)) {
+          throw new Error('Invalid Eleven Labs API key format');
+        }
+
+        // Store the API key securely
+        process.env.ELEVEN_LABS_API_KEY = apiKey;
+      }
+
+      // Return success response with current configuration
+      res.json({
+        success: true,
+        config: {
+          provider,
+          voiceEnabled,
+          pitch,
+          rate,
+          volume,
+          hasElevenLabs: !!process.env.ELEVEN_LABS_API_KEY
+        }
+      });
+    } catch (error: any) {
+      console.error('Voice settings error:', {
+        message: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
+      
+      res.status(400).json({
+        error: 'Failed to update voice settings',
+        message: error.message
+      });
+    }
+  });
+
   app.post("/api/synthesize", async (req, res) => {
     try {
       const { text, voice, speed, useElevenLabs } = req.body;
