@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # Initialize OpenAI
+# Initialize OpenAI with detailed logging
 openai_api_key = os.getenv('OPENAI_API_KEY')
 if not openai_api_key:
     logger.error("OpenAI API key not found")
@@ -25,7 +26,17 @@ if not openai_api_key:
 
 try:
     openai_client = OpenAI(api_key=openai_api_key)
-    logger.info("OpenAI client initialized successfully")
+    # Test the client with a simple request
+    test_response = openai_client.audio.speech.create(
+        model="tts-1",
+        voice="nova",
+        input="Test",
+        response_format="mp3"
+    )
+    if test_response and test_response.content:
+        logger.info("OpenAI client initialized and tested successfully")
+    else:
+        raise ValueError("OpenAI test response was empty")
 except Exception as e:
     logger.error(f"Failed to initialize OpenAI client: {str(e)}")
     raise

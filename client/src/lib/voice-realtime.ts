@@ -57,8 +57,13 @@ class RealtimeVoiceSynthesis extends EventTarget {
       timestamp: new Date().toISOString()
     });
 
+    // Cancel any ongoing speech synthesis
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+
     try {
-      // Attempt OpenAI Nova voice synthesis first
+      // Always try OpenAI Nova first
       try {
         console.log('Using OpenAI Nova voice synthesis:', {
           text: text.substring(0, 100) + '...',
@@ -74,19 +79,20 @@ class RealtimeVoiceSynthesis extends EventTarget {
           timestamp: new Date().toISOString()
         });
         
-        // Fallback to Web Speech API
+        // If OpenAI fails, wait a moment before trying Web Speech API
+        await new Promise(resolve => setTimeout(resolve, 100));
         console.log('Falling back to Web Speech API');
         await this.synthesizeWithWebSpeech(text);
       }
     } catch (error) {
       console.error('All speech synthesis methods failed:', error);
+      // Don't throw the error, just log it and dispatch the event
       this.dispatchEvent(new CustomEvent('error', {
         detail: {
           type: 'synthesis' as const,
           message: 'Failed to synthesize speech'
         }
       }));
-      throw error;
     }
   }
 
