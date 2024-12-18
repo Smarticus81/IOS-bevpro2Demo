@@ -2,6 +2,7 @@ import { Switch, Route } from "wouter";
 import { Home } from "@/pages/Home";
 import { Inventory } from "@/pages/Inventory";
 import { AIManagement } from "@/pages/AIManagement";
+import { Settings } from "@/pages/Settings";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
@@ -13,6 +14,7 @@ function App() {
         <Route path="/" component={Home} />
         <Route path="/inventory" component={Inventory} />
         <Route path="/ai-management" component={AIManagement} />
+        <Route path="/settings" component={Settings} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

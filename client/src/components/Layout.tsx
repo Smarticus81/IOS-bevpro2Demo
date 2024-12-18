@@ -1,6 +1,6 @@
 import { Sidebar, SidebarContent, SidebarHeader, SidebarTrigger, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { Home, Package, Brain, Menu } from "lucide-react";
+import { Home, Package, Brain, Settings } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
 interface LayoutProps {
@@ -61,6 +61,19 @@ export function Layout({ children }: LayoutProps) {
                   <Link href="/ai-management">
                     <Brain className="h-4 w-4" />
                     <span>AI Management</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location === "/settings"}
+                  tooltip="Settings"
+                >
+                  <Link href="/settings">
+                    <Settings className="h-4 w-4" />
+                    <span>Settings</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
