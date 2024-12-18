@@ -1,6 +1,30 @@
-import { EventEmitter } from 'events';
+type EventCallback = (data?: any) => void;
+type EventMap = { [key: string]: EventCallback[] };
 
-class VoiceRecognition extends EventEmitter {
+class EventHandler {
+  private events: EventMap = {};
+
+  on(event: string, callback: EventCallback) {
+    if (!this.events[event]) {
+      this.events[event] = [];
+    }
+    this.events[event].push(callback);
+  }
+
+  emit(event: string, data?: any) {
+    if (this.events[event]) {
+      this.events[event].forEach(callback => callback(data));
+    }
+  }
+
+  off(event: string, callback: EventCallback) {
+    if (this.events[event]) {
+      this.events[event] = this.events[event].filter(cb => cb !== callback);
+    }
+  }
+}
+
+class VoiceRecognition extends EventHandler {
   private recognition: SpeechRecognition | null = null;
   private isListening = false;
   private wakeWord = "hey bar";
