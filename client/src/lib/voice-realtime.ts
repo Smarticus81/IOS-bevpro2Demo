@@ -77,25 +77,39 @@ class RealtimeVoiceSynthesis extends EventTarget {
       return;
     }
 
-    console.log('Processing speech request:', {
+    console.log('Starting voice synthesis:', {
       text,
-      mode: this.currentMode
+      mode: this.currentMode,
+      timestamp: new Date().toISOString()
     });
 
     try {
-      console.log('Processing voice synthesis request:', { text, mode: this.currentMode });
-      
-      // Use OpenAI TTS for inquiry mode ("hey bev")
+      // Always use OpenAI TTS for inquiry mode ("hey bev")
       if (this.currentMode === 'inquiry') {
+        console.log('Using OpenAI TTS for inquiry mode response:', {
+          text: text.substring(0, 100) + '...',
+          timestamp: new Date().toISOString()
+        });
+        
         try {
-          console.log('Using OpenAI TTS for inquiry mode...');
           await this.synthesizeWithOpenAI(text);
+          console.log('OpenAI voice synthesis completed successfully');
         } catch (error) {
-          console.warn('OpenAI synthesis failed, trying Eleven Labs:', error);
+          console.error('OpenAI synthesis failed:', {
+            error,
+            timestamp: new Date().toISOString()
+          });
+          
+          // Try Eleven Labs as fallback
           try {
+            console.log('Attempting Eleven Labs fallback...');
             await this.synthesizeWithElevenLabs(text);
           } catch (elevenLabsError) {
-            console.warn('Eleven Labs synthesis failed, falling back to Web Speech:', elevenLabsError);
+            console.error('Eleven Labs synthesis failed:', {
+              error: elevenLabsError,
+              timestamp: new Date().toISOString()
+            });
+            // Final fallback to Web Speech
             await this.synthesizeWithWebSpeech(text);
           }
         }

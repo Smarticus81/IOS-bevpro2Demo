@@ -209,10 +209,29 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
       let isProcessingCommand = false;
 
       voiceRecognition.on<string>('speech', async (text) => {
+        console.log('Raw speech input received:', text);
+        
+        // Normalize the text for wake word detection
+        const normalizedText = text.toLowerCase().trim();
+        
         // Check if we're in training mode first
         if (voiceTraining.isInTraining()) {
-          const handled = await voiceTraining.handleVoiceInput(text);
+          const handled = await voiceTraining.handleVoiceInput(normalizedText);
           if (handled) return;
+        }
+        
+        // Enhanced wake word detection
+        const isInquiryWake = normalizedText.includes('hey bev');
+        const isOrderWake = normalizedText.includes('hey bar');
+        
+        if (isInquiryWake) {
+          console.log('Inquiry wake word detected ("hey bev")');
+          setMode('inquiry');
+          realtimeVoiceSynthesis.setMode('inquiry');
+        } else if (isOrderWake) {
+          console.log('Order wake word detected ("hey bar")');
+          setMode('order');
+          realtimeVoiceSynthesis.setMode('order');
         }
         if (!text) {
           console.error('Received empty speech text');
