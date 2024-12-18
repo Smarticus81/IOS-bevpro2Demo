@@ -132,10 +132,10 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
     setIsSupported(voiceRecognition.isSupported());
 
     const setupVoiceRecognition = () => {
-      voiceRecognition.on('wakeWord', async ({ mode: wakeMode }) => {
+      voiceRecognition.on<WakeWordEvent>('wakeWord', async (event) => {
         await soundEffects.playWakeWord();
-        setMode(wakeMode);
-        setStatus(wakeMode === 'order' ? "Listening for order..." : "How can I help you?");
+        setMode(event.mode);
+        setStatus(event.mode === 'order' ? "Listening for order..." : "How can I help you?");
       });
 
       let processingTimeout: NodeJS.Timeout;
