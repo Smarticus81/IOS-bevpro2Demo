@@ -8,11 +8,10 @@ type VoiceId = "alloy" | "echo" | "fable" | "onyx" | "shimmer";
 export class VoiceSynthesis {
   private static instance: VoiceSynthesis;
   private audioContext: AudioContext | null = null;
-  private audioQueue: Array<{ text: string; voice: string }> = [];
-  private isPlaying = false;
+  private currentAudio: HTMLAudioElement | null = null;
+  private lastProcessedText = '';
 
   private constructor() {
-    // Initialize Web Audio API context on first user interaction
     document.addEventListener('click', () => {
       if (!this.audioContext) {
         this.audioContext = new AudioContext();
@@ -27,58 +26,51 @@ export class VoiceSynthesis {
     return VoiceSynthesis.instance;
   }
 
-  private async createAudioElement(arrayBuffer: ArrayBuffer): Promise<HTMLAudioElement> {
-    const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    
-    // Clean up object URL after audio is loaded
-    audio.addEventListener('ended', () => URL.revokeObjectURL(url));
-    return audio;
-  }
+  async speak(text: string, voice: VoiceId = "alloy") {
+    // Avoid duplicate responses
+    if (text === this.lastProcessedText) {
+      console.log('Skipping duplicate text:', text);
+      return;
+    }
+    this.lastProcessedText = text;
 
-  private async processQueue() {
-    if (this.isPlaying || this.audioQueue.length === 0) return;
-
-    this.isPlaying = true;
-    const { text, voice } = this.audioQueue.shift()!;
+    // Stop any current audio
+    if (this.currentAudio) {
+      this.currentAudio.pause();
+      this.currentAudio = null;
+    }
 
     try {
       const openai = await getOpenAIClient();
-      
       const response = await openai.audio.speech.create({
-        model: "tts-1" as VoiceModel,
-        voice: voice as VoiceId,
+        model: "tts-1",
+        voice,
         input: text,
+        speed: 1.2 // Slightly faster speech
       });
 
       const arrayBuffer = await response.arrayBuffer();
-      const audio = await this.createAudioElement(arrayBuffer);
-
-      audio.addEventListener('ended', () => {
-        this.isPlaying = false;
-        this.processQueue();
+      const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+      const url = URL.createObjectURL(blob);
+      
+      this.currentAudio = new Audio(url);
+      this.currentAudio.addEventListener('ended', () => {
+        URL.revokeObjectURL(url);
+        this.currentAudio = null;
       });
 
-      await audio.play();
+      await this.currentAudio.play();
     } catch (error) {
-      console.error('Error synthesizing speech:', error);
-      this.isPlaying = false;
-      this.processQueue();
+      console.error('Speech synthesis error:', error);
     }
   }
 
-  async speak(text: string, voice: VoiceId = "alloy") {
-    if (!text) return;
-
-    this.audioQueue.push({ text, voice });
-    if (!this.isPlaying) {
-      await this.processQueue();
+  stop() {
+    if (this.currentAudio) {
+      this.currentAudio.pause();
+      this.currentAudio = null;
     }
-  }
-
-  clearQueue() {
-    this.audioQueue = [];
+    this.lastProcessedText = '';
   }
 }
 
