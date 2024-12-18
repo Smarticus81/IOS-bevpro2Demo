@@ -4,6 +4,15 @@ import { db } from "@db";
 import { drinks, orders, orderItems } from "@db/schema";
 import { eq, sql } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
+import OpenAI from "openai";
+
+const getOpenAIClient = async () => {
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (!openaiKey) {
+    throw new Error("OpenAI API key not configured");
+  }
+  return new OpenAI({ apiKey: openaiKey });
+};
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
@@ -113,6 +122,60 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({
         error: "Configuration error",
         message: err.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Voice synthesis endpoint
+  app.post("/api/synthesize", async (req, res) => {
+    try {
+      const { text, voice, speed } = req.body;
+      
+      console.log('Voice synthesis request:', {
+        text,
+        voice,
+        speed,
+        timestamp: new Date().toISOString()
+      });
+      
+      if (!text) {
+        return res.status(400).json({ error: "Text is required" });
+      }
+
+      const openai = await getOpenAIClient();
+      console.log('Starting OpenAI speech synthesis...');
+      
+      const response = await openai.audio.speech.create({
+        model: "tts-1",
+        voice: voice || "alloy",
+        input: text,
+        speed: speed || 1.2
+      });
+
+      console.log('OpenAI synthesis successful, streaming response...');
+      
+      // Convert response to array buffer and stream
+      const buffer = Buffer.from(await response.arrayBuffer());
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Content-Length', buffer.length);
+      res.send(buffer);
+      
+      console.log('Voice synthesis completed successfully:', {
+        responseSize: buffer.length,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      const errorMessage = error.message || 'Unknown error occurred';
+      console.error("Voice synthesis error:", {
+        error: errorMessage,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
+      
+      res.status(500).json({ 
+        error: "Voice synthesis failed",
+        message: errorMessage,
         timestamp: new Date().toISOString()
       });
     }

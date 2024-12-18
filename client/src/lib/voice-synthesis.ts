@@ -1,25 +1,18 @@
 import type { VoiceError } from "@/types/speech";
-import { getOpenAIClient } from "./openai";
+import { voiceProviders, type VoiceProvider, type VoiceOptions } from "./voice-providers";
 
-type VoiceModel = "tts-1";
 type VoiceId = "alloy" | "echo" | "fable" | "onyx" | "shimmer";
 
 class VoiceSynthesis {
   private static instance: VoiceSynthesis;
-  private audioContext: AudioContext | null = null;
   private currentAudio: HTMLAudioElement | null = null;
   private speakPromise: Promise<void> | null = null;
   private lastSpeakTime: number = 0;
   private readonly MIN_INTERVAL = 300; // Minimum time between speeches in ms
   private readonly SYNTHESIS_TIMEOUT = 8000; // Maximum time to wait for synthesis
+  private currentProvider: VoiceProvider = 'openai';
 
-  private constructor() {
-    document.addEventListener('click', () => {
-      if (!this.audioContext) {
-        this.audioContext = new AudioContext();
-      }
-    }, { once: true });
-  }
+  private constructor() {}
 
   static getInstance(): VoiceSynthesis {
     if (!VoiceSynthesis.instance) {
@@ -28,22 +21,22 @@ class VoiceSynthesis {
     return VoiceSynthesis.instance;
   }
 
-  async speak(text: string, voice: VoiceId = "alloy") {
+  setProvider(provider: VoiceProvider) {
+    this.currentProvider = provider;
+    voiceProviders.setProvider(provider);
+  }
+
+  async speak(text: string, voice: VoiceId = "alloy", options: Partial<VoiceOptions> = {}) {
     console.log('Voice synthesis speak called:', {
       text,
       voice,
-      audioContext: !!this.audioContext,
+      provider: this.currentProvider,
       timestamp: new Date().toISOString()
     });
 
     if (!text?.trim()) {
       console.warn('Empty text provided to speak');
       return;
-    }
-
-    if (!this.audioContext) {
-      console.log('Creating new AudioContext');
-      this.audioContext = new AudioContext();
     }
 
     const now = Date.now();
@@ -55,16 +48,10 @@ class VoiceSynthesis {
       });
       return;
     }
-    
-    // Clean up any existing audio before starting new synthesis
-    this.stop();
 
+    // Clean up any existing audio
+    this.stop();
     this.lastSpeakTime = now;
-    console.log('Starting voice synthesis:', {
-      text,
-      voice,
-      timestamp: new Date().toISOString()
-    });
 
     // Create a timeout promise
     const timeoutPromise = new Promise<void>((_, reject) => {
@@ -73,64 +60,46 @@ class VoiceSynthesis {
       }, this.SYNTHESIS_TIMEOUT);
     });
 
-    // Create the synthesis promise
-    const synthesisPromise = async () => {
-      const openai = await getOpenAIClient();
-      const response = await openai.audio.speech.create({
-        model: "tts-1",
-        voice,
-        input: text,
-        speed: 1.2
-      });
-
-      const arrayBuffer = await response.arrayBuffer();
-      const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
-      const url = URL.createObjectURL(blob);
-      
-      return new Promise<void>((resolve, reject) => {
-        this.currentAudio = new Audio(url);
-        
-        this.currentAudio.addEventListener('ended', () => {
-          URL.revokeObjectURL(url);
-          this.currentAudio = null;
-          resolve();
-        });
-
-        this.currentAudio.addEventListener('error', (e) => {
-          console.error('Audio playback error:', e);
-          URL.revokeObjectURL(url);
-          this.currentAudio = null;
-          reject(e);
-        });
-
-        this.currentAudio.play().catch(error => {
-          console.error('Failed to play audio:', error);
-          URL.revokeObjectURL(url);
-          this.currentAudio = null;
-          reject(error);
-        });
-      });
-    };
-
     try {
       // Race between timeout and synthesis
+      const synthesisPromise = async () => {
+        const audioBuffer = await voiceProviders.synthesize(text, {
+          provider: this.currentProvider,
+          voice,
+          ...options
+        });
+        await voiceProviders.playAudio(audioBuffer);
+      };
+
       this.speakPromise = Promise.race([synthesisPromise(), timeoutPromise]);
       await this.speakPromise;
+      
+      console.log('Voice synthesis completed successfully');
     } catch (error: any) {
       console.error('Speech synthesis error:', error);
       this.speakPromise = null;
+
+      // Try fallback providers in order
+      const fallbackProviders: VoiceProvider[] = ['native', 'google', 'elevenlabs'];
       
-      // Enhance error handling with more specific error information
-      const errorMessage = error.message || 'Unknown speech synthesis error';
-      if (errorMessage.includes('timeout')) {
-        throw new Error('Speech synthesis timed out. Please try again.');
-      } else if (error.response?.status === 429) {
-        throw new Error('Too many voice requests. Please wait a moment.');
-      } else if (error.code === 'PLAY_FAILED') {
-        throw new Error('Failed to play audio. Please check your audio settings.');
-      } else {
-        throw new Error(`Speech synthesis failed: ${errorMessage}`);
+      for (const provider of fallbackProviders) {
+        try {
+          console.log(`Attempting fallback to ${provider} provider`);
+          const audioBuffer = await voiceProviders.synthesize(text, {
+            provider,
+            voice,
+            ...options
+          });
+          await voiceProviders.playAudio(audioBuffer);
+          console.log(`Fallback to ${provider} successful`);
+          return;
+        } catch (fallbackError) {
+          console.error(`Fallback to ${provider} failed:`, fallbackError);
+        }
       }
+
+      // If all fallbacks fail, throw the original error
+      throw new Error(`Speech synthesis failed: ${error.message}`);
     }
   }
 

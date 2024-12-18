@@ -117,11 +117,19 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
       if (mode === 'inquiry') { // Only speak in inquiry mode
         try {
           if (finalResponse?.trim()) {
-            console.log('Attempting voice synthesis:', {
+            console.log('Attempting voice synthesis in inquiry mode:', {
               mode,
               response: finalResponse,
+              audioContext: !!window.AudioContext,
+              webAudioEnabled: 'AudioContext' in window,
               timestamp: new Date().toISOString()
             });
+            
+            // Ensure audioContext is initialized by user interaction
+            await soundEffects.playListeningStop();
+            
+            // Add a small delay to ensure audio context is ready
+            await new Promise(resolve => setTimeout(resolve, 100));
             
             await voiceSynthesis.speak(finalResponse, "alloy");
             console.log('Voice synthesis completed successfully');
@@ -136,6 +144,14 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
             timestamp: new Date().toISOString()
           });
           setStatus('Voice response failed. ' + finalResponse);
+          
+          // Try fallback to Web Speech API
+          try {
+            const utterance = new SpeechSynthesisUtterance(finalResponse);
+            window.speechSynthesis.speak(utterance);
+          } catch (fallbackError) {
+            console.error('Fallback synthesis failed:', fallbackError);
+          }
         }
       } else {
         console.log('Skipping voice response - currently in order mode');
