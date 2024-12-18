@@ -178,6 +178,11 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
              - "finish order"
              - "process payment"
              - "check out"
+             - "place order"
+             - "submit order"
+             - "complete purchase"
+             - "pay for order"
+             - "finalize order"
           3. Handle "shutdown" intent for commands like:
              - "shut down"
              - "turn off"

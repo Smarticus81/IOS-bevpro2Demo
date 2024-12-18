@@ -13,7 +13,7 @@ import type { ErrorType, VoiceError, WakeWordEvent } from "@/types/speech";
 
 interface VoiceControlProps {
   drinks: Drink[];
-  onAddToCart: (drink: Drink, quantity: number) => void;
+  onAddToCart: (params: { type: 'COMPLETE_TRANSACTION' } | { type: 'ADD_ITEM', drink: Drink, quantity: number }) => void;
 }
 
 export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
@@ -282,7 +282,7 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
             const drink = findBestMatch(item.name, drinks);
 
             if (drink) {
-              onAddToCart(drink, item.quantity);
+              onAddToCart({ type: 'ADD_ITEM', drink, quantity: item.quantity });
               successfulItems.push(`${item.quantity} ${drink.name}`);
             } else {
               failedItems.push(item.name);
@@ -348,14 +348,40 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         }
 
         case "complete_transaction": {
-          await soundEffects.playSuccess();
-          setMode('order'); // Reset to order mode after completion
-          setIsWakeWordOnly(true); // Enter wake word only mode
-          setStatus("Transaction completed. Say 'hey bar' to start a new order or 'hey bev' for questions.");
-          if (mode === 'inquiry') {
-            await handleResponse(intent.conversational_response);
+          try {
+            // Process transaction completion
+            console.log('Processing transaction completion:', {
+              mode,
+              intent,
+              timestamp: new Date().toISOString()
+            });
+
+            // Trigger transaction processing
+            onAddToCart({ type: 'COMPLETE_TRANSACTION' });
+            
+            await soundEffects.playSuccess();
+            setMode('order'); // Reset to order mode after completion
+            setIsWakeWordOnly(true); // Enter wake word only mode
+            
+            const completionMessage = "Order processed successfully. Say 'hey bar' to start a new order or 'hey bev' for questions.";
+            setStatus(completionMessage);
+            
+            if (mode === 'inquiry') {
+              await handleResponse(intent.conversational_response || completionMessage);
+            }
+
+            console.log('Transaction completed successfully', {
+              timestamp: new Date().toISOString()
+            });
+          } catch (error) {
+            console.error('Failed to process transaction:', error);
+            await soundEffects.playError();
+            const errorMessage = "Sorry, there was an issue processing your order. Please try again.";
+            setStatus(errorMessage);
+            if (mode === 'inquiry') {
+              await handleResponse(errorMessage);
+            }
           }
-          // Here you would typically trigger the actual transaction processing
           break;
         }
 
