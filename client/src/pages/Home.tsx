@@ -1,9 +1,8 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { DrinkCard } from "@/components/DrinkCard";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { VoiceControl } from "@/components/VoiceControl";
 import { OrderSummary } from "@/components/OrderSummary";
-import { OrderSummaryDrawer } from "@/components/OrderSummaryDrawer";
 import { VoiceFeedback } from "@/components/VoiceFeedback";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -224,6 +223,30 @@ export function Home() {
             </div>
           </div>
 
+          {/* Voice Control - Desktop */}
+          <div className="hidden lg:block fixed right-8 top-24 z-50">
+            <Card className="bg-white/95 backdrop-blur-lg border-white/20 shadow-lg">
+              <CardContent className="p-4">
+                <VoiceControl 
+                  drinks={drinks}
+                  onAddToCart={addToCart}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Voice Control - Mobile */}
+          <div className="lg:hidden fixed left-1/2 -translate-x-1/2 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-50">
+            <Card className="bg-white/95 backdrop-blur-lg border-white/20 shadow-lg">
+              <CardContent className="p-3">
+                <VoiceControl 
+                  drinks={drinks}
+                  onAddToCart={addToCart}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Order Summary - Mobile */}
           <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40">
             <div className="container mx-auto p-4">
@@ -239,18 +262,6 @@ export function Home() {
                 </CardContent>
               </Card>
             </div>
-          </div>
-
-          {/* Voice Control */}
-          <div className="fixed bottom-24 lg:bottom-8 left-1/2 -translate-x-1/2 z-30">
-            <Card className="bg-background/95 backdrop-blur-lg border-white/20 shadow-lg">
-              <CardContent className="p-4">
-                <VoiceControl 
-                  drinks={drinks}
-                  onAddToCart={addToCart}
-                />
-              </CardContent>
-            </Card>
           </div>
         </div>
       </main>
