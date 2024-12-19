@@ -22,15 +22,10 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
       onClick={quantity === 0 ? onAdd : onRemove}
       className="group relative cursor-pointer select-none"
     >
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/90 to-white/70 
-                    shadow-lg hover:shadow-xl
-                    before:absolute before:inset-0 
-                    before:rounded-2xl before:border 
-                    before:border-white/20
-                    before:bg-gradient-to-br before:from-primary/5 before:to-transparent
-                    group-hover:before:border-primary/20
-                    backdrop-blur-xl transition-all duration-300">
-        <div className="aspect-[3/4]">
+      <div className="relative overflow-hidden rounded-2xl bg-white 
+                    shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)]
+                    transition-all duration-300">
+        <div className="aspect-[2/3]">
           {/* Loading Skeleton */}
           <div className={`absolute inset-0 bg-gray-100
                         ${imageLoaded ? 'opacity-0' : 'opacity-100'} 
@@ -46,8 +41,14 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
                      ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
           />
           
-          {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent" />
+          {/* Price Tag */}
+          <div className="absolute right-3 top-3 px-3 py-1
+                       bg-white/90 backdrop-blur-sm rounded-full
+                       shadow-sm border border-gray-100">
+            <span className="text-sm font-semibold text-gray-900">
+              ${drink.price}
+            </span>
+          </div>
           
           <AnimatePresence>
             {quantity > 0 && (
@@ -55,33 +56,26 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.8, opacity: 0 }}
-                className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center 
-                         rounded-full bg-primary/90
-                         text-sm font-medium text-white
-                         ring-2 ring-white/30 shadow-lg backdrop-blur-sm
-                         transition-all duration-300"
+                className="absolute left-3 top-3 flex h-7 w-7 items-center justify-center 
+                         rounded-full bg-primary shadow-sm
+                         text-sm font-medium text-white"
               >
                 {quantity}
               </motion.div>
             )}
           </AnimatePresence>
 
-          <div className="absolute inset-x-0 bottom-0 p-4">
+          <div className="absolute inset-x-0 bottom-0 p-4 bg-white">
             <div className="space-y-1">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h3 className="font-semibold text-base text-white">
-                    {drink.name}
-                  </h3>
-                  <p className="text-sm font-medium text-white/80">
-                    {drink.category}
-                  </p>
-                </div>
-                <span className="text-lg font-semibold text-white">
-                  ${drink.price}
-                </span>
+              <div className="flex flex-col">
+                <h3 className="font-semibold text-base text-gray-900 truncate">
+                  {drink.name}
+                </h3>
+                <p className="text-sm font-medium text-gray-500">
+                  {drink.category}
+                </p>
               </div>
-              <div className="text-sm text-white/60 font-medium">
+              <div className="text-xs font-medium text-gray-400">
                 In Stock: {drink.inventory}
               </div>
             </div>
