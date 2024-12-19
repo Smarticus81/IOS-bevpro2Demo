@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap');
+/* Use system fonts with Apple-style font stack */
 
 @tailwind base;
 @tailwind components;
@@ -6,57 +6,131 @@
 
 @layer base {
   :root {
-    --radius: 0.5rem;
-    --transition-ease: cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-duration: 0.3s;
+    --radius: 0.75rem;
+    --transition-ease: cubic-bezier(0.23, 1, 0.32, 1);
+    --transition-duration: 0.4s;
+    
+    /* Apple-inspired colors */
+    --apple-blue: rgb(0, 122, 255);
+    --apple-gray: rgb(142, 142, 147);
+    --apple-green: rgb(52, 199, 89);
+    --apple-red: rgb(255, 59, 48);
+    
+    /* Light mode variables */
+    --background-light: rgb(255, 255, 255);
+    --text-primary-light: rgb(0, 0, 0);
+    --text-secondary-light: rgb(99, 99, 102);
+    
+    /* Dark mode variables */
+    --background-dark: rgb(28, 28, 30);
+    --text-primary-dark: rgb(255, 255, 255);
+    --text-secondary-dark: rgb(174, 174, 178);
   }
 
   * {
-    @apply border-border transition-all duration-300;
+    @apply border-border transition-all;
+    font-family: -apple-system, BlinkMacSystemFont, ui-sans-serif, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
-    @apply font-sans antialiased bg-gradient-to-b from-pearl-light to-pearl-dark text-navy min-h-screen;
+    @apply antialiased min-h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white;
+    font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+    letter-spacing: -0.011em;
   }
 
-  h1 {
-    @apply text-headline;
-  }
-
-  h2 {
-    @apply text-subhead;
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
   }
 
   p {
-    @apply text-body;
-  }
-
-  small {
-    @apply text-caption;
+    @apply leading-relaxed text-zinc-600 dark:text-zinc-300;
   }
 }
 
 @layer components {
-  .glass-card {
-    @apply glass-morphism rounded-lg p-6;
+  /* Apple-style glass morphism */
+  .glass-morphism {
+    @apply backdrop-blur-xl bg-white/90 dark:bg-black/80 
+           border border-white/20 dark:border-white/10
+           shadow-[0_8px_32px_rgba(0,0,0,0.04)]
+           dark:shadow-[0_8px_32px_rgba(0,0,0,0.12)];
   }
   
+  /* Interactive elements with Apple-style animations */
   .interactive-element {
-    @apply touch-target cursor-pointer transition-all duration-300 ease-out
-           hover:scale-[1.02] active:scale-[0.98];
+    @apply cursor-pointer 
+           transition-all duration-300 ease-[cubic-bezier(0.4, 0, 0.2, 1)]
+           hover:scale-[1.02] active:scale-[0.98] 
+           hover:-translate-y-0.5
+           focus:outline-none focus:ring-2 focus:ring-blue-500/20;
   }
 
-  .voice-pulse {
-    @apply animate-pulse-ring;
+  /* Premium card styling */
+  .premium-card {
+    @apply glass-morphism rounded-2xl p-6
+           transition-all duration-500
+           hover:shadow-[0_12px_48px_rgba(0,0,0,0.06)]
+           dark:hover:shadow-[0_12px_48px_rgba(0,0,0,0.16)]
+           hover:translate-y-[-2px];
   }
   
-  .fade-enter {
-    @apply animate-fade-in;
+  /* Apple-style buttons */
+  .apple-button {
+    @apply rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900
+           px-6 py-3 font-semibold transition-all duration-300
+           hover:bg-zinc-800 dark:hover:bg-zinc-100
+           active:scale-[0.98] disabled:opacity-50;
+  }
+
+  /* Smooth animations */
+  .fade-up {
+    @apply motion-safe:animate-[fadeUp_0.5s_cubic-bezier(0.23,1,0.32,1)];
+  }
+  
+  .scale-up {
+    @apply motion-safe:animate-[scaleUp_0.4s_cubic-bezier(0.23,1,0.32,1)];
   }
 }
 
 @layer utilities {
+  /* Improved text wrapping */
   .text-balance {
     text-wrap: balance;
+  }
+  
+  /* Premium shadows */
+  .shadow-apple {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08),
+                0 20px 40px rgba(0, 0, 0, 0.06);
+  }
+  
+  .shadow-apple-dark {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15),
+                0 20px 40px rgba(0, 0, 0, 0.12);
+  }
+}
+
+/* Custom animations */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
