@@ -23,9 +23,17 @@ interface TrendData {
 }
 
 export function Dashboard() {
+  const [activeCategory, setActiveCategory] = useState<string | undefined>();
+  const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month' | 'year'>('week');
+  const [chartType, setChartType] = useState<'bar' | 'line' | 'pie'>('bar');
+  
   const { data: drinks = [] } = useQuery<Drink[]>({
     queryKey: ["/api/drinks"],
   });
+
+  const filteredDrinks = activeCategory
+    ? drinks.filter(drink => drink.category === activeCategory)
+    : drinks;
 
   // In a real app, this would come from the API
   const salesData: SalesData = {
@@ -70,6 +78,12 @@ export function Dashboard() {
       <NavBar />
       
       <div className="container mx-auto p-4 lg:p-8">
+        <DashboardVoiceControl
+          drinks={drinks}
+          onFilterChange={({ category }) => setActiveCategory(category)}
+          onTimeRangeChange={setTimeRange}
+          onChartTypeChange={setChartType}
+        />
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard</h1>
           <p className="text-muted-foreground">Welcome to your beverage management dashboard</p>
