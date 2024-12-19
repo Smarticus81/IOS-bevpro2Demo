@@ -158,25 +158,48 @@ export function Home() {
           <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide">
             <motion.button
               onClick={() => setSelectedCategory(null)}
-              className={`shrink-0 px-8 py-3 rounded-xl text-sm font-medium transition-all duration-300
-                bg-white shadow-lg hover:shadow-xl border border-white/20 backdrop-blur-sm
-                ${!selectedCategory ? 'ring-2 ring-primary/20 text-primary' : 'text-gray-700 hover:text-gray-900'}`}
+              className={`
+                shrink-0 w-20 h-20 rounded-full
+                flex flex-col items-center justify-center
+                text-sm font-medium transition-all duration-300
+                bg-white shadow-lg hover:shadow-xl
+                border-2 backdrop-blur-sm
+                ${!selectedCategory ? 
+                  'border-primary text-primary ring-2 ring-primary/20' : 
+                  'border-white/20 text-gray-700 hover:text-gray-900 hover:border-primary/20'}
+              `}
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.98 }}
             >
-              All Drinks
+              <span className="text-xl mb-1">🍷</span>
+              <span className="text-xs">All</span>
             </motion.button>
             {categories.map((category: string) => (
               <motion.button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
-                className={`shrink-0 px-8 py-3 rounded-xl text-sm font-medium transition-all duration-300
-                  bg-white shadow-lg hover:shadow-xl border border-white/20 backdrop-blur-sm
-                  ${selectedCategory === category ? 'ring-2 ring-primary/20 text-primary' : 'text-gray-700 hover:text-gray-900'}`}
+                className={`
+                  shrink-0 w-20 h-20 rounded-full
+                  flex flex-col items-center justify-center
+                  text-sm font-medium transition-all duration-300
+                  bg-white shadow-lg hover:shadow-xl
+                  border-2 backdrop-blur-sm
+                  ${selectedCategory === category ?
+                    'border-primary text-primary ring-2 ring-primary/20' :
+                    'border-white/20 text-gray-700 hover:text-gray-900 hover:border-primary/20'}
+                `}
                 whileHover={{ y: -2 }}
                 whileTap={{ scale: 0.98 }}
               >
-                {category}
+                <span className="text-xl mb-1">
+                  {category === 'Spirits' ? '🥃' :
+                   category === 'Beer' ? '🍺' :
+                   category === 'Wine' ? '🍷' :
+                   category === 'Signature' ? '🍸' :
+                   category === 'Classics' ? '🥂' :
+                   category === 'Non-Alcoholic' ? '🥤' : '🍹'}
+                </span>
+                <span className="text-xs">{category}</span>
               </motion.button>
             ))}
           </div>
