@@ -20,6 +20,7 @@ export function Home() {
   const [voiceMessage, setVoiceMessage] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [isOrderSummaryCollapsed, setIsOrderSummaryCollapsed] = useState(false);
   const { toast } = useToast();
 
   const playVoiceResponse = useCallback(async (message: string) => {
@@ -258,6 +259,8 @@ export function Home() {
                     onPlaceOrder={placeOrder}
                     isLoading={orderMutation.isPending}
                     variant="compact"
+                    isCollapsed={isOrderSummaryCollapsed}
+                    onToggleCollapse={() => setIsOrderSummaryCollapsed(!isOrderSummaryCollapsed)}
                   />
                 </CardContent>
               </Card>

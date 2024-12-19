@@ -1,7 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trash2 } from "lucide-react";
+import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import type { Drink } from "@db/schema";
 
 interface OrderSummaryProps {
@@ -10,6 +11,8 @@ interface OrderSummaryProps {
   onPlaceOrder: () => void;
   isLoading: boolean;
   variant?: "default" | "compact";
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export function OrderSummary({ 
@@ -17,7 +20,9 @@ export function OrderSummary({
   onRemoveItem, 
   onPlaceOrder,
   isLoading,
-  variant = "default" 
+  variant = "default",
+  isCollapsed = false,
+  onToggleCollapse
 }: OrderSummaryProps) {
   const total = cart.reduce((sum, item) => {
     const itemPrice = Number(item.drink.price);
@@ -26,17 +31,39 @@ export function OrderSummary({
 
   return (
     <div className={variant === "compact" ? "space-y-3" : "space-y-4"}>
-      {variant === "default" && (
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Order Summary</h3>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {variant === "default" && <h3 className="text-lg font-semibold">Order Summary</h3>}
           <Badge variant="outline" className="bg-primary/10 text-primary">
             {cart.length} items
           </Badge>
         </div>
-      )}
+        {variant === "compact" && onToggleCollapse && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={onToggleCollapse}
+          >
+            {isCollapsed ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </Button>
+        )}
+      </div>
       
-      <div className={`space-y-${variant === "compact" ? "2" : "3"} overflow-auto max-h-[33vh] pr-2 -mr-2`}>
-        {cart.map((item, index) => {
+      <AnimatePresence>
+        {!isCollapsed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className={`space-y-${variant === "compact" ? "2" : "3"} overflow-auto max-h-[33vh] pr-2 -mr-2`}
+          >
+            {cart.map((item, index) => {
           const itemPrice = Number(item.drink.price);
           const totalPrice = itemPrice * item.quantity;
           
@@ -70,12 +97,14 @@ export function OrderSummary({
           );
         })}
 
-        {cart.length === 0 && (
-          <div className={`text-center text-muted-foreground py-${variant === "compact" ? "4" : "8"}`}>
-            No items in cart
-          </div>
+            {cart.length === 0 && (
+              <div className={`text-center text-muted-foreground py-${variant === "compact" ? "4" : "8"}`}>
+                No items in cart
+              </div>
+            )}
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
 
       <div className="space-y-3">
         <div className="flex items-center justify-between font-semibold">
