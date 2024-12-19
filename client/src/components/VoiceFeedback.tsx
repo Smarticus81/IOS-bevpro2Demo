@@ -13,25 +13,73 @@ interface VoiceFeedbackProps {
 
 export function VoiceFeedback({ message, isPlaying, voice = 'nova' }: VoiceFeedbackProps) {
   const lastMessageRef = useRef<string | null>(null);
+  const playbackAttemptRef = useRef<number>(0);
+  const maxRetries = 3;
+  const retryDelayMs = 1000;
 
   useEffect(() => {
-    if (message && message !== lastMessageRef.current) {
+    let mounted = true;
+    let timeoutId: number | undefined;
+    
+    if (message && message !== lastMessageRef.current && isPlaying) {
       lastMessageRef.current = message;
+      playbackAttemptRef.current = 0;
       
-      // Ensure we properly handle voice synthesis with error logging
       const playMessage = async () => {
         try {
+          if (!mounted) return;
+          
+          console.info('Attempting to play voice feedback:', {
+            messageLength: message.length,
+            voice,
+            attempt: playbackAttemptRef.current + 1,
+            maxRetries
+          });
+          
           await playCachedSpeech(message, voice);
+          
+          if (!mounted) return;
+          
+          playbackAttemptRef.current = 0; // Reset on success
+          console.info('Voice feedback played successfully');
         } catch (error) {
-          console.error('Failed to play voice feedback:', error);
-          // Reset the message ref on error to allow retry
-          lastMessageRef.current = null;
+          if (!mounted) return;
+          
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.error('Failed to play voice feedback:', {
+            error: errorMessage,
+            attempt: playbackAttemptRef.current + 1,
+            maxRetries
+          });
+          
+          // Attempt retry with exponential backoff
+          if (playbackAttemptRef.current < maxRetries - 1) {
+            playbackAttemptRef.current++;
+            const delay = Math.min(retryDelayMs * Math.pow(2, playbackAttemptRef.current), 5000);
+            console.info(`Scheduling retry ${playbackAttemptRef.current + 1}/${maxRetries} in ${delay}ms`);
+            
+            timeoutId = window.setTimeout(() => {
+              if (mounted) {
+                lastMessageRef.current = null; // Allow retry
+                playMessage(); // Retry
+              }
+            }, delay);
+          } else {
+            console.error('Max retry attempts reached for voice feedback');
+          }
         }
       };
       
       playMessage();
     }
-  }, [message, voice]);
+    
+    return () => {
+      mounted = false;
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [message, voice, isPlaying]);
 
   return (
     <AnimatePresence>
