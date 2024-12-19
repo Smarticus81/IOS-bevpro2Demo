@@ -1,96 +1,110 @@
-/* Use system fonts with Apple-style font stack */
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
+    --radius: 0.5rem;
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 142 69% 58%;
+    --primary-foreground: 355.7 100% 97.3%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 142 69% 58%;
     --radius: 0.75rem;
-    --transition-ease: cubic-bezier(0.23, 1, 0.32, 1);
-    --transition-duration: 0.4s;
     
-    /* Apple-inspired colors */
-    --apple-blue: rgb(0, 122, 255);
-    --apple-gray: rgb(142, 142, 147);
-    --apple-green: rgb(52, 199, 89);
-    --apple-red: rgb(255, 59, 48);
-    
-    /* Light mode variables */
-    --background-light: rgb(255, 255, 255);
-    --text-primary-light: rgb(0, 0, 0);
-    --text-secondary-light: rgb(99, 99, 102);
-    
-    /* Dark mode variables */
-    --background-dark: rgb(28, 28, 30);
-    --text-primary-dark: rgb(255, 255, 255);
-    --text-secondary-dark: rgb(174, 174, 178);
+    --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --shadow-elevation-low: 
+      0px 2px 4px rgba(0,0,0,0.05),
+      0px 1px 10px rgba(0,0,0,0.05);
+    --shadow-elevation-medium:
+      0px 4px 8px rgba(0,0,0,0.08),
+      0px 2px 20px rgba(0,0,0,0.08);
+    --shadow-elevation-high:
+      0px 8px 16px rgba(0,0,0,0.10),
+      0px 4px 32px rgba(0,0,0,0.10);
   }
 
   * {
     @apply border-border transition-all;
-    font-family: -apple-system, BlinkMacSystemFont, ui-sans-serif, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   body {
-    @apply antialiased min-h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white;
-    font-feature-settings: "ss01", "ss02", "cv01", "cv02";
-    letter-spacing: -0.011em;
+    @apply antialiased min-h-screen bg-background text-foreground;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold tracking-tight;
+    @apply font-medium tracking-tight;
   }
 
   p {
-    @apply leading-relaxed text-zinc-600 dark:text-zinc-300;
+    @apply leading-relaxed text-muted-foreground;
   }
 }
 
 @layer components {
-  /* Apple-style glass morphism */
-  .glass-morphism {
-    @apply backdrop-blur-xl bg-white/90 dark:bg-black/80 
+  /* Premium glass morphism */
+  .glass-card {
+    @apply relative overflow-hidden rounded-xl
+           bg-white/80 dark:bg-black/80 backdrop-blur-md
            border border-white/20 dark:border-white/10
-           shadow-[0_8px_32px_rgba(0,0,0,0.04)]
-           dark:shadow-[0_8px_32px_rgba(0,0,0,0.12)];
+           shadow-md
+           transition-all duration-300 ease-out
+           hover:shadow-xl;
   }
   
-  /* Interactive elements with Apple-style animations */
-  .interactive-element {
-    @apply cursor-pointer 
-           transition-all duration-300 ease-[cubic-bezier(0.4, 0, 0.2, 1)]
-           hover:scale-[1.02] active:scale-[0.98] 
-           hover:-translate-y-0.5
-           focus:outline-none focus:ring-2 focus:ring-blue-500/20;
+  /* Interactive elements */
+  .interactive {
+    @apply cursor-pointer select-none
+           transition-all duration-300 ease-out
+           hover:scale-105 active:scale-95
+           focus:outline-none focus:ring-2 focus:ring-primary/20;
   }
 
-  /* Premium card styling */
-  .premium-card {
-    @apply glass-morphism rounded-2xl p-6
-           transition-all duration-500
-           hover:shadow-[0_12px_48px_rgba(0,0,0,0.06)]
-           dark:hover:shadow-[0_12px_48px_rgba(0,0,0,0.16)]
-           hover:translate-y-[-2px];
-  }
-  
-  /* Apple-style buttons */
-  .apple-button {
-    @apply rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900
-           px-6 py-3 font-semibold transition-all duration-300
-           hover:bg-zinc-800 dark:hover:bg-zinc-100
+  /* Premium button */
+  .btn-premium {
+    @apply px-6 py-3 rounded-full font-medium
+           bg-gradient-to-b from-primary/90 to-primary
+           text-primary-foreground
+           shadow-[var(--shadow-elevation-low)]
+           transition-all duration-300
+           hover:shadow-[var(--shadow-elevation-medium)]
            active:scale-[0.98] disabled:opacity-50;
+  }
+
+  /* Category chips */
+  .category-chip {
+    @apply px-4 py-2 rounded-full text-sm font-medium
+           bg-secondary text-secondary-foreground
+           transition-colors duration-200
+           hover:bg-secondary/80
+           data-[state=selected]:bg-primary
+           data-[state=selected]:text-primary-foreground;
   }
 
   /* Smooth animations */
   .fade-up {
-    @apply motion-safe:animate-[fadeUp_0.5s_cubic-bezier(0.23,1,0.32,1)];
+    @apply animate-in fade-in slide-in-from-bottom-4 duration-500;
   }
   
   .scale-up {
-    @apply motion-safe:animate-[scaleUp_0.4s_cubic-bezier(0.23,1,0.32,1)];
+    @apply animate-in zoom-in-50 duration-300;
   }
 }
 
