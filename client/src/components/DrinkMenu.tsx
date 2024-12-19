@@ -34,17 +34,17 @@ export function DrinkMenu({ drinks, onAddToCart }: DrinkMenuProps) {
           placeholder="Search drinks..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="max-w-sm"
+          className="max-w-sm bg-white/10 border-white/20 text-white placeholder:text-white/50"
         />
       </div>
 
       <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-        <TabsList className="mb-4">
+        <TabsList className="mb-4 bg-black/40 border border-white/10">
           {categories.map(category => (
             <TabsTrigger
               key={category}
               value={category}
-              className="capitalize"
+              className="capitalize text-white/70 data-[state=active]:bg-white/10 data-[state=active]:text-white"
             >
               {category}
             </TabsTrigger>
@@ -53,17 +53,18 @@ export function DrinkMenu({ drinks, onAddToCart }: DrinkMenuProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredDrinks.map(drink => (
-            <Card key={drink.id}>
+            <Card key={drink.id} className="bg-white/10 backdrop-blur-md border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
               <CardContent className="p-4">
-                <div className="font-semibold">{drink.name}</div>
-                <div className="text-sm text-muted-foreground mb-2">
+                <div className="font-semibold text-white">{drink.name}</div>
+                <div className="text-sm text-white/70 mb-2">
                   {drink.subcategory}
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="font-medium">${drink.price}</span>
+                  <span className="font-medium text-white">${drink.price}</span>
                   <Button
                     onClick={() => onAddToCart(drink)}
                     disabled={drink.inventory === 0}
+                    className="bg-gradient-to-b from-zinc-800 to-black text-white shadow-[0_4px_10px_rgba(0,0,0,0.3)] border border-white/10 backdrop-blur-sm hover:shadow-[0_6px_20px_rgba(0,0,0,0.4)] hover:from-zinc-700 hover:to-zinc-900 transition-all duration-300 disabled:opacity-50"
                   >
                     Add to Order
                   </Button>
