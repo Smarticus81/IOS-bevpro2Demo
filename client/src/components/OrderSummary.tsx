@@ -112,14 +112,30 @@ export function OrderSummary({
           <span>${total.toFixed(2)}</span>
         </div>
 
-        <Button
-          className="w-full"
-          size={variant === "compact" ? "default" : "lg"}
-          onClick={onPlaceOrder}
-          disabled={cart.length === 0 || isLoading}
-        >
-          {isLoading ? "Processing..." : "Place Order"}
-        </Button>
+        <div className="space-y-3">
+          <Button
+            className="w-full"
+            size={variant === "compact" ? "default" : "lg"}
+            onClick={onPlaceOrder}
+            disabled={cart.length === 0 || isLoading}
+          >
+            {isLoading ? "Processing..." : "Place Order"}
+          </Button>
+          
+          <Button
+            variant="destructive"
+            className="w-full"
+            size={variant === "compact" ? "default" : "lg"}
+            onClick={() => {
+              if (cart.length > 0) {
+                cart.forEach(item => onRemoveItem(item.drink.id));
+              }
+            }}
+            disabled={cart.length === 0 || isLoading}
+          >
+            Void Order
+          </Button>
+        </div>
       </div>
     </div>
   );

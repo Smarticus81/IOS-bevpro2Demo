@@ -123,7 +123,7 @@ export function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-pearl-light">
+    <div className="min-h-screen bg-gradient-to-br from-pearl-light to-pearl-dark">
       <NavBar />
       <VoiceFeedback 
         message={voiceMessage}
@@ -132,12 +132,14 @@ export function Home() {
       />
       
       <main className="container mx-auto px-4 pt-16 pb-8 sm:px-6 lg:px-8">
-        {/* Premium Status Bar */}
+        {/* Status Bar */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Badge variant="outline" className="bg-white/80 backdrop-blur-sm">
-              Premium POS
-            </Badge>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-xl bg-gradient-to-r from-primary/90 to-primary/60 bg-clip-text text-transparent">
+                BP
+              </span>
+            </div>
             <span className="text-sm font-medium text-muted-foreground">
               {new Date().toLocaleDateString('en-US', { 
                 weekday: 'long',
@@ -162,11 +164,11 @@ export function Home() {
                 shrink-0 w-20 h-20 rounded-full
                 flex flex-col items-center justify-center
                 text-sm font-medium transition-all duration-300
-                bg-white shadow-lg hover:shadow-xl
-                border-2 backdrop-blur-sm
+                glass-effect hover-lift
+                border border-white/10
                 ${!selectedCategory ? 
-                  'border-primary text-primary ring-2 ring-primary/20' : 
-                  'border-white/20 text-gray-700 hover:text-gray-900 hover:border-primary/20'}
+                  'bg-gradient-to-br from-primary/10 to-primary/5 text-primary ring-2 ring-primary/20' : 
+                  'text-gray-700 hover:text-gray-900'}
               `}
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.98 }}
@@ -182,11 +184,11 @@ export function Home() {
                   shrink-0 w-20 h-20 rounded-full
                   flex flex-col items-center justify-center
                   text-sm font-medium transition-all duration-300
-                  bg-white shadow-lg hover:shadow-xl
-                  border-2 backdrop-blur-sm
+                  glass-effect hover-lift
+                  border border-white/10
                   ${selectedCategory === category ?
-                    'border-primary text-primary ring-2 ring-primary/20' :
-                    'border-white/20 text-gray-700 hover:text-gray-900 hover:border-primary/20'}
+                    'bg-gradient-to-br from-primary/10 to-primary/5 text-primary ring-2 ring-primary/20' :
+                    'text-gray-700 hover:text-gray-900'}
                 `}
                 whileHover={{ y: -2 }}
                 whileTap={{ scale: 0.98 }}
@@ -234,7 +236,7 @@ export function Home() {
           {/* Order Summary - Desktop */}
           <div className="hidden lg:block">
             <div className="sticky top-24">
-              <Card className="backdrop-blur-xl bg-white/90 border-white/20">
+              <Card className="glass-effect premium-shadow">
                 <CardContent className="p-6">
                   <OrderSummary
                     cart={cart}
@@ -249,26 +251,18 @@ export function Home() {
 
           {/* Voice Control - Desktop */}
           <div className="hidden lg:block fixed right-8 top-24 z-50">
-            <Card className="bg-white/95 backdrop-blur-lg border-white/20 shadow-lg">
-              <CardContent className="p-4">
-                <VoiceControl 
-                  drinks={drinks}
-                  onAddToCart={addToCart}
-                />
-              </CardContent>
-            </Card>
+            <VoiceControl 
+              drinks={drinks}
+              onAddToCart={addToCart}
+            />
           </div>
 
           {/* Voice Control - Mobile */}
           <div className="lg:hidden fixed left-1/2 -translate-x-1/2 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-50">
-            <Card className="bg-white/95 backdrop-blur-lg border-white/20 shadow-lg">
-              <CardContent className="p-3">
-                <VoiceControl 
-                  drinks={drinks}
-                  onAddToCart={addToCart}
-                />
-              </CardContent>
-            </Card>
+            <VoiceControl 
+              drinks={drinks}
+              onAddToCart={addToCart}
+            />
           </div>
 
           {/* Order Summary - Mobile */}
