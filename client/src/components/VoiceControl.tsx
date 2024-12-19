@@ -468,11 +468,12 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
         case "shutdown": {
           await soundEffects.playSuccess();
           await handleResponse(intent.conversational_response);
-          // Completely stop voice recognition
+          // Temporarily pause voice recognition instead of complete shutdown
           voiceRecognition.stop();
           setIsListening(false);
           setMode('order');
-          setStatus("Voice system shut down.");
+          setIsWakeWordOnly(true); // Reset to wake word only mode
+          setStatus("Voice system paused. Click 'Start Listening' to resume.");
           break;
         }
 
@@ -516,7 +517,15 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
 
     if (isListening) {
       voiceRecognition.stop();
+      setStatus("");
     } else {
+      // Reset state when starting
+      setMode('order');
+      setIsWakeWordOnly(true);
+      setIsProcessing(false);
+      setIsProcessingCommand(false);
+      setSentiment(null);
+      setStatus("Say 'hey bar' to order drinks or 'hey bev' to ask questions.");
       voiceRecognition.start();
     }
   };
