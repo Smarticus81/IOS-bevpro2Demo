@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
+import { DrinkCard } from "@/components/DrinkCard";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { DrinkMenu } from "@/components/DrinkMenu";
 import { VoiceControl } from "@/components/VoiceControl";
@@ -144,7 +145,7 @@ export function Home() {
             >
               All Drinks
             </button>
-            {categories.map((category) => (
+            {categories.map((category: string) => (
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
