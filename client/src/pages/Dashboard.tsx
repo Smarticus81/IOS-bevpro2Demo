@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NavBar } from "@/components/NavBar";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
 import { DollarSign, TrendingUp, Users, Package } from "lucide-react";
 import type { Drink } from "@db/schema";
+import { DashboardVoiceControl } from "@/components/DashboardVoiceControl";
 
 interface SalesData {
   totalSales: number;

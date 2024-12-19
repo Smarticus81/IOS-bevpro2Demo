@@ -13,24 +13,25 @@ import fuzzysort from 'fuzzysort';
 import type { Drink } from "@db/schema";
 import type { ErrorType, VoiceError, WakeWordEvent } from "@/types/speech";
 
-interface AddItemParams {
+export interface AddItemParams {
   type: 'ADD_ITEM';
   drink: Drink & { price: number };
   quantity: number;
 }
 
-interface CompleteTransactionParams {
+export interface CompleteTransactionParams {
   type: 'COMPLETE_TRANSACTION';
 }
 
-type CartAction = AddItemParams | CompleteTransactionParams;
+export type CartAction = AddItemParams | CompleteTransactionParams;
 
-interface VoiceControlProps {
+export interface VoiceControlProps {
   drinks: Drink[];
   onAddToCart: (params: CartAction) => void;
+  onVoiceCommand?: (text: string) => Promise<void>;
 }
 
-export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
+export function VoiceControl({ drinks, onAddToCart, onVoiceCommand }: VoiceControlProps) {
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isProcessingCommand, setIsProcessingCommand] = useState(false);
@@ -303,8 +304,14 @@ export function VoiceControl({ drinks, onAddToCart }: VoiceControlProps) {
     try {
       console.log('Processing voice input:', text);
 
+      // If onVoiceCommand is provided, use it instead of default processing
+      if (onVoiceCommand) {
+        await onVoiceCommand(text);
+        return;
+      }
+
       const intent = await processVoiceCommand(text);
-    setSentiment(intent.sentiment as SentimentType);
+      setSentiment(intent.sentiment as SentimentType);
       if (!intent) {
         console.error('Received null intent from processVoiceCommand');
         throw new Error('Invalid response from voice command processing');

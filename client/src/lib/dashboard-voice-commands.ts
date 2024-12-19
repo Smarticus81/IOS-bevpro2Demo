@@ -1,4 +1,5 @@
 import { processVoiceCommand } from './openai';
+import type { Intent } from './openai';
 
 export interface DashboardCommandResult {
   type: 'filter' | 'timeRange' | 'chart' | 'error';
@@ -13,37 +14,42 @@ export interface DashboardCommandResult {
 
 export async function processDashboardCommand(text: string): Promise<DashboardCommandResult> {
   try {
+    console.log('Processing dashboard voice command:', text);
     const intent = await processVoiceCommand(text);
     
+    console.log('Received intent:', intent);
+
     // Process dashboard-specific commands
-    if (intent.type === 'query' && intent.category) {
-      return {
-        type: 'filter',
-        data: { category: intent.category },
-        message: `Filtering by ${intent.category}`
-      };
-    }
+    if (intent.type === 'query') {
+      if (intent.category) {
+        return {
+          type: 'filter',
+          data: { category: intent.category },
+          message: `Filtering by ${intent.category}`
+        };
+      } else if (intent.attribute === 'time') {
+        // Look for time-related queries
+        const timeRanges = ['day', 'week', 'month', 'year'] as const;
+        const timeRange = timeRanges.find(range => 
+          text.toLowerCase().includes(range)
+        );
 
-    // Handle time range queries
-    const timeRanges = ['day', 'week', 'month', 'year'] as const;
-    const timeRange = timeRanges.find(range => 
-      text.toLowerCase().includes(range)
-    );
-
-    if (timeRange) {
-      return {
-        type: 'timeRange',
-        data: { timeRange },
-        message: `Showing ${timeRange} view`
-      };
+        if (timeRange) {
+          return {
+            type: 'timeRange',
+            data: { timeRange },
+            message: `Showing ${timeRange} view`
+          };
+        }
+      }
     }
 
     // Handle chart type changes
     if (text.toLowerCase().includes('chart') || text.toLowerCase().includes('view')) {
       const chartTypes = {
-        bar: text.includes('bar'),
-        line: text.includes('line'),
-        pie: text.includes('pie')
+        bar: text.toLowerCase().includes('bar'),
+        line: text.toLowerCase().includes('line') || text.toLowerCase().includes('trend'),
+        pie: text.toLowerCase().includes('pie') || text.toLowerCase().includes('distribution')
       };
 
       const selectedType = Object.entries(chartTypes)
@@ -56,6 +62,15 @@ export async function processDashboardCommand(text: string): Promise<DashboardCo
           message: `Switching to ${selectedType} chart`
         };
       }
+    }
+
+    // If we have a conversational response but no specific command matched
+    if (intent.conversational_response) {
+      return {
+        type: 'error',
+        data: {},
+        message: intent.conversational_response
+      };
     }
 
     return {
