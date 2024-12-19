@@ -7,7 +7,7 @@ import type { Drink } from "@db/schema";
 
 interface DrinkMenuProps {
   drinks: Drink[];
-  onAddToCart: (drink: Drink) => void;
+  onAddToCart: (action: { type: 'ADD_ITEM'; drink: Drink; quantity: number }) => void;
 }
 
 export function DrinkMenu({ drinks, onAddToCart }: DrinkMenuProps) {
@@ -62,7 +62,7 @@ export function DrinkMenu({ drinks, onAddToCart }: DrinkMenuProps) {
                 <div className="flex justify-between items-center">
                   <span className="font-medium text-gray-900">${drink.price}</span>
                   <Button
-                    onClick={() => onAddToCart(drink)}
+                    onClick={() => onAddToCart({ type: 'ADD_ITEM', drink, quantity: 1 })}
                     disabled={drink.inventory === 0}
                     className="bg-gradient-to-b from-zinc-800 to-black text-white shadow-[0_4px_10px_rgba(0,0,0,0.3)] border border-white/10 backdrop-blur-sm hover:shadow-[0_6px_20px_rgba(0,0,0,0.4)] hover:from-zinc-700 hover:to-zinc-900 transition-all duration-300 disabled:opacity-50"
                   >
