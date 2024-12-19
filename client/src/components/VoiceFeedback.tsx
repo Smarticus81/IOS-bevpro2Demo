@@ -17,7 +17,19 @@ export function VoiceFeedback({ message, isPlaying, voice = 'nova' }: VoiceFeedb
   useEffect(() => {
     if (message && message !== lastMessageRef.current) {
       lastMessageRef.current = message;
-      playCachedSpeech(message, voice).catch(console.error);
+      
+      // Ensure we properly handle voice synthesis with error logging
+      const playMessage = async () => {
+        try {
+          await playCachedSpeech(message, voice);
+        } catch (error) {
+          console.error('Failed to play voice feedback:', error);
+          // Reset the message ref on error to allow retry
+          lastMessageRef.current = null;
+        }
+      };
+      
+      playMessage();
     }
   }, [message, voice]);
 
