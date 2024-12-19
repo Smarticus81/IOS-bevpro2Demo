@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { NavBar } from "@/components/NavBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,12 +7,27 @@ import { Button } from "@/components/ui/button";
 import { Package, AlertTriangle, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { Drink } from "@db/schema";
+import { useToast } from "@/hooks/use-toast";
 
 export function Inventory() {
   const [search, setSearch] = useState("");
+  const [inventoryChanges, setInventoryChanges] = useState<Record<number, number>>({});
+  const { toast } = useToast();
   
   const { data: drinks = [] } = useQuery<Drink[]>({
     queryKey: ["/api/drinks"],
+  });
+
+  const updateInventoryMutation = useMutation({
+    mutationFn: async (updates: { id: number; inventory: number }[]) => {
+      const response = await fetch("/api/inventory/bulk-update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updates })
+      });
+      if (!response.ok) throw new Error("Failed to update inventory");
+      return response.json();
+    }
   });
 
   const filteredDrinks = drinks.filter(drink =>
@@ -108,7 +123,14 @@ export function Inventory() {
                       <div className="text-center">
                         <Input
                           type="number"
-                          value={drink.inventory}
+                          value={inventoryChanges[drink.id] ?? drink.inventory}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value) || 0;
+                            setInventoryChanges(prev => ({
+                              ...prev,
+                              [drink.id]: value
+                            }));
+                          }}
                           className="w-20 mx-auto text-center"
                           min={0}
                         />
@@ -124,6 +146,31 @@ export function Inventory() {
                     </div>
                   ))}
                 </div>
+              </div>
+              <div className="mt-4">
+                <Button
+                  onClick={() => {
+                    const updates = Object.entries(inventoryChanges).map(([id, inventory]) => ({
+                      id: parseInt(id),
+                      inventory
+                    }));
+                    if (updates.length > 0) {
+                      updateInventoryMutation.mutate(updates, {
+                        onSuccess: () => {
+                          toast({
+                            title: "Inventory Updated",
+                            description: "Changes have been saved successfully"
+                          });
+                          setInventoryChanges({});
+                        }
+                      });
+                    }
+                  }}
+                  disabled={Object.keys(inventoryChanges).length === 0 || updateInventoryMutation.isPending}
+                  className="w-full bg-gradient-to-b from-zinc-800 to-black text-white shadow-sm"
+                >
+                  {updateInventoryMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
               </div>
             </CardContent>
           </Card>
