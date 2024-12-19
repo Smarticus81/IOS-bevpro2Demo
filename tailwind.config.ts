@@ -27,10 +27,6 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       colors: {
-        mint: "#4CD7B0",
-        lavender: "#9381FF",
-        navy: "#1A1B4B",
-        coral: "#FF7C7C",
         pearl: {
           light: "#F8F9FC",
           dark: "#F0F2F8"
