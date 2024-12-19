@@ -75,9 +75,9 @@ export default {
           to: { height: "0" },
         },
         "pulse-ring": {
-          "0%": { transform: "scale(0.95)", opacity: "0.5" },
-          "50%": { transform: "scale(1)", opacity: "0.3" },
-          "100%": { transform: "scale(0.95)", opacity: "0.5" },
+          "0%": { transform: "scale(1)", opacity: "0.6" },
+          "50%": { transform: "scale(1.05)", opacity: "0.3" },
+          "100%": { transform: "scale(1)", opacity: "0.6" },
         },
         "fade-in": {
           "0%": { opacity: "0" },
