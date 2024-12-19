@@ -11,6 +11,7 @@ export function NavBar() {
     { href: "/", icon: Home, label: "Home" },
     { href: "/inventory", icon: Package, label: "Inventory" },
     { href: "/events", icon: Calendar, label: "Events" },
+    { href: "/events", icon: Calendar, label: "Events" },
     { href: "/settings", icon: Settings, label: "Settings" },
     { href: "/dashboard", icon: BarChart3, label: "Dashboard" },
   ];

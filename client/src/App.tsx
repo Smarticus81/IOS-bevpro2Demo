@@ -1,6 +1,7 @@
 import { Switch, Route } from "wouter";
 import { Home } from "@/pages/Home";
 import { Inventory } from "@/pages/Inventory";
+import { Events } from "@/pages/Events";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { useState } from "react";
@@ -17,6 +18,7 @@ function App() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/inventory" component={Inventory} />
+      <Route path="/events" component={Events} />
       <Route component={NotFound} />
     </Switch>
   );
