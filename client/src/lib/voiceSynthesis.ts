@@ -18,10 +18,9 @@ export async function synthesizeSpeech(text: string, voice: ValidVoice = 'nova',
     try {
       const response = await openai.audio.speech.create({
         model: "tts-1",
-        voice: voice as ValidVoice,
+        voice: voice,
         input: text,
         speed: voice === 'nova' ? 1.1 : 1.0, // Slightly faster for Nova
-        quality: "high",
       });
 
       const audioBlob = await response.blob();
@@ -54,11 +53,15 @@ export async function playCachedSpeech(text: string, voice: ValidVoice = 'nova')
     if (!audioUrl) {
       // Clean up old cache entries if we're at the limit
       if (audioCache.size >= MAX_CACHE_SIZE) {
-        const oldestKey = audioCache.keys().next().value;
-        const oldUrl = audioCache.get(oldestKey);
-        if (oldUrl) {
-          URL.revokeObjectURL(oldUrl);
-          audioCache.delete(oldestKey);
+        const iterator = audioCache.keys();
+        const first = iterator.next();
+        if (!first.done) {
+          const oldestKey = first.value;
+          const oldUrl = audioCache.get(oldestKey);
+          if (oldUrl) {
+            URL.revokeObjectURL(oldUrl);
+            audioCache.delete(oldestKey);
+          }
         }
       }
 
