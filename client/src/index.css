@@ -60,21 +60,37 @@
 
 @layer components {
   /* Premium glass morphism */
-  .glass-card {
-    @apply relative overflow-hidden rounded-xl
-           bg-white/80 dark:bg-black/80 backdrop-blur-md
-           border border-white/20 dark:border-white/10
-           shadow-md
+  .glass-morphism {
+    @apply relative overflow-hidden
+           bg-white/90 dark:bg-black/90 backdrop-blur-lg
+           shadow-lg hover:shadow-xl
            transition-all duration-300 ease-out
-           hover:shadow-xl;
+           before:absolute before:inset-0
+           before:border before:border-primary/10
+           before:bg-gradient-to-br before:from-primary/5 before:to-transparent;
   }
   
   /* Interactive elements */
-  .interactive {
+  .interactive-premium {
     @apply cursor-pointer select-none
            transition-all duration-300 ease-out
-           hover:scale-105 active:scale-95
+           hover:scale-[1.02] active:scale-[0.98]
+           hover:-translate-y-0.5
            focus:outline-none focus:ring-2 focus:ring-primary/20;
+  }
+
+  /* Category indicators */
+  .category-indicator {
+    @apply relative py-3 px-4
+           rounded-2xl backdrop-blur-md
+           bg-gradient-to-br from-white/90 to-white/80 dark:from-black/90 dark:to-black/80
+           shadow-lg hover:shadow-xl
+           transition-all duration-300
+           before:absolute before:inset-0 before:rounded-2xl
+           before:border before:border-primary/10
+           before:bg-gradient-to-br before:from-primary/5 before:to-transparent
+           hover:before:opacity-50 dark:hover:before:opacity-30
+           hover:-translate-y-0.5;
   }
 
   /* Premium button */
