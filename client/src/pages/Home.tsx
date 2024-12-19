@@ -242,8 +242,8 @@ export function Home() {
           </div>
 
           {/* Voice Control */}
-          <div className="fixed bottom-20 lg:bottom-8 left-1/2 -translate-x-1/2 z-30">
-            <Card className="bg-background/95 backdrop-blur-lg border-white/20">
+          <div className="fixed bottom-24 lg:bottom-8 left-1/2 -translate-x-1/2 z-30">
+            <Card className="bg-background/95 backdrop-blur-lg border-white/20 shadow-lg">
               <CardContent className="p-4">
                 <VoiceControl 
                   drinks={drinks}
@@ -252,18 +252,6 @@ export function Home() {
               </CardContent>
             </Card>
           </div>
-        </div>
-
-        {/* Voice Control */}
-        <div className="fixed bottom-20 lg:bottom-8 left-1/2 -translate-x-1/2 z-30">
-          <Card className="bg-background/95 backdrop-blur-lg border-white/20">
-            <CardContent className="p-4">
-              <VoiceControl 
-                drinks={drinks}
-                onAddToCart={addToCart}
-              />
-            </CardContent>
-          </Card>
         </div>
       </main>
     </div>
