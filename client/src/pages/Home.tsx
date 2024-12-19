@@ -19,18 +19,28 @@ export function Home() {
   const [cart, setCart] = useState<Array<{ drink: Drink; quantity: number }>>([]);
   const [voiceMessage, setVoiceMessage] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const { toast } = useToast();
 
   const playVoiceResponse = useCallback(async (message: string) => {
     setVoiceMessage(message);
     setIsPlaying(true);
-    // Auto-hide after 5 seconds
     setTimeout(() => setIsPlaying(false), 5000);
   }, []);
 
   const { data: drinks = [] } = useQuery<Drink[]>({
     queryKey: ["/api/drinks"],
   });
+
+  const categories = useMemo(() => 
+    Array.from(new Set(drinks.map(drink => drink.category))).sort(),
+    [drinks]
+  );
+
+  const filteredDrinks = useMemo(() => 
+    drinks.filter(drink => !selectedCategory || drink.category === selectedCategory),
+    [drinks, selectedCategory]
+  );
 
   const orderMutation = useMutation({
     mutationFn: async (orderData: any) => {
@@ -112,7 +122,7 @@ export function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-b from-background to-background/95">
       <NavBar />
       <VoiceFeedback 
         message={voiceMessage}
@@ -120,45 +130,56 @@ export function Home() {
         voice="nova"
       />
       
-      <div className="container mx-auto p-4 lg:py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
-          <div className="lg:col-span-2">
-            <div className="space-y-4 lg:space-y-6">
-              <Card className="glass-card">
-                <CardContent className="p-4 lg:p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <Badge variant="secondary" className="glass-morphism">
-                      Beta
-                    </Badge>
-                  </div>
-                  <VoiceControl 
-                    drinks={drinks}
-                    onAddToCart={addToCart}
+      <main className="container mx-auto px-4 pt-20 pb-8 sm:px-6 lg:px-8">
+        {/* Categories Scroll */}
+        <div className="mb-6">
+          <div className="flex overflow-x-auto gap-3 pb-4 scrollbar-hide">
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className={`shrink-0 px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-300
+                ${!selectedCategory 
+                  ? 'bg-primary text-primary-foreground shadow-lg' 
+                  : 'bg-white/80 dark:bg-black/80 text-foreground hover:bg-white/90 dark:hover:bg-black/90'
+                }`}
+            >
+              All Drinks
+            </button>
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`shrink-0 px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-300
+                  ${selectedCategory === category 
+                    ? 'bg-primary text-primary-foreground shadow-lg' 
+                    : 'bg-white/80 dark:bg-black/80 text-foreground hover:bg-white/90 dark:hover:bg-black/90'
+                  }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Main Content Area */}
+          <div className="lg:col-span-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4">
+              {filteredDrinks.map((drink) => {
+                const cartItem = cart.find(item => item.drink.id === drink.id);
+                return (
+                  <DrinkCard
+                    key={drink.id}
+                    drink={drink}
+                    quantity={cartItem?.quantity || 0}
+                    onAdd={() => addToCart({ type: 'ADD_ITEM', drink, quantity: 1 })}
+                    onRemove={() => removeFromCart(drink.id)}
                   />
-                </CardContent>
-              </Card>
-              
-              <div className="lg:hidden sticky top-[4.5rem] z-40 -mx-4 px-4 py-2 bg-background/80 backdrop-blur-lg border-y">
-                <OrderSummaryDrawer
-                  cart={cart}
-                  onRemoveItem={removeFromCart}
-                  onPlaceOrder={placeOrder}
-                  isLoading={orderMutation.isPending}
-                />
-              </div>
-              
-              <Card className="glass-card">
-                <CardContent className="p-4 lg:p-6">
-                  <DrinkMenu 
-                    drinks={drinks}
-                    onAddToCart={addToCart}
-                  />
-                </CardContent>
-              </Card>
+                );
+              })}
             </div>
           </div>
-          
-          {/* Desktop Order Summary */}
+
+          {/* Order Summary - Desktop */}
           <div className="hidden lg:block">
             <div className="sticky top-24">
               <OrderSummary
@@ -169,8 +190,32 @@ export function Home() {
               />
             </div>
           </div>
+
+          {/* Order Summary - Mobile */}
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/80 backdrop-blur-lg border-t">
+            <div className="container mx-auto p-4">
+              <OrderSummaryDrawer
+                cart={cart}
+                onRemoveItem={removeFromCart}
+                onPlaceOrder={placeOrder}
+                isLoading={orderMutation.isPending}
+              />
+            </div>
+          </div>
         </div>
-      </div>
+
+        {/* Voice Control */}
+        <div className="fixed bottom-20 lg:bottom-8 left-1/2 -translate-x-1/2 z-30">
+          <Card className="bg-background/95 backdrop-blur-lg border-white/20">
+            <CardContent className="p-4">
+              <VoiceControl 
+                drinks={drinks}
+                onAddToCart={addToCart}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </main>
     </div>
   );
 }
