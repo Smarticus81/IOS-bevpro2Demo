@@ -114,7 +114,7 @@ export function OrderSummary({
 
         <div className="space-y-3">
           <Button
-            className="w-full"
+            className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg"
             size={variant === "compact" ? "default" : "lg"}
             onClick={onPlaceOrder}
             disabled={cart.length === 0 || isLoading}
@@ -124,7 +124,7 @@ export function OrderSummary({
           
           <Button
             variant="destructive"
-            className="w-full"
+            className="w-full bg-gradient-to-r from-destructive to-destructive/90 hover:from-destructive/90 hover:to-destructive shadow-lg"
             size={variant === "compact" ? "default" : "lg"}
             onClick={() => {
               if (cart.length > 0) {

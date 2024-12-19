@@ -123,7 +123,7 @@ export function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pearl-light to-pearl-dark">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-50 via-pearl-light to-pearl-dark">
       <NavBar />
       <VoiceFeedback 
         message={voiceMessage}
@@ -184,11 +184,12 @@ export function Home() {
                   shrink-0 w-20 h-20 rounded-full
                   flex flex-col items-center justify-center
                   text-sm font-medium transition-all duration-300
-                  glass-effect hover-lift
-                  border border-white/10
+                  relative overflow-hidden backdrop-blur-sm hover-lift
+                  bg-gradient-to-br from-white/95 to-white/90 dark:from-gray-800/95 dark:to-gray-900/90
+                  shadow-lg hover:shadow-xl
                   ${selectedCategory === category ?
-                    'bg-gradient-to-br from-primary/10 to-primary/5 text-primary ring-2 ring-primary/20' :
-                    'text-gray-700 hover:text-gray-900'}
+                    'ring-2 ring-primary border-primary/20 text-primary after:absolute after:inset-0 after:bg-gradient-to-br after:from-primary/10 after:to-transparent after:-z-10' :
+                    'border border-white/20 text-gray-800 hover:text-gray-900 hover:border-primary/20'}
                 `}
                 whileHover={{ y: -2 }}
                 whileTap={{ scale: 0.98 }}
