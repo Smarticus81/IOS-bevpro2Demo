@@ -31,6 +31,8 @@ export function DashboardVoiceControl({
       const result = await processDashboardCommand(text);
       setLastCommand(result);
 
+      console.log('Processing intent:', result);
+
       switch (result.type) {
         case 'filter':
           if (result.data.category) {
