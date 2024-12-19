@@ -1,7 +1,6 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { DrinkCard } from "@/components/DrinkCard";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { DrinkMenu } from "@/components/DrinkMenu";
 import { VoiceControl } from "@/components/VoiceControl";
 import { OrderSummary } from "@/components/OrderSummary";
 import { OrderSummaryDrawer } from "@/components/OrderSummaryDrawer";
@@ -10,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { NavBar } from "@/components/NavBar";
 import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
 import type { Drink } from "@db/schema";
 
 type CartAction = 
@@ -123,7 +123,7 @@ export function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-background/95">
+    <div className="min-h-screen bg-pearl-light">
       <NavBar />
       <VoiceFeedback 
         message={voiceMessage}
@@ -131,69 +131,101 @@ export function Home() {
         voice="nova"
       />
       
-      <main className="container mx-auto px-4 pt-20 pb-8 sm:px-6 lg:px-8">
-        {/* Categories Scroll */}
-        <div className="mb-6">
-          <div className="flex overflow-x-auto gap-3 pb-4 scrollbar-hide">
-            <button
-              onClick={() => setSelectedCategory(null)}
-              className={`shrink-0 px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-300
-                ${!selectedCategory 
-                  ? 'bg-primary text-primary-foreground shadow-lg' 
-                  : 'bg-white/80 dark:bg-black/80 text-foreground hover:bg-white/90 dark:hover:bg-black/90'
-                }`}
-            >
-              All Drinks
-            </button>
-            {categories.map((category: string) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`shrink-0 px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-300
-                  ${selectedCategory === category 
-                    ? 'bg-primary text-primary-foreground shadow-lg' 
-                    : 'bg-white/80 dark:bg-black/80 text-foreground hover:bg-white/90 dark:hover:bg-black/90'
-                  }`}
-              >
-                {category}
-              </button>
-            ))}
+      <main className="container mx-auto px-4 pt-16 pb-8 sm:px-6 lg:px-8">
+        {/* Premium Status Bar */}
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className="bg-white/80 backdrop-blur-sm">
+              Premium POS
+            </Badge>
+            <span className="text-sm font-medium text-muted-foreground">
+              {new Date().toLocaleDateString('en-US', { 
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-primary/10 text-primary">
+              Active Orders: {cart.length}
+            </Badge>
           </div>
         </div>
+        {/* Premium Category Selector */}
+        <div className="relative mb-8">
+          <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide">
+            <motion.button
+              onClick={() => setSelectedCategory(null)}
+              className={`shrink-0 px-8 py-3 rounded-xl text-sm font-medium transition-all duration-300
+                bg-white shadow-lg hover:shadow-xl border border-white/20 backdrop-blur-sm
+                ${!selectedCategory ? 'ring-2 ring-primary/20 text-primary' : 'text-gray-700 hover:text-gray-900'}`}
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              All Drinks
+            </motion.button>
+            {categories.map((category: string) => (
+              <motion.button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`shrink-0 px-8 py-3 rounded-xl text-sm font-medium transition-all duration-300
+                  bg-white shadow-lg hover:shadow-xl border border-white/20 backdrop-blur-sm
+                  ${selectedCategory === category ? 'ring-2 ring-primary/20 text-primary' : 'text-gray-700 hover:text-gray-900'}`}
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {category}
+              </motion.button>
+            ))}
+          </div>
+          <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background to-transparent pointer-events-none" />
+        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Main Content Area */}
-          <div className="lg:col-span-3">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4">
-              {filteredDrinks.map((drink) => {
-                const cartItem = cart.find(item => item.drink.id === drink.id);
-                return (
-                  <DrinkCard
-                    key={drink.id}
-                    drink={drink}
-                    quantity={cartItem?.quantity || 0}
-                    onAdd={() => addToCart({ type: 'ADD_ITEM', drink, quantity: 1 })}
-                    onRemove={() => removeFromCart(drink.id)}
-                  />
-                );
-              })}
-            </div>
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <div className="lg:col-span-3 space-y-8">
+            {/* Drinks Grid */}
+            <motion.div 
+              layout
+              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6"
+            >
+              <AnimatePresence>
+                {filteredDrinks.map((drink) => {
+                  const cartItem = cart.find(item => item.drink.id === drink.id);
+                  return (
+                    <DrinkCard
+                      key={drink.id}
+                      drink={drink}
+                      quantity={cartItem?.quantity || 0}
+                      onAdd={() => addToCart({ type: 'ADD_ITEM', drink, quantity: 1 })}
+                      onRemove={() => removeFromCart(drink.id)}
+                    />
+                  );
+                })}
+              </AnimatePresence>
+            </motion.div>
           </div>
 
           {/* Order Summary - Desktop */}
           <div className="hidden lg:block">
             <div className="sticky top-24">
-              <OrderSummary
-                cart={cart}
-                onRemoveItem={removeFromCart}
-                onPlaceOrder={placeOrder}
-                isLoading={orderMutation.isPending}
-              />
+              <Card className="backdrop-blur-xl bg-white/90 border-white/20">
+                <CardContent className="p-6">
+                  <OrderSummary
+                    cart={cart}
+                    onRemoveItem={removeFromCart}
+                    onPlaceOrder={placeOrder}
+                    isLoading={orderMutation.isPending}
+                  />
+                </CardContent>
+              </Card>
             </div>
           </div>
 
           {/* Order Summary - Mobile */}
-          <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/80 backdrop-blur-lg border-t">
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40">
             <div className="container mx-auto p-4">
               <OrderSummaryDrawer
                 cart={cart}
