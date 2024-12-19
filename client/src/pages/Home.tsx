@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { DrinkMenu } from "@/components/DrinkMenu";
 import { VoiceControl } from "@/components/VoiceControl";
 import { OrderSummary } from "@/components/OrderSummary";
+import { OrderSummaryDrawer } from "@/components/OrderSummaryDrawer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BevProLogo } from "@/components/BevProLogo";
+import { NavBar } from "@/components/NavBar";
 import { useToast } from "@/hooks/use-toast";
 import type { Drink } from "@db/schema";
 
@@ -95,14 +96,15 @@ export function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <NavBar />
+      
+      <div className="container mx-auto p-4 lg:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
           <div className="lg:col-span-2">
-            <div className="space-y-6">
+            <div className="space-y-4 lg:space-y-6">
               <Card className="glass-card">
-                <CardContent className="p-6">
+                <CardContent className="p-4 lg:p-6">
                   <div className="flex items-center justify-between mb-6">
-                    <BevProLogo />
                     <Badge variant="secondary" className="glass-morphism">
                       Beta
                     </Badge>
@@ -114,8 +116,17 @@ export function Home() {
                 </CardContent>
               </Card>
               
+              <div className="lg:hidden sticky top-[4.5rem] z-40 -mx-4 px-4 py-2 bg-background/80 backdrop-blur-lg border-y">
+                <OrderSummaryDrawer
+                  cart={cart}
+                  onRemoveItem={removeFromCart}
+                  onPlaceOrder={placeOrder}
+                  isLoading={orderMutation.isPending}
+                />
+              </div>
+              
               <Card className="glass-card">
-                <CardContent className="p-6">
+                <CardContent className="p-4 lg:p-6">
                   <DrinkMenu 
                     drinks={drinks}
                     onAddToCart={addToCart}
@@ -124,13 +135,17 @@ export function Home() {
               </Card>
             </div>
           </div>
-          <div>
-            <OrderSummary
-              cart={cart}
-              onRemoveItem={removeFromCart}
-              onPlaceOrder={placeOrder}
-              isLoading={orderMutation.isPending}
-            />
+          
+          {/* Desktop Order Summary */}
+          <div className="hidden lg:block">
+            <div className="sticky top-24">
+              <OrderSummary
+                cart={cart}
+                onRemoveItem={removeFromCart}
+                onPlaceOrder={placeOrder}
+                isLoading={orderMutation.isPending}
+              />
+            </div>
           </div>
         </div>
       </div>
