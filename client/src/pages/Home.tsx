@@ -249,7 +249,7 @@ export function Home() {
 
           {/* Order Summary - Mobile */}
           <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40">
-            <div className="container max-w-lg mx-auto p-4">
+            <div className="container mx-auto px-4 pb-safe">
               <Card className="glass-morphism border-white/20 shadow-lg">
                 <CardContent className="p-4">
                   <OrderSummary
