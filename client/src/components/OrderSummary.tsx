@@ -60,42 +60,42 @@ export function OrderSummary({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
             className={`space-y-${variant === "compact" ? "2" : "3"} overflow-auto max-h-[33vh] pr-2 -mr-2`}
           >
             {cart.map((item, index) => {
-          const itemPrice = Number(item.drink.price);
-          const totalPrice = itemPrice * item.quantity;
-          
-          return (
-            <div 
-              key={`${item.drink.id}-${index}`}
-              className="flex items-center justify-between gap-2"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline justify-between gap-2">
-                  <div className="font-medium truncate">
-                    {item.drink.name}
+              const itemPrice = Number(item.drink.price);
+              const totalPrice = itemPrice * item.quantity;
+              
+              return (
+                <div 
+                  key={`${item.drink.id}-${index}`}
+                  className="flex items-center justify-between gap-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="font-medium truncate">
+                        {item.drink.name}
+                      </div>
+                      <span className="font-medium whitespace-nowrap">
+                        ${totalPrice.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="text-sm text-muted-foreground flex items-center justify-between">
+                      <span>{item.quantity} × ${itemPrice.toFixed(2)}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => onRemoveItem(item.drink.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                  <span className="font-medium whitespace-nowrap">
-                    ${totalPrice.toFixed(2)}
-                  </span>
                 </div>
-                <div className="text-sm text-muted-foreground flex items-center justify-between">
-                  <span>{item.quantity} × ${itemPrice.toFixed(2)}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => onRemoveItem(item.drink.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+              );
+            })}
 
             {cart.length === 0 && (
               <div className={`text-center text-muted-foreground py-${variant === "compact" ? "4" : "8"}`}>
