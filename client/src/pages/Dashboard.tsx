@@ -100,30 +100,61 @@ export function Dashboard() {
             <CardTitle>Popular Drinks</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
+            <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={popularDrinks}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <BarChart 
+                  data={popularDrinks}
+                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid 
+                    strokeDasharray="3 3" 
+                    className="stroke-muted/50" 
+                    vertical={false}
+                  />
                   <XAxis 
                     dataKey="name"
-                    className="text-xs"
+                    className="text-xs font-medium"
                     tick={{ fill: 'currentColor' }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    height={60}
+                    angle={-45}
+                    textAnchor="end"
                   />
                   <YAxis 
-                    className="text-xs"
+                    className="text-xs font-medium"
                     tick={{ fill: 'currentColor' }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `${value}`}
                   />
                   <Tooltip
+                    cursor={{ fill: 'hsl(var(--muted))' }}
                     contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
+                      backgroundColor: 'hsl(var(--card))',
                       borderColor: 'hsl(var(--border))',
-                      borderRadius: 'var(--radius)'
+                      borderRadius: 'var(--radius)',
+                      boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                      color: 'hsl(var(--foreground))'
+                    }}
+                    itemStyle={{
+                      color: 'hsl(var(--foreground))'
+                    }}
+                    formatter={(value) => [`${value} sales`, 'Sales']}
+                    labelStyle={{
+                      color: 'hsl(var(--muted-foreground))',
+                      fontWeight: 500,
+                      marginBottom: '0.5rem'
                     }}
                   />
                   <Bar 
                     dataKey="sales"
                     fill="hsl(var(--primary))"
                     radius={[4, 4, 0, 0]}
+                    maxBarSize={50}
+                    animationDuration={1000}
+                    animationBegin={0}
                   />
                 </BarChart>
               </ResponsiveContainer>
