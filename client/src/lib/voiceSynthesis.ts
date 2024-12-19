@@ -1,21 +1,34 @@
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY || 'default',
-  dangerouslyAllowBrowser: true
-});
+let openai: OpenAI | null = null;
+
+// Initialize OpenAI client with proper error handling
+try {
+  if (import.meta.env.VITE_OPENAI_API_KEY) {
+    openai = new OpenAI({
+      apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+      dangerouslyAllowBrowser: true
+    });
+  } else {
+    console.warn('OpenAI API key not configured. Voice synthesis will be disabled.');
+  }
+} catch (error) {
+  console.error('Failed to initialize OpenAI client:', error);
+}
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
 export type ValidVoice = 'nova' | 'alloy' | 'echo' | 'fable' | 'onyx' | 'shimmer';
 
 export async function synthesizeSpeech(text: string, voice: ValidVoice = 'nova', retries = 3): Promise<string> {
-  if (!import.meta.env.VITE_OPENAI_API_KEY) {
-    throw new Error('OpenAI API key not configured. Please check your environment variables.');
+  if (!openai) {
+    throw new Error('OpenAI client not initialized. Voice synthesis is unavailable.');
   }
 
   let lastError;
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
+      console.log(`Attempting speech synthesis (attempt ${attempt + 1}/${retries})`);
+      
       const response = await openai.audio.speech.create({
         model: "tts-1",
         voice: voice,
@@ -24,19 +37,29 @@ export async function synthesizeSpeech(text: string, voice: ValidVoice = 'nova',
       });
 
       const audioBlob = await response.blob();
-      return URL.createObjectURL(audioBlob);
+      const audioUrl = URL.createObjectURL(audioBlob);
+      console.log('Speech synthesis successful');
+      return audioUrl;
     } catch (error) {
       console.error(`Speech synthesis attempt ${attempt + 1} failed:`, error);
       lastError = error;
       
       // Only wait between retries, not after the last attempt
       if (attempt < retries - 1) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+        const delay = 1000 * (attempt + 1);
+        console.log(`Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
   }
 
-  throw lastError || new Error('Speech synthesis failed after multiple attempts');
+  if (lastError instanceof Error) {
+    console.error('Speech synthesis failed after all retries:', lastError.message);
+    throw lastError;
+  } else {
+    console.error('Speech synthesis failed after all retries with unknown error:', lastError);
+    throw new Error('Speech synthesis failed with unknown error');
+  }
 }
 
 // Cache for storing audio URLs
@@ -47,6 +70,11 @@ const MAX_CACHE_SIZE = 50;
 
 export async function playCachedSpeech(text: string, voice: ValidVoice = 'nova'): Promise<void> {
   try {
+    // Verify we have required configuration
+    if (!openai) {
+      throw new Error('OpenAI client not initialized. Voice synthesis is unavailable.');
+    }
+
     const cacheKey = `${text}-${voice}`;
     let audioUrl = audioCache.get(cacheKey);
     
@@ -65,25 +93,54 @@ export async function playCachedSpeech(text: string, voice: ValidVoice = 'nova')
         }
       }
 
-      audioUrl = await synthesizeSpeech(text, voice);
-      audioCache.set(cacheKey, audioUrl);
+      console.log('Synthesizing speech for:', text);
+      try {
+        audioUrl = await synthesizeSpeech(text, voice);
+        if (!audioUrl) {
+          throw new Error('Failed to synthesize speech - no audio URL returned');
+        }
+        audioCache.set(cacheKey, audioUrl);
+      } catch (synthError) {
+        console.error('Speech synthesis failed:', synthError);
+        throw synthError;
+      }
     }
 
-    const audio = new Audio(audioUrl);
-    audio.volume = 1.0; // Ensure full volume for clarity
-    
-    // Add event listeners for error handling
-    audio.onerror = (e) => {
-      console.error('Audio playback error:', e);
-      // Remove failed audio URL from cache
-      audioCache.delete(cacheKey);
-      throw new Error('Failed to play audio');
-    };
+    return new Promise((resolve, reject) => {
+      const audio = new Audio(audioUrl);
+      audio.volume = 1.0;
 
-    await audio.play();
+      const cleanup = () => {
+        audio.onended = null;
+        audio.onerror = null;
+      };
+
+      audio.onended = () => {
+        cleanup();
+        console.log('Audio playback completed successfully');
+        resolve();
+      };
+
+      audio.onerror = (event) => {
+        cleanup();
+        const errorMessage = event instanceof ErrorEvent ? event.message : 'Unknown audio playback error';
+        console.error('Audio playback error:', errorMessage);
+        audioCache.delete(cacheKey);
+        reject(new Error(`Failed to play audio: ${errorMessage}`));
+      };
+
+      console.log('Starting audio playback...');
+      audio.play().catch(error => {
+        cleanup();
+        console.error('Audio playback failed:', error);
+        audioCache.delete(cacheKey);
+        reject(error instanceof Error ? error : new Error('Failed to start audio playback'));
+      });
+    });
   } catch (error) {
-    console.error('Audio playback failed:', error);
-    throw error;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    console.error('Voice synthesis system error:', errorMessage);
+    throw error instanceof Error ? error : new Error(errorMessage);
   }
 }
 

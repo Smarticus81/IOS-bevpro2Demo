@@ -1,0 +1,99 @@
+Processing intent: {
+  "type": "order",
+  "items": [
+    {
+      "name": "New Amsterdam",
+      "quantity": 4
+    },
+    {
+      "name": "club soda",
+      "quantity": 1
+    }
+  ],
+  "conversational_response": "Adding four New Amsterdam and one club soda to your order."
+}
+Completed command processing: 
+Object {text: " can you add four new amsterdam and a club soda", commandHash: " can you add four new amsterdam and a club soda-1734582984", timestamp: "2024-12-19T04:36:25.941Z"}
+OpenAI response: {
+  "type": "order",
+  "items": [
+    {"name": "New Amsterdam", "quantity": 4},
+    {"name": "club soda", "quantity": 1}
+  ],
+  "conversational_response": "Adding four New Amsterdam and one club soda to your order."
+}
+Updating conversation context: 
+Object {previousContext: {…}, newIntent: {…}, query: " can you add four new amsterdam and a club soda"}
+Updated context: 
+Object {timestamp: 1734582986470, topics: Array(2), relevantDrinks: Array(1), contextExpiry: 300000, lastIntent: {…}, …}
+Processing intent: {
+  "type": "order",
+  "items": [
+    {
+      "name": "New Amsterdam",
+      "quantity": 4
+    },
+    {
+      "name": "club soda",
+      "quantity": 1
+    }
+  ],
+  "conversational_response": "Adding four New Amsterdam and one club soda to your order."
+}
+Completed command processing: 
+Object {text: " can you add four new amsterdam and a club soda", commandHash: " can you add four new amsterdam and a club soda-1734582984", timestamp: "2024-12-19T04:36:26.464Z"}
+OpenAI response: {
+  "type": "order",
+  "items": [
+    {"name": "New Amsterdam", "quantity": 4},
+    {"name": "club soda", "quantity": 1}
+  ],
+  "conversational_response": "Adding four New Amsterdam and one club soda to your order."
+}
+Updating conversation context: 
+Object {previousContext: {…}, newIntent: {…}, query: " can you add four new amsterdam and a club soda"}
+Updated context: 
+Object {timestamp: 1734582986470, topics: Array(2), relevantDrinks: Array(1), contextExpiry: 300000, lastIntent: {…}, …}
+Processing intent: {
+  "type": "order",
+  "items": [
+    {
+      "name": "New Amsterdam",
+      "quantity": 4
+    },
+    {
+      "name": "club soda",
+      "quantity": 1
+    }
+  ],
+  "conversational_response": "Adding four New Amsterdam and one club soda to your order."
+}
+Adding drink to cart: 
+Object {name: "New Amsterdam", quantity: 4, price: 11, total: 44}
+Adding drink to cart: 
+Object {name: "Club Soda", quantity: 1, price: 3, total: 3}
+Completed command processing: 
+Object {text: " can you add four new amsterdam and a club soda", commandHash: " can you add four new amsterdam and a club soda-1734582984", timestamp: "2024-12-19T04:36:26.470Z"}
+Audio playback failed: 
+Error {}
+
+Failed to play voice feedback: 
+Error {}
+
+Recognition ended, restarting...
+Recognized text: complete the order please
+Wake word detection: 
+Object {text: "complete the order please", hasOrderWake: false, hasInquiryWake: false, orderWakeWord: "hey bar", inquiryWakeWord: "hey bev"}
+No wake word detected, emitting speech
+Received voice input: 
+Object {text: "complete the order please", mode: "order", isWakeWordOnly: true, isProcessingCommand: false, timestamp: "2024-12-19T04:36:41.327Z"}
+Received voice input: 
+Object {text: "complete the order please", mode: "order", isWakeWordOnly: true, isProcessingCommand: false, timestamp: "2024-12-19T04:36:41.327Z"}
+Received voice input: 
+Object {text: "complete the order please", mode: "order", isWakeWordOnly: true, isProcessingCommand: false, timestamp: "2024-12-19T04:36:41.327Z"}
+Starting command processing: 
+Object {text: "complete the order please", commandHash: "complete the order please-1734583001", timestamp: "2024-12-19T04:36:41.828Z"}
+Processing voice input: complete the order please
+Processing voice command: complete the order please
+Processing command with context: 
+Object {text: "complete the order please", relevantContext: "Recent topics: gin, soda. Discussed drinks: Cocktail. Last query:  can you add four new amsterdam…", historyLength: 8}
