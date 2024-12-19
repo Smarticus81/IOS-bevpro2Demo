@@ -35,7 +35,7 @@ export function OrderSummary({
         </div>
       )}
       
-      <div className={`space-y-${variant === "compact" ? "2" : "3"}`}>
+      <div className={`space-y-${variant === "compact" ? "2" : "3"} overflow-auto max-h-[33vh] pr-2 -mr-2`}>
         {cart.map((item, index) => {
           const itemPrice = Number(item.drink.price);
           const totalPrice = itemPrice * item.quantity;
