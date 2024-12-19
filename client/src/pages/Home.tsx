@@ -1,18 +1,32 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { DrinkMenu } from "@/components/DrinkMenu";
 import { VoiceControl } from "@/components/VoiceControl";
 import { OrderSummary } from "@/components/OrderSummary";
 import { OrderSummaryDrawer } from "@/components/OrderSummaryDrawer";
+import { VoiceFeedback } from "@/components/VoiceFeedback";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { NavBar } from "@/components/NavBar";
 import { useToast } from "@/hooks/use-toast";
 import type { Drink } from "@db/schema";
 
+type CartAction = 
+  | { type: 'ADD_ITEM'; drink: Drink; quantity: number }
+  | { type: 'COMPLETE_TRANSACTION' };
+
 export function Home() {
   const [cart, setCart] = useState<Array<{ drink: Drink; quantity: number }>>([]);
+  const [voiceMessage, setVoiceMessage] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
   const { toast } = useToast();
+
+  const playVoiceResponse = useCallback(async (message: string) => {
+    setVoiceMessage(message);
+    setIsPlaying(true);
+    // Auto-hide after 5 seconds
+    setTimeout(() => setIsPlaying(false), 5000);
+  }, []);
 
   const { data: drinks = [] } = useQuery<Drink[]>({
     queryKey: ["/api/drinks"],
@@ -34,6 +48,7 @@ export function Home() {
         description: "Your order has been placed successfully"
       });
       setCart([]);
+      playVoiceResponse("Order placed successfully! Thank you for your order.");
     },
     onError: () => {
       toast({
@@ -49,12 +64,14 @@ export function Home() {
       setCart(prev => {
         const existing = prev.find(item => item.drink.id === drink.id);
         if (existing) {
+          playVoiceResponse(`Updated ${drink.name} quantity to ${existing.quantity + quantity}`);
           return prev.map(item => 
             item.drink.id === drink.id 
               ? { ...item, quantity: item.quantity + quantity }
               : item
           );
         }
+        playVoiceResponse(`Added ${drink.name} to your order`);
         return [...prev, { drink, quantity }];
       });
     } else if (action.type === 'COMPLETE_TRANSACTION') {
@@ -97,6 +114,11 @@ export function Home() {
   return (
     <div className="min-h-screen bg-background">
       <NavBar />
+      <VoiceFeedback 
+        message={voiceMessage}
+        isPlaying={isPlaying}
+        voice="nova"
+      />
       
       <div className="container mx-auto p-4 lg:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
