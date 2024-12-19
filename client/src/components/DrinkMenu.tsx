@@ -53,14 +53,14 @@ export function DrinkMenu({ drinks, onAddToCart }: DrinkMenuProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredDrinks.map(drink => (
-            <Card key={drink.id} className="bg-white/10 backdrop-blur-md border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
+            <Card key={drink.id} className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
               <CardContent className="p-4">
-                <div className="font-semibold text-white">{drink.name}</div>
-                <div className="text-sm text-white/70 mb-2">
+                <div className="font-semibold text-gray-900">{drink.name}</div>
+                <div className="text-sm text-gray-600 mb-2">
                   {drink.subcategory}
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-white">${drink.price}</span>
+                  <span className="font-medium text-gray-900">${drink.price}</span>
                   <Button
                     onClick={() => onAddToCart(drink)}
                     disabled={drink.inventory === 0}
