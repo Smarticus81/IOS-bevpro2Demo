@@ -8,13 +8,15 @@ interface OrderSummaryProps {
   onRemoveItem: (drinkId: number) => void;
   onPlaceOrder: () => void;
   isLoading: boolean;
+  variant?: "default" | "compact";
 }
 
 export function OrderSummary({ 
   cart, 
   onRemoveItem, 
   onPlaceOrder,
-  isLoading 
+  isLoading,
+  variant = "default" 
 }: OrderSummaryProps) {
   const total = cart.reduce((sum, item) => {
     const itemPrice = Number(item.drink.price);
@@ -22,12 +24,17 @@ export function OrderSummary({
   }, 0);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Order Summary</CardTitle>
-      </CardHeader>
+    <div className={variant === "compact" ? "space-y-3" : "space-y-4"}>
+      {variant === "default" && (
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Order Summary</h3>
+          <Badge variant="outline" className="bg-primary/10 text-primary">
+            {cart.length} items
+          </Badge>
+        </div>
+      )}
       
-      <CardContent className="space-y-4">
+      <div className={`space-y-${variant === "compact" ? "2" : "3"}`}>
         {cart.map((item, index) => {
           const itemPrice = Number(item.drink.price);
           const totalPrice = itemPrice * item.quantity;
@@ -35,55 +42,55 @@ export function OrderSummary({
           return (
             <div 
               key={`${item.drink.id}-${index}`}
-              className="flex justify-between items-center"
+              className="flex items-center justify-between gap-2"
             >
-              <div>
-                <div className="font-medium">
-                  {item.drink.name}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline justify-between gap-2">
+                  <div className="font-medium truncate">
+                    {item.drink.name}
+                  </div>
+                  <span className="font-medium whitespace-nowrap">
+                    ${totalPrice.toFixed(2)}
+                  </span>
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  {item.quantity} × ${itemPrice.toFixed(2)}
+                <div className="text-sm text-muted-foreground flex items-center justify-between">
+                  <span>{item.quantity} × ${itemPrice.toFixed(2)}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => onRemoveItem(item.drink.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <span className="font-medium">
-                  ${totalPrice.toFixed(2)}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onRemoveItem(item.drink.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </div>
             </div>
           );
         })}
 
         {cart.length === 0 && (
-          <div className="text-center text-muted-foreground py-8">
+          <div className={`text-center text-muted-foreground py-${variant === "compact" ? "4" : "8"}`}>
             No items in cart
           </div>
         )}
-      </CardContent>
+      </div>
 
-      <CardFooter className="flex-col gap-4">
-        <div className="w-full flex justify-between text-lg font-semibold">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between font-semibold">
           <span>Total</span>
           <span>${total.toFixed(2)}</span>
         </div>
 
         <Button
           className="w-full"
-          size="lg"
+          size={variant === "compact" ? "default" : "lg"}
           onClick={onPlaceOrder}
           disabled={cart.length === 0 || isLoading}
         >
           {isLoading ? "Processing..." : "Place Order"}
         </Button>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }

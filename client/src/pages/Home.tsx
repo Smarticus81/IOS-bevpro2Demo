@@ -227,13 +227,30 @@ export function Home() {
           {/* Order Summary - Mobile */}
           <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40">
             <div className="container mx-auto p-4">
-              <OrderSummaryDrawer
-                cart={cart}
-                onRemoveItem={removeFromCart}
-                onPlaceOrder={placeOrder}
-                isLoading={orderMutation.isPending}
-              />
+              <Card className="glass-morphism border-white/20">
+                <CardContent className="p-4">
+                  <OrderSummary
+                    cart={cart}
+                    onRemoveItem={removeFromCart}
+                    onPlaceOrder={placeOrder}
+                    isLoading={orderMutation.isPending}
+                    variant="compact"
+                  />
+                </CardContent>
+              </Card>
             </div>
+          </div>
+
+          {/* Voice Control */}
+          <div className="fixed bottom-20 lg:bottom-8 left-1/2 -translate-x-1/2 z-30">
+            <Card className="bg-background/95 backdrop-blur-lg border-white/20">
+              <CardContent className="p-4">
+                <VoiceControl 
+                  drinks={drinks}
+                  onAddToCart={addToCart}
+                />
+              </CardContent>
+            </Card>
           </div>
         </div>
 
