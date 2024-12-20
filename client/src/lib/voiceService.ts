@@ -1,3 +1,5 @@
+import Anthropic from '@anthropic-ai/sdk';
+
 type EmotionType = 'happy' | 'neutral' | 'excited' | 'concerned' | 'apologetic';
 
 interface EmotionConfig {
@@ -18,10 +20,15 @@ class VoiceService {
   private cacheExpiryMs: number;
   private selectedVoice: SpeechSynthesisVoice | null = null;
   private isInitialized: boolean = false;
+  private anthropic: Anthropic;
 
   private constructor() {
     this.cache = new Map();
     this.cacheExpiryMs = 30 * 60 * 1000; // 30 minutes
+    this.anthropic = new Anthropic({
+      apiKey: import.meta.env.VITE_ANTHROPIC_API_KEY,
+      dangerouslyAllowBrowser: true // Enable browser environment
+    });
     this.initializeVoice();
   }
 
@@ -106,42 +113,89 @@ class VoiceService {
 
       console.info('Speaking with emotion:', { emotion, config });
 
-      // Create and configure utterance
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.voice = this.selectedVoice;
-      utterance.pitch = config.pitch;
-      utterance.rate = config.rate;
-      utterance.volume = config.volume;
-
-      // Set up progress tracking
-      let wordCount = 0;
-      const totalWords = text.split(/\s+/).length;
-
-      utterance.onboundary = (event) => {
-        if (event.name === 'word') {
-          wordCount++;
-          if (onProgress) {
-            onProgress((wordCount / totalWords) * 100);
-          }
+      try {
+        if (!navigator.onLine) {
+          throw new Error('No internet connection available, falling back to Web Speech API');
         }
-      };
 
-      // Handle errors
-      utterance.onerror = (event) => {
-        console.error('Speech synthesis error:', event);
-        throw new Error('Speech synthesis failed');
-      };
+        // Try Anthropic first
+        // the newest Anthropic model is "claude-3-5-sonnet-20241022" which was released October 22, 2024
+        const response = await this.anthropic.messages.create({
+          model: "claude-3-5-sonnet-20241022",
+          max_tokens: 1024,
+          messages: [{
+            role: "user", 
+            content: `Convert this text to natural speech, expressing ${emotion} emotion: "${text}". Keep the response concise and natural sounding.`
+          }],
+          temperature: 0.7
+        });
 
-      // Speak
-      window.speechSynthesis.cancel(); // Cancel any ongoing speech
-      window.speechSynthesis.speak(utterance);
+        // Process response and convert to audio
+        const content = response.content[0]?.type === 'text' ? response.content[0].text : text;
+        const utterance = new SpeechSynthesisUtterance(content);
+        utterance.voice = this.selectedVoice;
+        utterance.pitch = config.pitch;
+        utterance.rate = config.rate;
+        utterance.volume = config.volume;
 
-      // Return a promise that resolves when speech is complete
-      return new Promise((resolve, reject) => {
-        utterance.onend = () => resolve();
-        utterance.onerror = (event) => reject(new Error(`Speech synthesis failed: ${event.error}`));
-      });
-    } catch (error) {
+        // Set up progress tracking
+        let wordCount = 0;
+        const totalWords = text.split(/\s+/).length;
+
+        utterance.onboundary = (event) => {
+          if (event.name === 'word') {
+            wordCount++;
+            if (onProgress) {
+              onProgress((wordCount / totalWords) * 100);
+            }
+          }
+        };
+
+        // Speak using Web Speech API as fallback
+        window.speechSynthesis.cancel(); // Cancel any ongoing speech
+        window.speechSynthesis.speak(utterance);
+
+        return new Promise((resolve, reject) => {
+          utterance.onend = () => resolve();
+          utterance.onerror = (event) => reject(new Error(`Speech synthesis failed: ${event.error}`));
+        });
+      } catch (anthropicError: unknown) {
+        console.warn('Anthropic API failed, falling back to Web Speech API:', {
+          error: anthropicError instanceof Error ? anthropicError.message : 'Unknown error',
+          offline: !navigator.onLine,
+          hasVoice: !!this.selectedVoice
+        });
+        
+        // Fallback to Web Speech API
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.voice = this.selectedVoice;
+        utterance.pitch = config.pitch;
+        utterance.rate = config.rate;
+        utterance.volume = config.volume;
+
+        // Set up progress tracking
+        let wordCount = 0;
+        const totalWords = text.split(/\s+/).length;
+
+        utterance.onboundary = (event) => {
+          if (event.name === 'word') {
+            wordCount++;
+            if (onProgress) {
+              onProgress((wordCount / totalWords) * 100);
+            }
+          }
+        };
+
+        // Speak
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
+
+        return new Promise((resolve, reject) => {
+          utterance.onend = () => resolve();
+          utterance.onerror = (event) => reject(new Error(`Speech synthesis failed: ${event.error}`));
+        });
+      }
+    } catch (error: unknown) {
       console.error('Error in speak:', error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
