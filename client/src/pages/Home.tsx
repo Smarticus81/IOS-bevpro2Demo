@@ -132,9 +132,9 @@ export function Home() {
         voice="nova"
       />
       
-      <main className="container mx-auto px-4 pt-16 pb-8 sm:px-6 lg:px-8">
+      <main className="px-4 pt-4 pb-8 sm:px-6 lg:px-8">
         {/* Status Bar */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="container mx-auto mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-xl bg-gradient-to-r from-primary/90 to-primary/60 bg-clip-text text-transparent">
