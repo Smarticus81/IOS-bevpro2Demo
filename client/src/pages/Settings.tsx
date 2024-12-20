@@ -30,6 +30,7 @@ export function Settings() {
   const [apiSettings, setApiSettings] = useState({
     openaiKey: "",
     anthropicKey: "",
+    stripeKey: "",
   });
 
   const [aiSettings, setAiSettings] = useState({
@@ -39,12 +40,61 @@ export function Settings() {
     systemPrompt: "You are a helpful beverage service assistant.",
   });
 
-  const handleSave = () => {
-    // TODO: Implement settings save logic
-    toast({
-      title: "Settings saved",
-      description: "Your preferences have been updated successfully.",
-    });
+  const handleSave = async () => {
+    try {
+      // Validate API keys format
+      if (apiSettings.stripeKey && !apiSettings.stripeKey.startsWith('sk_')) {
+        toast({
+          title: "Invalid Stripe API Key",
+          description: "Please enter a valid Stripe secret key starting with 'sk_'",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Here we would typically make an API call to save the settings
+      // For security, we should implement this on the backend
+      // For now, we'll just save to localStorage as a demonstration
+      localStorage.setItem('bevpro_settings', JSON.stringify({
+        voice: voiceSettings,
+        ui: uiSettings,
+        ai: aiSettings
+      }));
+
+      // API keys should be handled separately through secure backend endpoints
+      if (apiSettings.stripeKey) {
+        try {
+          const response = await fetch('/api/settings/stripe-key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: apiSettings.stripeKey }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to save Stripe API key');
+          }
+        } catch (error) {
+          toast({
+            title: "Error Saving Stripe Key",
+            description: "Failed to save the Stripe API key. Please try again.",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+
+      toast({
+        title: "Settings saved",
+        description: "Your preferences have been updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save settings. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -175,25 +225,48 @@ export function Settings() {
               <CardHeader>
                 <CardTitle>API Configuration</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label>OpenAI API Key</Label>
-                  <Input
-                    type="password"
-                    value={apiSettings.openaiKey}
-                    onChange={(e) => setApiSettings(prev => ({ ...prev, openaiKey: e.target.value }))}
-                    placeholder="sk-..."
-                  />
+              <CardContent className="space-y-8">
+                {/* Voice AI Integration */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Voice AI Integration</h3>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>OpenAI API Key</Label>
+                      <Input
+                        type="password"
+                        value={apiSettings.openaiKey}
+                        onChange={(e) => setApiSettings(prev => ({ ...prev, openaiKey: e.target.value }))}
+                        placeholder="sk-..."
+                      />
+                      <p className="text-xs text-gray-500">Required for voice synthesis and natural language processing</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Anthropic API Key</Label>
+                      <Input
+                        type="password"
+                        value={apiSettings.anthropicKey}
+                        onChange={(e) => setApiSettings(prev => ({ ...prev, anthropicKey: e.target.value }))}
+                        placeholder="sk-ant-..."
+                      />
+                      <p className="text-xs text-gray-500">Alternative AI provider for enhanced capabilities</p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Anthropic API Key</Label>
-                  <Input
-                    type="password"
-                    value={apiSettings.anthropicKey}
-                    onChange={(e) => setApiSettings(prev => ({ ...prev, anthropicKey: e.target.value }))}
-                    placeholder="sk-ant-..."
-                  />
+                {/* Payment Integration */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Payment Integration</h3>
+                  <div className="space-y-2">
+                    <Label>Stripe Secret Key</Label>
+                    <Input
+                      type="password"
+                      value={apiSettings.stripeKey}
+                      onChange={(e) => setApiSettings(prev => ({ ...prev, stripeKey: e.target.value }))}
+                      placeholder="sk_live_..."
+                    />
+                    <p className="text-xs text-gray-500">Required for processing payments and managing transactions</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
