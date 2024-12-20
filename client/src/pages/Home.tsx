@@ -156,63 +156,58 @@ export function Home() {
             </Badge>
           </div>
         </div>
-        {/* Premium Category Selector */}
-        <div className="relative mb-8">
-          <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide">
+
+        {/* Category Selector */}
+        <div className="flex overflow-x-auto gap-4 pb-4 -mx-4 px-4 scrollbar-hide">
+          <motion.button
+            onClick={() => setSelectedCategory(null)}
+            className={`
+              shrink-0 w-16 h-16 rounded-full
+              flex flex-col items-center justify-center
+              text-sm font-medium
+              transition-all duration-300
+              backdrop-blur-sm
+              relative overflow-hidden
+              ${!selectedCategory ? 
+                'text-primary ring-2 ring-primary bg-gradient-to-br from-primary/10 to-transparent animate-pulse-soft' : 
+                'text-gray-700 hover:text-gray-900 ring-1 ring-primary/20 hover:ring-primary/40'}
+            `}
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <span className="text-xl mb-1">🍷</span>
+            <span className="text-xs">All</span>
+          </motion.button>
+
+          {categories.map((category: string) => (
             <motion.button
-              onClick={() => setSelectedCategory(null)}
+              key={category}
+              onClick={() => setSelectedCategory(category)}
               className={`
-                shrink-0 w-20 h-20 rounded-full
+                shrink-0 w-16 h-16 rounded-full
                 flex flex-col items-center justify-center
                 text-sm font-medium
                 transition-all duration-300
-                bg-white/90 hover:bg-white/95
-                shadow-lg hover:shadow-xl
-                border border-primary/10
+                backdrop-blur-sm
                 relative overflow-hidden
-                ${!selectedCategory ? 
-                  'ring-2 ring-primary text-primary bg-gradient-to-br from-primary/10 to-transparent animate-pulse-soft' : 
-                  'ring-1 ring-primary/20 text-gray-700 hover:text-gray-900'}
+                ${selectedCategory === category ?
+                  'text-primary ring-2 ring-primary bg-gradient-to-br from-primary/10 to-transparent animate-pulse-soft' :
+                  'text-gray-800 hover:text-gray-900 ring-1 ring-primary/20 hover:ring-primary/40'}
               `}
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.98 }}
             >
-              <span className="text-xl mb-1">🍷</span>
-              <span className="text-xs">All</span>
+              <span className="text-xl mb-1">
+                {category === 'Spirits' ? '🥃' :
+                 category === 'Beer' ? '🍺' :
+                 category === 'Wine' ? '🍷' :
+                 category === 'Signature' ? '🍸' :
+                 category === 'Classics' ? '🥂' :
+                 category === 'Non-Alcoholic' ? '🥤' : '🍹'}
+              </span>
+              <span className="text-xs">{category}</span>
             </motion.button>
-            {categories.map((category: string) => (
-              <motion.button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`
-                  shrink-0 w-20 h-20 rounded-full
-                  flex flex-col items-center justify-center
-                  text-sm font-medium
-                  transition-all duration-300
-                  bg-white/90 hover:bg-white/95
-                  shadow-lg hover:shadow-xl
-                  border border-primary/10
-                  relative overflow-hidden
-                  ${selectedCategory === category ?
-                    'ring-2 ring-primary text-primary bg-gradient-to-br from-primary/10 to-transparent animate-pulse-soft' :
-                    'ring-1 ring-primary/20 text-gray-800 hover:text-gray-900'}
-                `}
-                whileHover={{ y: -2 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <span className="text-xl mb-1">
-                  {category === 'Spirits' ? '🥃' :
-                   category === 'Beer' ? '🍺' :
-                   category === 'Wine' ? '🍷' :
-                   category === 'Signature' ? '🍸' :
-                   category === 'Classics' ? '🥂' :
-                   category === 'Non-Alcoholic' ? '🥤' : '🍹'}
-                </span>
-                <span className="text-xs">{category}</span>
-              </motion.button>
-            ))}
-          </div>
-          <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background to-transparent pointer-events-none" />
+          ))}
         </div>
 
         {/* Main Content Grid */}
@@ -255,8 +250,6 @@ export function Home() {
               </Card>
             </div>
           </div>
-
-          {/* Voice Control removed from here and moved to NavBar */}
 
           {/* Order Summary - Mobile */}
           <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40">
