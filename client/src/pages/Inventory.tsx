@@ -12,10 +12,31 @@ import { useToast } from "@/hooks/use-toast";
 export function Inventory() {
   const [search, setSearch] = useState("");
   const [inventoryChanges, setInventoryChanges] = useState<Record<number, number>>({});
+  const [alerts, setAlerts] = useState<Array<{
+    id: string;
+    type: 'warning' | 'error' | 'success';
+    message: string;
+    timestamp: Date;
+  }>>([]);
   const { toast } = useToast();
   
   const { data: drinks = [] } = useQuery<Drink[]>({
     queryKey: ["/api/drinks"],
+    onSuccess: (data) => {
+      // Check for low stock items
+      const lowStockItems = data.filter(drink => drink.inventory < 10);
+      if (lowStockItems.length > 0) {
+        setAlerts(prev => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            type: 'warning',
+            message: `${lowStockItems.length} items are running low on stock`,
+            timestamp: new Date()
+          }
+        ]);
+      }
+    }
   });
 
   const updateInventoryMutation = useMutation({
@@ -38,6 +59,10 @@ export function Inventory() {
   return (
     <div className="min-h-screen bg-background">
       <NavBar />
+      <InventoryAlert 
+        alerts={alerts}
+        onDismiss={(id) => setAlerts(prev => prev.filter(alert => alert.id !== id))}
+      />
       
       <div className="container mx-auto p-4 lg:p-8">
         <div className="mb-8">
