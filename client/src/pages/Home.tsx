@@ -221,7 +221,7 @@ export function Home() {
             {/* Drinks Grid */}
             <motion.div 
               layout
-              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6"
+              className="grid grid-cols-2 gap-3 sm:gap-4"
             >
               <AnimatePresence>
                 {filteredDrinks.map((drink) => {

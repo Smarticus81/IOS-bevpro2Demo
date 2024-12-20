@@ -38,7 +38,7 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
       exit={{ opacity: 0, y: -20 }}
       whileHover={{ y: -4 }}
       whileTap={{ scale: 0.98 }}
-      onClick={quantity === 0 ? onAdd : onRemove}
+      onClick={onAdd}
       className="group relative cursor-pointer select-none"
     >
       <div className="relative overflow-hidden rounded-xl bg-white 

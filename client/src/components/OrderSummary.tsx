@@ -61,7 +61,7 @@ export function OrderSummary({
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className={`space-y-${variant === "compact" ? "2" : "3"} overflow-auto max-h-[33vh] pr-2 -mr-2`}
+            className={`space-y-${variant === "compact" ? "2" : "3"} overflow-y-auto max-h-[50vh] pr-2 -mr-2 scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent`}
           >
             {cart.map((item, index) => {
               const itemPrice = Number(item.drink.price);
@@ -98,10 +98,10 @@ export function OrderSummary({
             })}
 
             {cart.length === 0 && (
-              <div className={`text-center text-muted-foreground py-${variant === "compact" ? "4" : "8"}`}>
-                No items in cart
-              </div>
-            )}
+                <div className={`text-center py-${variant === "compact" ? "4" : "8"} border-2 border-dashed border-primary/20 rounded-lg bg-primary/5`}>
+                  <p className="text-primary/70 font-medium">Ready to take your order</p>
+                </div>
+              )}
           </motion.div>
         )}
       </AnimatePresence>
