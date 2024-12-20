@@ -8,6 +8,7 @@ import { Package, AlertTriangle, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { Drink } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
+import { InventoryAnalytics } from "@/components/InventoryAnalytics";
 
 export function Inventory() {
   const [search, setSearch] = useState("");
@@ -113,6 +114,9 @@ export function Inventory() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Analytics Dashboard */}
+          <InventoryAnalytics drinks={drinks} />
 
           {/* Inventory List */}
           <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
