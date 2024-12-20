@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Mic, MicOff } from "lucide-react";
+import { Mic, MicOff, Minimize2, Maximize2 } from "lucide-react";
+import { motion } from "framer-motion";
 import { voiceRecognition } from "@/lib/voice";
 import { processVoiceCommand } from "@/lib/openai";
 import { voiceSynthesis } from "@/lib/voice-synthesis";
@@ -537,30 +538,50 @@ export function VoiceControl({ drinks, onAddToCart, onVoiceCommand }: VoiceContr
     }
   };
 
+  const [isMinimized, setIsMinimized] = useState(false);
+
   return (
     <div className="flex items-center gap-4 mb-6">
       <div className="flex items-center gap-4">
-        <Button
-          onClick={toggleListening}
-          variant={isListening ? "destructive" : "default"}
-          className={`
-            w-16 h-16 rounded-full p-0 relative
-            bg-white/90 hover:bg-white/95
-            shadow-lg hover:shadow-xl
-            transition-all duration-300
-            border border-primary/10
-            ${isListening ? 'ring-2 ring-destructive' : 'ring-1 ring-primary/20'}
-          `}
-          disabled={!isSupported}
+        <motion.div
+          animate={{ width: isMinimized ? "4rem" : "auto" }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          className="relative"
         >
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="font-semibold text-sm text-primary/80">Bev</span>
-          </div>
-          <div className={`
-            absolute inset-0 rounded-full
-            ${isListening ? 'animate-pulse-ring bg-destructive/5' : 'bg-primary/5'}
-          `} />
-        </Button>
+          <Button
+            onClick={toggleListening}
+            variant={isListening ? "destructive" : "default"}
+            className={`
+              w-16 h-16 rounded-full p-0 relative
+              bg-white/90 hover:bg-white/95
+              shadow-lg hover:shadow-xl
+              transition-all duration-300
+              border border-primary/10
+              ${isListening ? 'ring-2 ring-destructive' : 'ring-1 ring-primary/20'}
+            `}
+            disabled={!isSupported}
+          >
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="font-semibold text-sm text-primary/80">Bev</span>
+            </div>
+            <div className={`
+              absolute inset-0 rounded-full
+              ${isListening ? 'animate-pulse-ring bg-destructive/5' : 'bg-primary/5'}
+            `} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="absolute -right-8 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+            onClick={() => setIsMinimized(!isMinimized)}
+          >
+            {isMinimized ? (
+              <Maximize2 className="h-4 w-4" />
+            ) : (
+              <Minimize2 className="h-4 w-4" />
+            )}
+          </Button>
+        </motion.div>
 
         <VoiceAnimation
           isListening={isListening}
