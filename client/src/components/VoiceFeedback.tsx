@@ -13,6 +13,7 @@ export function VoiceFeedback({ message, isPlaying }: VoiceFeedbackProps) {
   const lastMessageRef = useRef<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [usingFallback, setUsingFallback] = useState(false);
 
   useEffect(() => {
@@ -32,7 +33,11 @@ export function VoiceFeedback({ message, isPlaying }: VoiceFeedbackProps) {
           });
           
           try {
-            await voiceService.speak(message);
+            await voiceService.speak(message, (progress) => {
+              if (mounted) {
+                setProgress(progress);
+              }
+            });
             if (!mounted) return;
             setUsingFallback(false);
             console.info('Voice feedback played successfully');
@@ -103,9 +108,21 @@ export function VoiceFeedback({ message, isPlaying }: VoiceFeedbackProps) {
                   {error ? error : message}
                 </p>
                 {isLoading && (
-                  <p className="text-xs text-white/70">
-                    {usingFallback ? 'Using offline voice...' : 'Processing voice...'}
-                  </p>
+                  <div className="space-y-1">
+                    <p className="text-xs text-white/70">
+                      {usingFallback ? 'Using offline voice...' : progress > 0 ? `Streaming audio... ${Math.round(progress)}%` : 'Processing voice...'}
+                    </p>
+                    {progress > 0 && !usingFallback && (
+                      <div className="w-full h-1 bg-white/20 rounded-full overflow-hidden">
+                        <motion.div 
+                          className="h-full bg-white/40 rounded-full"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${progress}%` }}
+                          transition={{ duration: 0.3 }}
+                        />
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

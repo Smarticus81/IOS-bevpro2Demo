@@ -3,20 +3,29 @@ import OpenAI from "openai";
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
 let openai: OpenAI | null = null;
 
-// Initialize OpenAI with retry logic
-const initializeOpenAI = () => {
+// Initialize OpenAI with retry logic and validation
+const initializeOpenAI = (): boolean => {
   try {
-    if (!openai && import.meta.env.VITE_OPENAI_API_KEY) {
-      openai = new OpenAI({
-        apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-        dangerouslyAllowBrowser: true
-      });
-      console.info('OpenAI client initialized successfully');
-    } else if (!import.meta.env.VITE_OPENAI_API_KEY) {
-      console.error('OpenAI API key not found in environment variables');
+    if (openai) {
+      console.info('OpenAI client already initialized');
+      return true;
     }
+
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY || import.meta.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      console.error('OpenAI API key not found in environment variables. Ensure OPENAI_API_KEY is properly set and exposed to the frontend.');
+      return false;
+    }
+
+    openai = new OpenAI({
+      apiKey,
+      dangerouslyAllowBrowser: true
+    });
+    console.info('OpenAI client initialized successfully');
+    return true;
   } catch (error) {
-    console.error('Failed to initialize OpenAI client:', error);
+    console.error('Failed to initialize OpenAI client:', error instanceof Error ? error.message : 'Unknown error');
+    return false;
   }
 };
 
@@ -30,10 +39,19 @@ class VoiceService {
   private cache: Map<string, CachedVoiceResponse>;
   private cacheExpiryMs: number;
 
+  private isInitialized: boolean;
+
   private constructor() {
     this.cache = new Map();
     this.cacheExpiryMs = 30 * 60 * 1000; // 30 minutes
-    initializeOpenAI();
+    this.isInitialized = initializeOpenAI();
+    
+    // Retry initialization after a delay if it fails
+    if (!this.isInitialized) {
+      setTimeout(() => {
+        this.isInitialized = initializeOpenAI();
+      }, 2000);
+    }
   }
 
   public static getInstance(): VoiceService {
@@ -41,6 +59,58 @@ class VoiceService {
       VoiceService.instance = new VoiceService();
     }
     return VoiceService.instance;
+  }
+
+  private ensureInitialized(): void {
+    if (!this.isInitialized) {
+      this.isInitialized = initializeOpenAI();
+      if (!this.isInitialized) {
+        throw new Error('OpenAI client not initialized. Please check your API key.');
+      }
+    }
+  }
+
+  private async *streamSynthesizeSpeech(text: string): AsyncGenerator<{ chunk: ArrayBuffer; progress: number }> {
+    try {
+      console.info('Starting speech synthesis with streaming:', { textLength: text.length });
+      this.ensureInitialized();
+      if (!openai) {
+        console.error('OpenAI client initialization failed');
+        throw new Error('OpenAI client not initialized');
+      }
+
+      console.info('OpenAI client status: initialized and ready');
+
+    try {
+      const chunks: ArrayBuffer[] = [];
+      // Using regular speech synthesis for now since streaming is not yet supported
+      const response = await openai.audio.speech.create({
+        model: "nova",
+        voice: "nova",
+        input: text,
+      });
+      
+      // Convert the response to ArrayBuffer and split into smaller chunks
+      const fullBuffer = await response.arrayBuffer();
+      const totalSize = fullBuffer.byteLength;
+      const chunkSize = 32 * 1024; // 32KB chunks
+      
+      for (let offset = 0; offset < totalSize; offset += chunkSize) {
+        const chunk = fullBuffer.slice(offset, Math.min(offset + chunkSize, totalSize));
+        yield { chunk, progress: Math.min(100, (offset + chunkSize) / totalSize * 100) };
+        chunks.push(chunk);
+      }
+
+      // Cache the complete audio for future use
+      const completeAudio = new Blob(chunks).arrayBuffer();
+      this.cache.set(text, {
+        audioBuffer: await completeAudio,
+        timestamp: Date.now()
+      });
+    } catch (error) {
+      console.error('Error synthesizing speech:', error instanceof Error ? error.message : 'Unknown error');
+      throw new Error('Failed to synthesize speech');
+    }
   }
 
   private async synthesizeSpeech(text: string): Promise<ArrayBuffer> {
@@ -73,7 +143,7 @@ class VoiceService {
     });
   }
 
-  public async speak(text: string): Promise<void> {
+  public async speak(text: string, onProgress?: (progress: number) => void): Promise<void> {
     try {
       if (!openai) {
         initializeOpenAI();
@@ -83,21 +153,55 @@ class VoiceService {
 
       // Check cache first
       const cached = this.cache.get(text);
-      let audioBuffer: ArrayBuffer;
-
       if (cached) {
-        audioBuffer = cached.audioBuffer;
-      } else {
-        // Synthesize new speech
-        audioBuffer = await this.synthesizeSpeech(text);
-        // Cache the result
-        this.cache.set(text, {
-          audioBuffer,
-          timestamp: Date.now()
+        // Play cached audio
+        const audioContext = new AudioContext();
+        const source = audioContext.createBufferSource();
+        const audioArrayBuffer = await audioContext.decodeAudioData(cached.audioBuffer);
+        source.buffer = audioArrayBuffer;
+        source.connect(audioContext.destination);
+        source.start(0);
+
+        return new Promise((resolve) => {
+          source.onended = () => {
+            audioContext.close();
+            resolve();
+          };
         });
       }
 
-      // Play the audio
+      // For longer responses (> 100 chars), use streaming
+      if (text.length > 100) {
+        const audioContext = new AudioContext();
+        const chunks: ArrayBuffer[] = [];
+        let totalChunks = 0;
+        
+        for await (const { chunk, progress } of this.streamSynthesizeSpeech(text)) {
+          chunks.push(chunk);
+          
+          // Report progress
+          if (onProgress) {
+            onProgress(progress);
+          }
+
+          // Play each chunk as it arrives
+          const source = audioContext.createBufferSource();
+          const audioArrayBuffer = await audioContext.decodeAudioData(chunk);
+          source.buffer = audioArrayBuffer;
+          source.connect(audioContext.destination);
+          source.start(0);
+          
+          await new Promise((resolve) => {
+            source.onended = resolve;
+          });
+        }
+
+        audioContext.close();
+        return;
+      }
+
+      // For shorter responses, use regular synthesis
+      const audioBuffer = await this.synthesizeSpeech(text);
       const audioContext = new AudioContext();
       const source = audioContext.createBufferSource();
       const audioArrayBuffer = await audioContext.decodeAudioData(audioBuffer);
@@ -112,10 +216,11 @@ class VoiceService {
         };
       });
     } catch (error) {
-      console.error('Error in speak:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error in speak:', errorMessage);
       
       // Check if we're offline
-      if (!navigator.onLine || error.message.includes('Failed to fetch')) {
+      if (!navigator.onLine || (error instanceof Error && error.message.includes('Failed to fetch'))) {
         console.info('Falling back to Web Speech API due to offline/network error');
         
         // Configure Web Speech API fallback
