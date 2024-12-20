@@ -114,7 +114,7 @@ export function OrderSummary({
 
         <div className="space-y-3">
           <Button
-            className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg"
+            className="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold transform transition-all duration-200 hover:scale-[1.02] shadow-lg hover:shadow-indigo-500/25"
             size={variant === "compact" ? "default" : "lg"}
             onClick={onPlaceOrder}
             disabled={cart.length === 0 || isLoading}
@@ -124,7 +124,7 @@ export function OrderSummary({
           
           <Button
             variant="destructive"
-            className="w-full bg-gradient-to-r from-destructive to-destructive/90 hover:from-destructive/90 hover:to-destructive shadow-lg"
+            className="w-full bg-gradient-to-r from-rose-600 to-red-500 hover:from-rose-500 hover:to-red-400 text-white font-semibold transform transition-all duration-200 hover:scale-[1.02] shadow-lg hover:shadow-rose-500/25"
             size={variant === "compact" ? "default" : "lg"}
             onClick={() => {
               if (cart.length > 0) {
