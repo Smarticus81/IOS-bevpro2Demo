@@ -3,6 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { motion } from "framer-motion";
 import type { Drink } from "@db/schema";
 
 interface DrinkMenuProps {
@@ -130,7 +132,6 @@ export function DrinkMenu({ drinks, onAddToCart }: DrinkMenuProps) {
               </motion.div>
             );
           })}
-          ))}
         </div>
       </Tabs>
     </div>

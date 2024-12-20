@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Drink } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { InventoryAnalytics } from "@/components/InventoryAnalytics";
+import { InventoryAlert } from "@/components/InventoryAlert";
 
 export function Inventory() {
   const [search, setSearch] = useState("");
