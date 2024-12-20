@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, CreditCard } from "lucide-react";
+import { paymentService } from "@/lib/paymentService";
 
 interface PaymentFormProps {
   amount: number;
@@ -22,27 +23,28 @@ export function PaymentForm({ amount, onSuccess, onError }: PaymentFormProps) {
     e.preventDefault();
     setIsProcessing(true);
 
-    // Simulate payment processing
-    setTimeout(() => {
-      const success = Math.random() > 0.1; // 90% success rate
+    try {
+      const result = await paymentService.processPayment({
+        amount,
+        paymentMethod,
+      });
 
-      if (success) {
-        toast({
-          title: "Payment successful",
-          description: "Your payment has been processed successfully.",
-        });
-        onSuccess?.();
-      } else {
-        const errorMessage = "Payment simulation failed";
-        toast({
-          title: "Payment failed",
-          description: errorMessage,
-          variant: "destructive",
-        });
-        onError?.(errorMessage);
-      }
+      toast({
+        title: "Payment successful",
+        description: result.message,
+      });
+      onSuccess?.();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Payment failed";
+      toast({
+        title: "Payment failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      onError?.(errorMessage);
+    } finally {
       setIsProcessing(false);
-    }, 2000);
+    }
   };
 
   return (
