@@ -19,6 +19,7 @@ export function Settings() {
     pitch: 1,
     wakeWord: "hey bar",
     volume: 75,
+    enableFeedback: true,
   });
 
   const [uiSettings, setUiSettings] = useState({
@@ -152,6 +153,17 @@ export function Settings() {
                         <SelectItem value="nova">Nova</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Voice Feedback</Label>
+                      <div className="text-sm text-gray-600">Enable voice responses for manual orders</div>
+                    </div>
+                    <Switch
+                      checked={voiceSettings.enableFeedback}
+                      onCheckedChange={(checked) => setVoiceSettings(prev => ({ ...prev, enableFeedback: checked }))}
+                    />
                   </div>
 
                   <div className="space-y-2">
