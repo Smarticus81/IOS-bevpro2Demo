@@ -134,25 +134,26 @@ export function Home() {
       
       <main className="px-4 pt-4 pb-8 sm:px-6 lg:px-8">
         {/* Category Selector */}
-        <div className="flex overflow-x-auto gap-4 pb-4 -mx-4 px-4 scrollbar-hide">
+        <div className="flex overflow-x-auto gap-2 py-2 mb-4 -mx-4 px-4 scrollbar-hide">
           <motion.button
             onClick={() => setSelectedCategory(null)}
             className={`
-              shrink-0 w-16 h-16 rounded-full
-              flex flex-col items-center justify-center
+              shrink-0 px-4 h-8
+              flex items-center gap-2
               text-sm font-medium
+              rounded-full
               transition-all duration-300
-              backdrop-blur-sm
-              relative overflow-hidden
+              bg-white/80 hover:bg-white/90
+              shadow-sm hover:shadow-md
               ${!selectedCategory ? 
-                'text-primary ring-2 ring-primary bg-gradient-to-br from-primary/10 to-transparent animate-pulse-soft' : 
-                'text-gray-700 hover:text-gray-900 ring-1 ring-primary/20 hover:ring-primary/40'}
+                'ring-1 ring-primary text-primary scale-105' : 
+                'text-gray-600 hover:text-gray-800'}
             `}
-            whileHover={{ y: -2 }}
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.98 }}
           >
-            <span className="text-xl mb-1">🍷</span>
-            <span className="text-xs">All</span>
+            <span className="text-base">🍷</span>
+            <span className="text-xs font-medium">All</span>
           </motion.button>
 
           {categories.map((category: string) => (
@@ -160,20 +161,21 @@ export function Home() {
               key={category}
               onClick={() => setSelectedCategory(category)}
               className={`
-                shrink-0 w-16 h-16 rounded-full
-                flex flex-col items-center justify-center
+                shrink-0 px-4 h-8
+                flex items-center gap-2
                 text-sm font-medium
+                rounded-full
                 transition-all duration-300
-                backdrop-blur-sm
-                relative overflow-hidden
+                bg-white/80 hover:bg-white/90
+                shadow-sm hover:shadow-md
                 ${selectedCategory === category ?
-                  'text-primary ring-2 ring-primary bg-gradient-to-br from-primary/10 to-transparent animate-pulse-soft' :
-                  'text-gray-800 hover:text-gray-900 ring-1 ring-primary/20 hover:ring-primary/40'}
+                  'ring-1 ring-primary text-primary scale-105' :
+                  'text-gray-600 hover:text-gray-800'}
               `}
-              whileHover={{ y: -2 }}
+              whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.98 }}
             >
-              <span className="text-xl mb-1">
+              <span className="text-base">
                 {category === 'Spirits' ? '🥃' :
                  category === 'Beer' ? '🍺' :
                  category === 'Wine' ? '🍷' :
@@ -181,7 +183,7 @@ export function Home() {
                  category === 'Classics' ? '🥂' :
                  category === 'Non-Alcoholic' ? '🥤' : '🍹'}
               </span>
-              <span className="text-xs">{category}</span>
+              <span className="text-xs font-medium">{category}</span>
             </motion.button>
           ))}
         </div>
