@@ -79,6 +79,11 @@ export default {
           "50%": { transform: "scale(1.05)", opacity: "0.3" },
           "100%": { transform: "scale(1)", opacity: "0.6" },
         },
+        "pulse-soft": {
+          "0%": { opacity: "1", boxShadow: "0 0 0 0 rgba(var(--primary), 0.4)" },
+          "50%": { opacity: "0.85", boxShadow: "0 0 0 10px rgba(var(--primary), 0)" },
+          "100%": { opacity: "1", boxShadow: "0 0 0 0 rgba(var(--primary), 0)" },
+        },
         "fade-in": {
           "0%": { opacity: "0" },
           "100%": { opacity: "1" },
@@ -88,6 +93,7 @@ export default {
         "accordion-down": "accordion-down 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         "accordion-up": "accordion-up 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         "pulse-ring": "pulse-ring 2s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+        "pulse-soft": "pulse-soft 2s cubic-bezier(0.4, 0, 0.2, 1) infinite",
         "fade-in": "fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
       },
       backdropBlur: {

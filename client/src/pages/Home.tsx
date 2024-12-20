@@ -169,8 +169,9 @@ export function Home() {
                 bg-white/90 hover:bg-white/95
                 shadow-lg hover:shadow-xl
                 border border-primary/10
+                relative overflow-hidden
                 ${!selectedCategory ? 
-                  'ring-2 ring-primary text-primary bg-gradient-to-br from-primary/10 to-transparent' : 
+                  'ring-2 ring-primary text-primary bg-gradient-to-br from-primary/10 to-transparent animate-pulse-soft' : 
                   'ring-1 ring-primary/20 text-gray-700 hover:text-gray-900'}
               `}
               whileHover={{ y: -2 }}
@@ -191,8 +192,9 @@ export function Home() {
                   bg-white/90 hover:bg-white/95
                   shadow-lg hover:shadow-xl
                   border border-primary/10
+                  relative overflow-hidden
                   ${selectedCategory === category ?
-                    'ring-2 ring-primary text-primary bg-gradient-to-br from-primary/10 to-transparent' :
+                    'ring-2 ring-primary text-primary bg-gradient-to-br from-primary/10 to-transparent animate-pulse-soft' :
                     'ring-1 ring-primary/20 text-gray-800 hover:text-gray-900'}
                 `}
                 whileHover={{ y: -2 }}
