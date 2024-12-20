@@ -115,9 +115,26 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
                     <p className="text-xs font-medium text-gray-500">
                       {drink.category}
                     </p>
-                    <span className="text-[10px] font-medium text-gray-400">
-                      Stock: {drink.inventory}
+                    <div className="flex items-center gap-1">
+                    <motion.div
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        drink.inventory === 0 ? 'bg-red-500' :
+                        drink.inventory < 10 ? 'bg-yellow-500' :
+                        'bg-emerald-500'
+                      }`}
+                    />
+                    <span className={`text-[10px] font-medium ${
+                      drink.inventory === 0 ? 'text-red-500' :
+                      drink.inventory < 10 ? 'text-yellow-500' :
+                      'text-emerald-500'
+                    }`}>
+                      {drink.inventory === 0 ? 'Out of Stock' :
+                       drink.inventory < 10 ? 'Low Stock' :
+                       `${drink.inventory} Available`}
                     </span>
+                  </div>
                   </div>
                 </div>
               </div>
