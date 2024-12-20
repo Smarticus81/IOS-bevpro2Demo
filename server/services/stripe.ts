@@ -2,7 +2,7 @@ import Stripe from 'stripe';
 import { z } from 'zod';
 
 // Custom error class for Stripe initialization issues
-class StripeUninitializedError extends Error {
+export class StripeUninitializedError extends Error {
   constructor(message: string = 'Stripe is not initialized. Please set up your Stripe API key in the settings.') {
     super(message);
     this.name = 'StripeUninitializedError';

@@ -138,17 +138,33 @@ export function registerRoutes(app: Express): Server {
   // Payment routes
   app.post("/api/payment/create-intent", async (req, res) => {
     try {
+      const { amount, orderId, customerEmail, tabId } = req.body;
+      
+      // If this is for a tab, add the tabId to metadata
+      const metadata: Record<string, string> = {
+        ...(orderId && { orderId: orderId.toString() }),
+        ...(customerEmail && { customerEmail }),
+        ...(tabId && { tabId: tabId.toString() }),
+      };
+
       const paymentData: PaymentIntentRequest = {
-        amount: req.body.amount,
+        amount,
         currency: 'usd',
         payment_method_types: ['card'],
-        metadata: {
-          orderId: req.body.orderId,
-          customerEmail: req.body.customerEmail
-        }
+        metadata,
+        setup_future_usage: tabId ? 'off_session' : undefined,
       };
 
       const intent = await createPaymentIntent(paymentData);
+      
+      // If this is for a tab, update the tab's payment status
+      if (tabId) {
+        await db
+          .update(tabs)
+          .set({ payment_method_id: intent.id })
+          .where(eq(tabs.id, tabId));
+      }
+
       res.json(intent);
     } catch (error: unknown) {
       console.error("Error creating payment intent:", error);

@@ -9,7 +9,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "@/hooks/use-toast";
-import { Mic, Palette, Key, Brain, Volume2 } from "lucide-react";
+import { Mic, Palette, Key, Brain, Volume2, CreditCard } from "lucide-react";
+import { paymentService } from "@/lib/paymentService";
 
 export function Settings() {
   const [voiceSettings, setVoiceSettings] = useState({
@@ -42,41 +43,38 @@ export function Settings() {
 
   const handleSave = async () => {
     try {
-      // Validate API keys format
-      if (apiSettings.stripeKey && !apiSettings.stripeKey.startsWith('sk_')) {
-        toast({
-          title: "Invalid Stripe API Key",
-          description: "Please enter a valid Stripe secret key starting with 'sk_'",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Here we would typically make an API call to save the settings
-      // For security, we should implement this on the backend
-      // For now, we'll just save to localStorage as a demonstration
+      // Save non-sensitive settings
       localStorage.setItem('bevpro_settings', JSON.stringify({
         voice: voiceSettings,
         ui: uiSettings,
         ai: aiSettings
       }));
 
-      // API keys should be handled separately through secure backend endpoints
+      // Handle Stripe API key separately
       if (apiSettings.stripeKey) {
-        try {
-          const response = await fetch('/api/settings/stripe-key', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key: apiSettings.stripeKey }),
+        if (!apiSettings.stripeKey.startsWith('sk_')) {
+          toast({
+            title: "Invalid Stripe API Key",
+            description: "Please enter a valid Stripe secret key starting with 'sk_'",
+            variant: "destructive"
           });
+          return;
+        }
 
-          if (!response.ok) {
-            throw new Error('Failed to save Stripe API key');
+        try {
+          const isValid = await paymentService.validateStripeKey(apiSettings.stripeKey);
+          if (!isValid) {
+            throw new Error('Invalid Stripe API key');
           }
+          
+          toast({
+            title: "Payment Configuration Updated",
+            description: "Stripe API key has been validated and saved successfully.",
+          });
         } catch (error) {
           toast({
             title: "Error Saving Stripe Key",
-            description: "Failed to save the Stripe API key. Please try again.",
+            description: "Failed to validate and save the Stripe API key. Please verify the key and try again.",
             variant: "destructive"
           });
           return;
