@@ -30,9 +30,10 @@ export interface VoiceControlProps {
   drinks: Drink[];
   onAddToCart: (params: CartAction) => void;
   onVoiceCommand?: (text: string) => Promise<void>;
+  variant?: 'default' | 'compact';
 }
 
-export function VoiceControl({ drinks, onAddToCart, onVoiceCommand }: VoiceControlProps) {
+export function VoiceControl({ drinks, onAddToCart, onVoiceCommand, variant = 'default' }: VoiceControlProps) {
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isProcessingCommand, setIsProcessingCommand] = useState(false);
@@ -540,74 +541,58 @@ export function VoiceControl({ drinks, onAddToCart, onVoiceCommand }: VoiceContr
 
   const [isMinimized, setIsMinimized] = useState(false);
 
-  return (
-    <div className="flex items-center gap-4 mb-6">
-      <div className="flex items-center gap-4">
-        <motion.div
-          animate={{ width: isMinimized ? "4rem" : "auto" }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
-          className="relative"
-        >
-          <motion.div
-            animate={{ 
-              width: isMinimized ? "2.5rem" : "4rem",
-              height: isMinimized ? "2.5rem" : "4rem"
-            }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-          >
-            <Button
-              onClick={toggleListening}
-              variant={isListening ? "destructive" : "default"}
-              className={`
-                w-full h-full rounded-full p-0 relative
-                bg-white/90 hover:bg-white/95
-                shadow-lg hover:shadow-xl
-                transition-all duration-300
-                border border-primary/10
-                ${isListening ? 'ring-2 ring-destructive' : 'ring-1 ring-primary/20'}
-              `}
-              disabled={!isSupported}
-            >
-              <motion.div 
-                className="absolute inset-0 flex items-center justify-center"
-                animate={{ scale: isMinimized ? 0.8 : 1 }}
-              >
-                <span className="font-semibold text-sm text-primary/80">Bev</span>
-              </motion.div>
-              <div className={`
-                absolute inset-0 rounded-full
-                ${isListening ? 'animate-pulse-ring bg-destructive/5' : 'bg-primary/5'}
-              `} />
-            </Button>
-          </motion.div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="absolute -right-8 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
-            onClick={() => setIsMinimized(!isMinimized)}
-          >
-            {isMinimized ? (
-              <Maximize2 className="h-4 w-4" />
-            ) : (
-              <Minimize2 className="h-4 w-4" />
-            )}
-          </Button>
-        </motion.div>
+  return variant === 'compact' ? (
+    <Button
+      onClick={toggleListening}
+      variant={isListening ? "destructive" : "outline"}
+      className={`
+        relative px-3 h-10
+        bg-white/10 hover:bg-white/20
+        border-white/20 text-white
+        ${isListening ? 'ring-2 ring-destructive' : ''}
+      `}
+      disabled={!isSupported}
+    >
+      <span className="font-semibold">Bev</span>
+      {(isListening || isProcessing) && (
+        <span className="absolute inset-0 rounded animate-pulse bg-destructive/5" />
+      )}
+    </Button>
+  ) : (
+    <div className="flex items-center gap-4">
+      <Button
+        onClick={toggleListening}
+        variant={isListening ? "destructive" : "default"}
+        className={`
+          w-12 h-12 rounded-full p-0 relative
+          bg-white/90 hover:bg-white/95
+          shadow-lg hover:shadow-xl
+          transition-all duration-300
+          border border-primary/10
+          ${isListening ? 'ring-2 ring-destructive' : 'ring-1 ring-primary/20'}
+        `}
+        disabled={!isSupported}
+      >
+        <span className="font-semibold text-sm text-primary/80">Bev</span>
+        <div className={`
+          absolute inset-0 rounded-full
+          ${isListening ? 'animate-pulse-ring bg-destructive/5' : 'bg-primary/5'}
+        `} />
+      </Button>
 
-        <VoiceAnimation
-          isListening={isListening}
-          isProcessing={isProcessing}
-        />
+      <VoiceAnimation
+        isListening={isListening}
+        isProcessing={isProcessing}
+      />
 
-        {status && (
-          <div className="flex items-center gap-4">
-            <Badge variant="secondary" className="h-9">
-              {status}
-            </Badge>
-            <EmojiReaction sentiment={sentiment} />
-          </div>
-        )}
-      </div>
+      {status && (
+        <div className="flex items-center gap-4">
+          <Badge variant="secondary" className="h-9">
+            {status}
+          </Badge>
+          <EmojiReaction sentiment={sentiment} />
+        </div>
+      )}
     </div>
   );
 }

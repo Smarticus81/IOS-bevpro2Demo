@@ -271,14 +271,13 @@ export function Home() {
             <div className="container mx-auto px-4 pb-safe">
               <Card className="glass-morphism border-white/20 shadow-lg">
                 <CardContent className="p-4">
-                  <OrderSummary
+                  <OrderSummaryDrawer
                     cart={cart}
                     onRemoveItem={removeFromCart}
                     onPlaceOrder={placeOrder}
                     isLoading={orderMutation.isPending}
-                    variant="compact"
-                    isCollapsed={isOrderSummaryCollapsed}
-                    onToggleCollapse={() => setIsOrderSummaryCollapsed(!isOrderSummaryCollapsed)}
+                    drinks={drinks}
+                    onAddToCart={addToCart}
                   />
                 </CardContent>
               </Card>
