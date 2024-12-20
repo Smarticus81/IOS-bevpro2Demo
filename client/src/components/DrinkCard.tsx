@@ -33,28 +33,41 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      whileHover={{ y: -4 }}
-      whileTap={{ scale: 0.98 }}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      whileHover={{ 
+        y: -4,
+        scale: 1.02,
+        transition: { duration: 0.2, ease: "easeOut" }
+      }}
+      whileTap={{ 
+        scale: 0.98,
+        transition: { duration: 0.1, ease: "easeIn" }
+      }}
       onClick={onAdd}
       className="group relative cursor-pointer select-none"
     >
       <div className="relative overflow-hidden rounded-xl bg-white 
                     shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)]
-                    transition-all duration-300">
+                    transition-all duration-300 border border-primary/10">
         <div className="aspect-[4/3]">
           {/* Loading Skeleton with Category Icon */}
-          <div className={`absolute inset-0 bg-gradient-to-b from-gray-50/90 to-gray-100/90
-                        ${imageLoaded ? 'opacity-0' : 'opacity-100'} 
-                        transition-opacity duration-300 flex items-center justify-center
-                        backdrop-blur-sm`}>
+          <motion.div 
+            className={`absolute inset-0 bg-gradient-to-b from-gray-50/90 to-gray-100/90
+                     ${imageLoaded ? 'opacity-0' : 'opacity-100'} 
+                     backdrop-blur-sm flex items-center justify-center`}
+            initial={false}
+            animate={{
+              opacity: imageLoaded ? 0 : 1,
+              transition: { duration: 0.3, ease: "easeInOut" }
+            }}
+          >
             <div className="flex flex-col items-center gap-2">
               <Icon className={`h-12 w-12 ${color} opacity-60`} />
               <p className="text-xs font-medium text-gray-500">Loading...</p>
             </div>
-          </div>
+          </motion.div>
 
           <img
             src={`/static/images/${drink.image}`}
