@@ -46,10 +46,14 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
                     transition-all duration-300">
         <div className="aspect-[4/3]">
           {/* Loading Skeleton with Category Icon */}
-          <div className={`absolute inset-0 bg-gradient-to-b from-gray-50 to-gray-100
+          <div className={`absolute inset-0 bg-gradient-to-b from-gray-50/90 to-gray-100/90
                         ${imageLoaded ? 'opacity-0' : 'opacity-100'} 
-                        transition-opacity duration-300 flex items-center justify-center`}>
-            <Icon className={`h-16 w-16 ${color} opacity-20`} />
+                        transition-opacity duration-300 flex items-center justify-center
+                        backdrop-blur-sm`}>
+            <div className="flex flex-col items-center gap-2">
+              <Icon className={`h-12 w-12 ${color} opacity-60`} />
+              <p className="text-xs font-medium text-gray-500">Loading...</p>
+            </div>
           </div>
 
           <img

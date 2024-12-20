@@ -98,8 +98,8 @@ export function OrderSummary({
             })}
 
             {cart.length === 0 && (
-                <div className={`text-center py-${variant === "compact" ? "4" : "8"} border-2 border-dashed border-primary/20 rounded-lg bg-primary/5`}>
-                  <p className="text-primary/70 font-medium">Ready to take your order</p>
+                <div className={`text-center py-${variant === "compact" ? "4" : "8"} border-2 border-dashed border-primary/20 rounded-lg bg-white shadow-inner`}>
+                  <p className="text-primary font-medium">Ready to take your order</p>
                 </div>
               )}
           </motion.div>

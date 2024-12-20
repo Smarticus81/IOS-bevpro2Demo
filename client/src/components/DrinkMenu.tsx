@@ -51,7 +51,7 @@ export function DrinkMenu({ drinks, onAddToCart }: DrinkMenuProps) {
           ))}
         </TabsList>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           {filteredDrinks.map(drink => (
             <Card key={drink.id} className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
               <CardContent className="p-4">
