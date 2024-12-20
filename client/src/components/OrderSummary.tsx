@@ -114,7 +114,7 @@ export function OrderSummary({
 
         <div className="space-y-3">
           <Button
-            className="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold transform transition-all duration-200 hover:scale-[1.02] shadow-lg hover:shadow-indigo-500/25"
+            className="w-full bg-gradient-to-br from-blue-600 via-indigo-600 to-indigo-800 hover:from-blue-500 hover:via-indigo-500 hover:to-indigo-700 text-white font-semibold transform transition-all duration-200 hover:scale-[1.02] shadow-xl hover:shadow-indigo-500/40 border border-indigo-400/20"
             size={variant === "compact" ? "default" : "lg"}
             onClick={onPlaceOrder}
             disabled={cart.length === 0 || isLoading}
@@ -124,7 +124,7 @@ export function OrderSummary({
           
           <Button
             variant="destructive"
-            className="w-full bg-gradient-to-r from-rose-600 to-red-500 hover:from-rose-500 hover:to-red-400 text-white font-semibold transform transition-all duration-200 hover:scale-[1.02] shadow-lg hover:shadow-rose-500/25"
+            className="w-full bg-gradient-to-br from-rose-600 via-red-600 to-red-800 hover:from-rose-500 hover:via-red-500 hover:to-red-700 text-white font-semibold transform transition-all duration-200 hover:scale-[1.02] shadow-xl hover:shadow-red-500/40 border border-red-400/20"
             size={variant === "compact" ? "default" : "lg"}
             onClick={() => {
               if (cart.length > 0) {
