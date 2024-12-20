@@ -548,27 +548,38 @@ export function VoiceControl({ drinks, onAddToCart, onVoiceCommand }: VoiceContr
           transition={{ duration: 0.3, ease: "easeInOut" }}
           className="relative"
         >
-          <Button
-            onClick={toggleListening}
-            variant={isListening ? "destructive" : "default"}
-            className={`
-              w-16 h-16 rounded-full p-0 relative
-              bg-white/90 hover:bg-white/95
-              shadow-lg hover:shadow-xl
-              transition-all duration-300
-              border border-primary/10
-              ${isListening ? 'ring-2 ring-destructive' : 'ring-1 ring-primary/20'}
-            `}
-            disabled={!isSupported}
+          <motion.div
+            animate={{ 
+              width: isMinimized ? "2.5rem" : "4rem",
+              height: isMinimized ? "2.5rem" : "4rem"
+            }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
           >
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="font-semibold text-sm text-primary/80">Bev</span>
-            </div>
-            <div className={`
-              absolute inset-0 rounded-full
-              ${isListening ? 'animate-pulse-ring bg-destructive/5' : 'bg-primary/5'}
-            `} />
-          </Button>
+            <Button
+              onClick={toggleListening}
+              variant={isListening ? "destructive" : "default"}
+              className={`
+                w-full h-full rounded-full p-0 relative
+                bg-white/90 hover:bg-white/95
+                shadow-lg hover:shadow-xl
+                transition-all duration-300
+                border border-primary/10
+                ${isListening ? 'ring-2 ring-destructive' : 'ring-1 ring-primary/20'}
+              `}
+              disabled={!isSupported}
+            >
+              <motion.div 
+                className="absolute inset-0 flex items-center justify-center"
+                animate={{ scale: isMinimized ? 0.8 : 1 }}
+              >
+                <span className="font-semibold text-sm text-primary/80">Bev</span>
+              </motion.div>
+              <div className={`
+                absolute inset-0 rounded-full
+                ${isListening ? 'animate-pulse-ring bg-destructive/5' : 'bg-primary/5'}
+              `} />
+            </Button>
+          </motion.div>
           <Button
             variant="ghost"
             size="sm"
