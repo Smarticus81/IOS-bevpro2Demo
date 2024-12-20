@@ -12,32 +12,70 @@ export function PaymentConfirmation() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    // Get the payment intent ID from the URL
+    // Get the payment intent ID and status from the URL
     const params = new URLSearchParams(window.location.search);
     const paymentIntentId = params.get("payment_intent");
     const redirectStatus = params.get("redirect_status");
+    const paymentIntentClientSecret = params.get("payment_intent_client_secret");
 
-    if (!paymentIntentId) {
+    if (!paymentIntentId || !paymentIntentClientSecret) {
       setStatus("error");
-      setMessage("No payment information found");
+      setMessage("Missing payment information");
       return;
     }
 
     // Check the payment status
     fetch(`/api/payment/intent/${paymentIntentId}`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to verify payment');
+        return res.json();
+      })
       .then(data => {
-        if (data.status === "succeeded" || redirectStatus === "succeeded") {
-          setStatus("success");
-          setMessage("Payment processed successfully!");
-        } else {
-          setStatus("error");
-          setMessage(data.last_payment_error?.message || "Payment failed");
+        switch (data.status) {
+          case "succeeded":
+            setStatus("success");
+            setMessage("Thank you! Your payment has been processed successfully.");
+            break;
+          case "processing":
+            setStatus("loading");
+            setMessage("Your payment is being processed. We'll update you once it's complete.");
+            // Poll for updates
+            const pollInterval = setInterval(async () => {
+              try {
+                const response = await fetch(`/api/payment/intent/${paymentIntentId}`);
+                const updatedData = await response.json();
+                if (updatedData.status === "succeeded") {
+                  clearInterval(pollInterval);
+                  setStatus("success");
+                  setMessage("Thank you! Your payment has been processed successfully.");
+                } else if (updatedData.status === "canceled" || updatedData.status === "requires_payment_method") {
+                  clearInterval(pollInterval);
+                  setStatus("error");
+                  setMessage("Payment was unsuccessful. Please try again.");
+                }
+              } catch (error) {
+                clearInterval(pollInterval);
+                console.error("Error polling payment status:", error);
+              }
+            }, 2000);
+            return () => clearInterval(pollInterval);
+          case "requires_payment_method":
+            setStatus("error");
+            setMessage("Your payment was declined. Please try another payment method.");
+            break;
+          case "canceled":
+            setStatus("error");
+            setMessage("The payment was canceled. Please try again.");
+            break;
+          default:
+            setStatus("error");
+            setMessage(data.last_payment_error?.message || "Payment could not be completed");
         }
       })
       .catch(error => {
+        console.error("Payment verification error:", error);
         setStatus("error");
-        setMessage(error.message || "Failed to verify payment status");
+        setMessage("Failed to verify payment status. Please contact support if you were charged.");
       });
   }, []);
 

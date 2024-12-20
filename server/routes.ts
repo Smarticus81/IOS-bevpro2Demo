@@ -151,8 +151,7 @@ export function registerRoutes(app: Express): Server {
         amount,
         currency: 'usd',
         payment_method_types: ['card'],
-        metadata,
-        setup_future_usage: tabId ? 'off_session' : undefined,
+        metadata
       };
 
       const intent = await createPaymentIntent(paymentData);
@@ -161,7 +160,10 @@ export function registerRoutes(app: Express): Server {
       if (tabId) {
         await db
           .update(tabs)
-          .set({ payment_method_id: intent.id })
+          .set({ 
+            // Store the payment intent ID in the metadata instead
+            metadata: { payment_intent_id: intent.id }
+          })
           .where(eq(tabs.id, tabId));
       }
 

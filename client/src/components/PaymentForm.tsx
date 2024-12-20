@@ -51,34 +51,57 @@ function PaymentFormContent({ amount, onSuccess, onError }: PaymentFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripe || !elements) return;
+    if (!stripe || !elements) {
+      toast({
+        title: "Payment unavailable",
+        description: "Payment processing is currently unavailable. Please try again later.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsProcessing(true);
 
     try {
       const { error: submitError } = await elements.submit();
       if (submitError) {
-        throw submitError;
+        throw new Error(submitError.message || "Failed to process payment form");
       }
 
       const { error: confirmError } = await stripe.confirmPayment({
         elements,
         confirmParams: {
           return_url: `${window.location.origin}/payment-confirmation`,
+          payment_method_data: {
+            billing_details: {
+              address: {
+                country: 'US',
+              },
+            },
+          },
         },
       });
 
       if (confirmError) {
-        throw confirmError;
+        // Handle specific Stripe errors
+        switch (confirmError.type) {
+          case 'card_error':
+            throw new Error('Your card was declined. Please try another payment method.');
+          case 'validation_error':
+            throw new Error('Please check your card details and try again.');
+          default:
+            throw new Error(confirmError.message || 'Payment failed');
+        }
       }
 
+      // Note: This won't actually be reached as confirmPayment will redirect on success
       toast({
-        title: "Payment successful",
-        description: "Your payment has been processed successfully.",
+        title: "Processing payment",
+        description: "Please wait while we process your payment...",
       });
-      onSuccess?.();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Payment failed";
+      console.error('Payment error:', error);
       toast({
         title: "Payment failed",
         description: errorMessage,
