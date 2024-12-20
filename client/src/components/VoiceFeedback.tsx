@@ -1,71 +1,64 @@
-import { useEffect, useRef } from 'react';
-import { playCachedSpeech } from '@/lib/voiceSynthesis';
+import { useEffect, useRef, useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { Volume2 } from 'lucide-react';
+import { Volume2, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { ValidVoice } from '@/lib/voiceSynthesis';
+import { voiceService } from '@/lib/voiceService';
 
 interface VoiceFeedbackProps {
   message: string | null;
   isPlaying: boolean;
-  voice?: ValidVoice;
 }
 
-export function VoiceFeedback({ message, isPlaying, voice = 'nova' }: VoiceFeedbackProps) {
+export function VoiceFeedback({ message, isPlaying }: VoiceFeedbackProps) {
   const lastMessageRef = useRef<string | null>(null);
-  const playbackAttemptRef = useRef<number>(0);
-  const maxRetries = 3;
-  const retryDelayMs = 1000;
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [usingFallback, setUsingFallback] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    let timeoutId: number | undefined;
     
     if (message && message !== lastMessageRef.current && isPlaying) {
       lastMessageRef.current = message;
-      playbackAttemptRef.current = 0;
+      setIsLoading(true);
+      setError(null);
       
       const playMessage = async () => {
         try {
           if (!mounted) return;
           
           console.info('Attempting to play voice feedback:', {
-            messageLength: message.length,
-            voice,
-            attempt: playbackAttemptRef.current + 1,
-            maxRetries
+            messageLength: message.length
           });
           
-          await playCachedSpeech(message, voice);
-          
-          if (!mounted) return;
-          
-          playbackAttemptRef.current = 0; // Reset on success
-          console.info('Voice feedback played successfully');
+          try {
+            await voiceService.speak(message);
+            if (!mounted) return;
+            setUsingFallback(false);
+            console.info('Voice feedback played successfully');
+          } catch (speakError) {
+            if (!navigator.onLine) {
+              setUsingFallback(true);
+              // Attempt Web Speech API fallback
+              const utterance = new SpeechSynthesisUtterance(message);
+              window.speechSynthesis.speak(utterance);
+              await new Promise((resolve) => {
+                utterance.onend = resolve;
+              });
+              console.info('Fallback voice feedback played successfully');
+            } else {
+              throw speakError;
+            }
+          }
         } catch (error) {
           if (!mounted) return;
           
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          console.error('Failed to play voice feedback:', {
-            error: errorMessage,
-            attempt: playbackAttemptRef.current + 1,
-            maxRetries
-          });
-          
-          // Attempt retry with exponential backoff
-          if (playbackAttemptRef.current < maxRetries - 1) {
-            playbackAttemptRef.current++;
-            const delay = Math.min(retryDelayMs * Math.pow(2, playbackAttemptRef.current), 5000);
-            console.info(`Scheduling retry ${playbackAttemptRef.current + 1}/${maxRetries} in ${delay}ms`);
-            
-            timeoutId = window.setTimeout(() => {
-              if (mounted) {
-                lastMessageRef.current = null; // Allow retry
-                playMessage(); // Retry
-              }
-            }, delay);
-          } else {
-            console.error('Max retry attempts reached for voice feedback');
+          console.error('Failed to play voice feedback:', errorMessage);
+          setError(errorMessage);
+        } finally {
+          if (mounted) {
+            setIsLoading(false);
           }
         }
       };
@@ -75,32 +68,46 @@ export function VoiceFeedback({ message, isPlaying, voice = 'nova' }: VoiceFeedb
     
     return () => {
       mounted = false;
-      if (timeoutId !== undefined) {
-        window.clearTimeout(timeoutId);
-      }
     };
-  }, [message, voice, isPlaying]);
+  }, [message, isPlaying]);
 
   return (
     <AnimatePresence>
-      {isPlaying && message && (
+      {(isPlaying || isLoading) && message && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           className="fixed bottom-4 left-4 z-50"
         >
-          <Card className="bg-black/80 text-white border-white/10 backdrop-blur-sm p-4 shadow-lg">
+          <Card className={`backdrop-blur-sm p-4 shadow-lg transition-colors duration-200 ${
+            error ? 'bg-red-500/80 text-white' : 'bg-black/80 text-white'
+          } border-white/10`}>
             <div className="flex items-center gap-3">
               <div className="relative">
-                <Volume2 className="h-5 w-5" />
-                <motion.div
-                  className="absolute inset-0 rounded-full border-2 border-white/50"
-                  animate={{ scale: [1, 1.5, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                />
+                {error ? (
+                  <AlertCircle className="h-5 w-5" />
+                ) : (
+                  <>
+                    <Volume2 className="h-5 w-5" />
+                    <motion.div
+                      className="absolute inset-0 rounded-full border-2 border-white/50"
+                      animate={{ scale: [1, 1.5, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    />
+                  </>
+                )}
               </div>
-              <p className="text-sm">{message}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm truncate">
+                  {error ? error : message}
+                </p>
+                {isLoading && (
+                  <p className="text-xs text-white/70">
+                    {usingFallback ? 'Using offline voice...' : 'Processing voice...'}
+                  </p>
+                )}
+              </div>
             </div>
           </Card>
         </motion.div>
