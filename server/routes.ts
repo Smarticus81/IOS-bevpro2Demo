@@ -1,7 +1,15 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { drinks, orders, orderItems } from "@db/schema";
+import { 
+  drinks, 
+  orders, 
+  orderItems,
+  paymentMethods,
+  tabs,
+  splitPayments,
+  eventPackages 
+} from "@db/schema";
 import { eq, sql } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
 import {
@@ -12,6 +20,7 @@ import {
   reinitializeStripe,
   type PaymentIntentRequest
 } from "./services/stripe";
+import type { StripeUninitializedError } from "./services/stripe";
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
@@ -236,6 +245,126 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error updating Stripe API key:", error);
       res.status(500).json({ error: "Failed to update Stripe API key" });
+    }
+  });
+
+  // Payment Methods endpoints
+  app.get("/api/payment-methods", async (_req, res) => {
+    try {
+      const methods = await db.select().from(paymentMethods);
+      res.json(methods);
+    } catch (error) {
+      console.error("Error fetching payment methods:", error);
+      res.status(500).json({ error: "Failed to fetch payment methods" });
+    }
+  });
+
+  app.post("/api/payment-methods", async (req, res) => {
+    try {
+      const method = await db.insert(paymentMethods).values(req.body).returning();
+      res.json(method[0]);
+    } catch (error) {
+      console.error("Error creating payment method:", error);
+      res.status(500).json({ error: "Failed to create payment method" });
+    }
+  });
+
+  // Tabs endpoints
+  app.post("/api/tabs", async (req, res) => {
+    try {
+      const [tab] = await db.insert(tabs).values(req.body).returning();
+      res.json(tab);
+    } catch (error) {
+      console.error("Error creating tab:", error);
+      res.status(500).json({ error: "Failed to create tab" });
+    }
+  });
+
+  app.get("/api/tabs/:id", async (req, res) => {
+    try {
+      const tab = await db
+        .select()
+        .from(tabs)
+        .where(eq(tabs.id, parseInt(req.params.id)))
+        .limit(1);
+
+      if (!tab.length) {
+        return res.status(404).json({ error: "Tab not found" });
+      }
+
+      res.json(tab[0]);
+    } catch (error) {
+      console.error("Error fetching tab:", error);
+      res.status(500).json({ error: "Failed to fetch tab" });
+    }
+  });
+
+  app.patch("/api/tabs/:id/close", async (req, res) => {
+    try {
+      const [tab] = await db
+        .update(tabs)
+        .set({ 
+          status: 'closed',
+          closed_at: new Date(),
+        })
+        .where(eq(tabs.id, parseInt(req.params.id)))
+        .returning();
+
+      res.json(tab);
+    } catch (error) {
+      console.error("Error closing tab:", error);
+      res.status(500).json({ error: "Failed to close tab" });
+    }
+  });
+
+  // Split payments endpoints
+  app.post("/api/split-payments", async (req, res) => {
+    try {
+      const [splitPayment] = await db
+        .insert(splitPayments)
+        .values(req.body)
+        .returning();
+      res.json(splitPayment);
+    } catch (error) {
+      console.error("Error creating split payment:", error);
+      res.status(500).json({ error: "Failed to create split payment" });
+    }
+  });
+
+  app.get("/api/split-payments/order/:orderId", async (req, res) => {
+    try {
+      const payments = await db
+        .select()
+        .from(splitPayments)
+        .where(eq(splitPayments.order_id, parseInt(req.params.orderId)));
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching split payments:", error);
+      res.status(500).json({ error: "Failed to fetch split payments" });
+    }
+  });
+
+  // Event packages endpoints
+  app.get("/api/event-packages", async (_req, res) => {
+    try {
+      const packages = await db.select().from(eventPackages);
+      res.json(packages);
+    } catch (error) {
+      console.error("Error fetching event packages:", error);
+      res.status(500).json({ error: "Failed to fetch event packages" });
+    }
+  });
+
+  app.post("/api/event-packages", async (req, res) => {
+    try {
+      const [eventPackage] = await db
+        .insert(eventPackages)
+        .values(req.body)
+        .returning();
+      res.json(eventPackage);
+    } catch (error) {
+      console.error("Error creating event package:", error);
+      res.status(500).json({ error: "Failed to create event package" });
     }
   });
 
