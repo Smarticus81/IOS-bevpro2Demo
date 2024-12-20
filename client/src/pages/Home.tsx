@@ -5,6 +5,7 @@ import { VoiceControl } from "@/components/VoiceControl";
 import { OrderSummary } from "@/components/OrderSummary";
 import { VoiceFeedback } from "@/components/VoiceFeedback";
 import OrderSummaryDrawer from "@/components/OrderSummaryDrawer";
+import { PaymentDialog } from "@/components/PaymentDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { NavBar } from "@/components/NavBar";
@@ -95,6 +96,9 @@ export function Home() {
     setCart(prev => prev.filter(item => item.drink.id !== drinkId));
   };
 
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [orderTotal, setOrderTotal] = useState(0);
+
   const placeOrder = async () => {
     if (cart.length === 0) return;
 
@@ -103,7 +107,7 @@ export function Home() {
       return sum + (itemPrice * item.quantity);
     }, 0);
 
-    console.log('Placing order:', {
+    console.log('Initiating order:', {
       cart,
       total,
       timestamp: new Date().toISOString()
@@ -116,10 +120,20 @@ export function Home() {
     }));
 
     try {
-      await orderMutation.mutateAsync({ items, total });
-      console.log('Order placed successfully');
+      // Create the order first
+      const orderResponse = await orderMutation.mutateAsync({ items, total });
+      console.log('Order created successfully:', orderResponse);
+      
+      // Show payment dialog with total
+      setOrderTotal(total);
+      setShowPaymentDialog(true);
     } catch (error) {
-      console.error('Failed to place order:', error);
+      console.error('Failed to create order:', error);
+      toast({
+        title: "Order Creation Failed",
+        description: "Unable to process your order. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -248,6 +262,21 @@ export function Home() {
           </div>
         </div>
       </main>
+
+      {/* Payment Dialog */}
+      <PaymentDialog
+        open={showPaymentDialog}
+        onOpenChange={setShowPaymentDialog}
+        total={orderTotal}
+        onSuccess={() => {
+          setShowPaymentDialog(false);
+          setCart([]);
+          toast({
+            title: "Order Complete",
+            description: "Your payment has been processed successfully.",
+          });
+        }}
+      />
     </div>
   );
 }
