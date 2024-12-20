@@ -12,14 +12,14 @@ export class StripeUninitializedError extends Error {
 let stripe: Stripe | null = null;
 
 function initializeStripe(): Stripe | null {
-  // In development, allow the service to run without Stripe
-  if (process.env.NODE_ENV === 'development' && !process.env.STRIPE_SECRET_KEY) {
-    console.info('Running in development mode without Stripe integration');
-    return null;
-  }
-
+  // First check if we have a Stripe key
   if (!process.env.STRIPE_SECRET_KEY) {
-    console.warn('STRIPE_SECRET_KEY not set - payment simulation mode enabled');
+    // Log differently based on environment
+    if (process.env.NODE_ENV === 'development') {
+      console.info('Running in development mode without Stripe integration - simulation mode enabled');
+    } else {
+      console.warn('STRIPE_SECRET_KEY not set - payment simulation mode enabled');
+    }
     return null;
   }
 

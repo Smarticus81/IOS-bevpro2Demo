@@ -51,7 +51,7 @@ export function PaymentMethodCarousel({ selectedMethod, onSelect }: PaymentMetho
   return (
     <div className="w-full overflow-hidden py-4">
       <motion.div 
-        className="flex space-x-4 px-4"
+        className="flex space-x-4 px-4 pb-2 overflow-x-auto scrollbar-hide"
         initial={{ x: -20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
@@ -61,7 +61,7 @@ export function PaymentMethodCarousel({ selectedMethod, onSelect }: PaymentMetho
             <motion.button
               key={method.id}
               onClick={() => onSelect(method.id)}
-              className={`relative flex flex-col items-center justify-center p-4 rounded-xl transition-shadow duration-200
+              className={`relative flex-shrink-0 flex flex-col items-center justify-center p-4 rounded-xl transition-shadow duration-200
                 ${selectedMethod === method.id 
                   ? 'bg-white shadow-xl border border-white/20 backdrop-blur-sm' 
                   : 'bg-white/80 hover:bg-white hover:shadow-lg border border-white/10 backdrop-blur-sm'

@@ -140,6 +140,16 @@ export function registerRoutes(app: Express): Server {
     try {
       const { amount, orderId, customerEmail, tabId } = req.body;
       
+      // Check if Stripe is initialized
+      if (!process.env.STRIPE_SECRET_KEY) {
+        // Return a special response for simulation mode
+        return res.status(503).json({
+          error: "Payment service unavailable",
+          message: "Running in simulation mode. Please configure Stripe API key in settings to enable real payments.",
+          simulation: true
+        });
+      }
+      
       // If this is for a tab, add the tabId to metadata
       const metadata: Record<string, string> = {
         ...(orderId && { orderId: orderId.toString() }),
@@ -161,7 +171,6 @@ export function registerRoutes(app: Express): Server {
         await db
           .update(tabs)
           .set({ 
-            // Store the payment intent ID in the metadata instead
             metadata: { payment_intent_id: intent.id }
           })
           .where(eq(tabs.id, tabId));

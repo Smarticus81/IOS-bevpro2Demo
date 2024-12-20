@@ -12,38 +12,65 @@ import {
   useElements,
 } from "@stripe/react-stripe-js";
 
-// Initialize Stripe
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+// Initialize Stripe with fallback for development
+const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY 
+  ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
+  : null;
+
+// Flag to indicate if we're in simulation mode
+const isSimulationMode = !stripePromise;
 
 interface PaymentFormProps {
   amount: number;
   onSuccess?: () => void;
   onError?: (error: string) => void;
+  simulatePayment?: boolean;
 }
 
 function PaymentFormContent({ amount, onSuccess, onError }: PaymentFormProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("credit_card");
   const [clientSecret, setClientSecret] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
 
   useEffect(() => {
+    if (isSimulationMode) {
+      return; // Skip payment intent creation in simulation mode
+    }
+
     // Create PaymentIntent as soon as the page loads
     fetch("/api/payment/create-intent", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ amount }),
     })
-      .then((res) => res.json())
+      .then(async (res) => {
+        if (!res.ok) {
+          const errorData = await res.json();
+          if (res.status === 503) {
+            // Payment service unavailable - switch to simulation mode
+            console.info('Payment service unavailable, running in simulation mode');
+            return null;
+          }
+          throw new Error(errorData.message || 'Failed to initialize payment');
+        }
+        return res.json();
+      })
       .then((data) => {
-        setClientSecret(data.clientSecret);
+        if (data?.clientSecret) {
+          setClientSecret(data.clientSecret);
+          setErrorMessage("");
+        }
       })
       .catch((err) => {
+        console.error('Payment initialization error:', err);
+        setErrorMessage(err.message);
         toast({
           title: "Error",
-          description: "Failed to initialize payment. Please try again.",
+          description: err.message || "Failed to initialize payment. Please try again.",
           variant: "destructive",
         });
       });
@@ -51,6 +78,35 @@ function PaymentFormContent({ amount, onSuccess, onError }: PaymentFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isSimulationMode) {
+      setIsProcessing(true);
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Simulate 90% success rate
+      const success = Math.random() > 0.1;
+      
+      if (success) {
+        toast({
+          title: "Payment simulated",
+          description: `Simulated payment of $${(amount / 100).toFixed(2)} processed successfully`
+        });
+        onSuccess?.();
+      } else {
+        const errorMessage = "Simulated payment failure";
+        toast({
+          title: "Payment failed",
+          description: errorMessage,
+          variant: "destructive"
+        });
+        onError?.(errorMessage);
+      }
+      
+      setIsProcessing(false);
+      return;
+    }
+
     if (!stripe || !elements) {
       toast({
         title: "Payment unavailable",
@@ -128,7 +184,7 @@ function PaymentFormContent({ amount, onSuccess, onError }: PaymentFormProps) {
         onSelect={setPaymentMethod}
       />
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         <PaymentElement 
           className="payment-element"
           options={{
@@ -139,6 +195,9 @@ function PaymentFormContent({ amount, onSuccess, onError }: PaymentFormProps) {
             }
           }}
         />
+        <p className="text-sm text-gray-500 text-center">
+          Payment is securely processed by Stripe
+        </p>
       </div>
 
       <Button
@@ -178,21 +237,40 @@ export function PaymentForm(props: PaymentFormProps) {
         spacingUnit: '4px',
       },
     },
+    payment_method_types: ['card', 'us_bank_account'],
+    currency_code: 'USD',
   };
 
   return (
     <Card className="w-full max-w-md mx-auto bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle id="payment-form-title" className="flex items-center gap-2">
           <CreditCard className="h-5 w-5" />
           Payment Details
         </CardTitle>
+        <p id="payment-form-description" className="text-sm text-gray-600">
+          Enter your payment information to complete the transaction
+        </p>
       </CardHeader>
-      <CardContent>
-        {stripePromise && (
+      <CardContent aria-labelledby="payment-form-title" aria-describedby="payment-form-description">
+        {stripePromise ? (
           <Elements stripe={stripePromise} options={options}>
             <PaymentFormContent {...props} />
           </Elements>
+        ) : (
+          <div className="text-center py-4">
+            <p className="text-sm text-gray-500 mb-4">
+              Payment processing is in simulation mode. Stripe integration is not configured.
+            </p>
+            <Button
+              onClick={() => props.onSuccess?.()}
+              className="w-full bg-gradient-to-b from-zinc-800 to-black text-white shadow-sm 
+                        hover:shadow-lg hover:from-zinc-700 hover:to-black 
+                        active:scale-[0.99] transform transition-all duration-200"
+            >
+              Simulate Payment of ${(props.amount / 100).toFixed(2)}
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>
