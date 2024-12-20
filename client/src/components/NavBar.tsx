@@ -49,13 +49,11 @@ export function NavBar({ drinks = [], onAddToCart }: NavBarProps) {
 
           {/* Voice Control, Theme Toggle & Mobile Navigation */}
           <div className="flex items-center gap-2">
-            {drinks.length > 0 && onAddToCart && (
-              <VoiceControl
-                drinks={drinks}
-                onAddToCart={onAddToCart}
-                variant="compact"
-              />
-            )}
+            <VoiceControl
+              drinks={drinks}
+              onAddToCart={onAddToCart}
+              variant="compact"
+            />
             
             <Button
               variant="ghost"

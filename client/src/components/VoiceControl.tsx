@@ -546,16 +546,18 @@ export function VoiceControl({ drinks, onAddToCart, onVoiceCommand, variant = 'd
       onClick={toggleListening}
       variant={isListening ? "destructive" : "outline"}
       className={`
-        relative px-3 h-10
-        bg-white/10 hover:bg-white/20
-        border-white/20 text-white
-        ${isListening ? 'ring-2 ring-destructive' : ''}
+        relative px-4 h-9
+        bg-gradient-to-r from-primary/90 to-primary/70
+        hover:from-primary hover:to-primary/80
+        text-white font-medium shadow-md
+        transition-all duration-300
+        ${isListening ? 'ring-2 ring-primary animate-pulse-soft' : 'ring-1 ring-primary/20'}
       `}
       disabled={!isSupported}
     >
-      <span className="font-semibold">Bev</span>
+      <span className="relative z-10">Bev</span>
       {(isListening || isProcessing) && (
-        <span className="absolute inset-0 rounded animate-pulse bg-destructive/5" />
+        <span className="absolute inset-0 rounded bg-primary/20 animate-pulse" />
       )}
     </Button>
   ) : (
