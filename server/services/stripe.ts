@@ -12,8 +12,14 @@ export class StripeUninitializedError extends Error {
 let stripe: Stripe | null = null;
 
 function initializeStripe(): Stripe | null {
+  // In development, allow the service to run without Stripe
+  if (process.env.NODE_ENV === 'development' && !process.env.STRIPE_SECRET_KEY) {
+    console.info('Running in development mode without Stripe integration');
+    return null;
+  }
+
   if (!process.env.STRIPE_SECRET_KEY) {
-    console.warn('STRIPE_SECRET_KEY not set - payment features will be unavailable');
+    console.warn('STRIPE_SECRET_KEY not set - payment simulation mode enabled');
     return null;
   }
 

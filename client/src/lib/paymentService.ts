@@ -74,9 +74,24 @@ export const paymentService = {
   // Validate Stripe API key
   async validateStripeKey(key: string): Promise<boolean> {
     try {
-      // Simulate API key validation
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return key.startsWith('sk_') && key.length > 20;
+      if (process.env.NODE_ENV === 'development') {
+        console.info('Running in development mode - simulating Stripe key validation');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return key.startsWith('sk_') && key.length > 20;
+      }
+
+      const response = await fetch('/api/settings/stripe-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error);
+      }
+
+      return true;
     } catch (error) {
       console.error('Error validating Stripe key:', error);
       return false;
