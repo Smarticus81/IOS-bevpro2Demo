@@ -19,7 +19,7 @@ interface OrderSummaryDrawerProps {
   onAddToCart: (params: CartAction) => void;
 }
 
-export function OrderSummaryDrawer(props: OrderSummaryDrawerProps) {
+export default function OrderSummaryDrawer(props: OrderSummaryDrawerProps) {
   const itemCount = props.cart.reduce((sum, item) => sum + item.quantity, 0);
   
   return (
