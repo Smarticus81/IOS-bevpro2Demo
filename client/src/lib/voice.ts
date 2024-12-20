@@ -31,6 +31,7 @@ class VoiceRecognition extends EventHandler {
   private isListening = false;
   private orderWakeWord = "hey bar";
   private inquiryWakeWord = "hey bev";
+  private retryWakeWord = "hey pro";
   private retryCount = 0;
   private maxRetries = 3;
   private processingCommand = false;
@@ -67,31 +68,43 @@ class VoiceRecognition extends EventHandler {
         const text = result[0].transcript.toLowerCase();
         console.log('Recognized text:', text);
 
-        // Check for wake words
+        // Enhanced wake word detection with retry capability
         // Case insensitive wake word detection
         const hasOrderWake = text.toLowerCase().includes(this.orderWakeWord);
         const hasInquiryWake = text.toLowerCase().includes(this.inquiryWakeWord);
+        const hasRetryWake = text.toLowerCase().includes(this.retryWakeWord);
         
         console.log('Wake word detection:', {
           text,
           hasOrderWake,
           hasInquiryWake,
+          hasRetryWake,
           orderWakeWord: this.orderWakeWord,
-          inquiryWakeWord: this.inquiryWakeWord
+          inquiryWakeWord: this.inquiryWakeWord,
+          retryWakeWord: this.retryWakeWord
         });
 
         // Extract just the command part after wake word if present
         let commandText = text;
-        let detectedMode: 'order' | 'inquiry' | null = null;
+        let detectedMode: 'order' | 'inquiry' | 'retry' | null = null;
 
         if (hasOrderWake) {
           console.log('Order wake word detected');
           detectedMode = 'order';
           commandText = text.toLowerCase().replace(this.orderWakeWord, '').trim();
+          this.emit('modeChange', { mode: 'order', isActive: true });
         } else if (hasInquiryWake) {
           console.log('Inquiry wake word detected');
           detectedMode = 'inquiry';
           commandText = text.toLowerCase().replace(this.inquiryWakeWord, '').trim();
+          this.emit('modeChange', { mode: 'inquiry', isActive: true });
+        } else if (hasRetryWake) {
+          console.log('Retry wake word detected');
+          detectedMode = 'retry';
+          commandText = text.toLowerCase().replace(this.retryWakeWord, '').trim();
+          this.emit('modeChange', { mode: 'retry', isActive: true });
+          // Reset retry counter when explicitly requesting retry
+          this.retryCount = 0;
         }
 
         if (detectedMode) {
