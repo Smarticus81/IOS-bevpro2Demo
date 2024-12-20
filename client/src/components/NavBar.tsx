@@ -36,8 +36,8 @@ export function NavBar({ drinks = [], onAddToCart }: NavBarProps) {
         <div className="flex h-16 items-center justify-between">
           {/* Voice Control */}
           <VoiceControl
-            drinks={drinks}
-            onAddToCart={onAddToCart}
+            drinks={drinks || []}
+            onAddToCart={onAddToCart || (() => {})}
             variant="compact"
           />
 
