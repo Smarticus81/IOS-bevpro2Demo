@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import type { Drink } from "@db/schema";
 import { useState } from "react";
+import { Beer, Wine, GlassWater, Coffee, Droplet } from "lucide-react";
 
 interface DrinkCardProps {
   drink: Drink & { price: number };
@@ -11,6 +12,22 @@ interface DrinkCardProps {
 
 export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
+
+  const getCategoryIcon = (category: string) => {
+    switch (category.toLowerCase()) {
+      case 'beer':
+        return <Beer className="h-6 w-6 text-amber-500" />;
+      case 'wine':
+        return <Wine className="h-6 w-6 text-purple-500" />;
+      case 'spirits':
+      case 'classics':
+        return <GlassWater className="h-6 w-6 text-blue-500" />;
+      case 'signature':
+        return <Coffee className="h-6 w-6 text-pink-500" />;
+      default:
+        return <Droplet className="h-6 w-6 text-gray-500" />;
+    }
+  };
 
   return (
     <motion.div
@@ -40,7 +57,7 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
             className={`h-full w-full object-cover transition-opacity duration-500
                      ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
           />
-          
+
           {/* Price Tag */}
           <div className="absolute right-3 top-3 px-3 py-1
                        bg-white/90 backdrop-blur-sm rounded-full
@@ -49,7 +66,7 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
               ${drink.price}
             </span>
           </div>
-          
+
           <AnimatePresence>
             {quantity > 0 && (
               <motion.div
@@ -67,18 +84,23 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
 
           <div className="absolute inset-x-0 bottom-0 p-4 bg-white">
             <div className="space-y-1">
-              <div className="flex flex-col">
-                <h3 className="font-semibold text-base text-gray-900 truncate">
-                  {drink.name}
-                </h3>
-                <p className="text-sm font-medium text-gray-500">
-                  {drink.category}
-                </p>
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-full bg-gray-50">
+                    {getCategoryIcon(drink.category)}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-base text-gray-900 truncate">
+                      {drink.name}
+                    </h3>
+                    <p className="text-sm font-medium text-gray-500">
+                      {drink.category}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-xs font-medium text-gray-400">
+                  In Stock: {drink.inventory}
+                </div>
               </div>
-              <div className="text-xs font-medium text-gray-400">
-                In Stock: {drink.inventory}
-              </div>
-            </div>
           </div>
         </div>
       </div>
