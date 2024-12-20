@@ -71,6 +71,18 @@ export const paymentService = {
     ];
   },
 
+  // Validate Stripe API key
+  async validateStripeKey(key: string): Promise<boolean> {
+    try {
+      // Simulate API key validation
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return key.startsWith('sk_') && key.length > 20;
+    } catch (error) {
+      console.error('Error validating Stripe key:', error);
+      return false;
+    }
+  },
+
   // Simulate payment validation
   async validatePayment(paymentDetails: any): Promise<boolean> {
     // Simulate validation delay
