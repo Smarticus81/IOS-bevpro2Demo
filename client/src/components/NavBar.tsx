@@ -1,4 +1,11 @@
-import { Home, Settings, Calendar, Package, BarChart3, Sun, Moon } from "lucide-react";
+import { Home, Settings, Calendar, Package, BarChart3, Sun, Moon, Menu } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -27,34 +34,15 @@ export function NavBar({ drinks = [], onAddToCart }: NavBarProps) {
     <div className="sticky top-0 z-50 w-full border-b bg-white dark:bg-black/90 shadow-sm">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center gap-6">
-            <BevProLogo />
-            <nav className="hidden md:flex items-center gap-1">
-              {navItems.map((item) => (
-                <Link key={item.href} href={item.href}>
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      "gap-2 text-gray-600 hover:text-black dark:text-gray-400 dark:hover:text-white",
-                      location === item.href && "bg-gray-100 text-black dark:bg-gray-800 dark:text-white"
-                    )}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
-                  </Button>
-                </Link>
-              ))}
-            </nav>
-          </div>
+          {/* Voice Control */}
+          <VoiceControl
+            drinks={drinks}
+            onAddToCart={onAddToCart}
+            variant="compact"
+          />
 
-          {/* Voice Control, Theme Toggle & Mobile Navigation */}
+          {/* Hamburger Menu for Mobile */}
           <div className="flex items-center gap-2">
-            <VoiceControl
-              drinks={drinks}
-              onAddToCart={onAddToCart}
-              variant="compact"
-            />
-            
             <Button
               variant="ghost"
               size="icon"
@@ -65,22 +53,29 @@ export function NavBar({ drinks = [], onAddToCart }: NavBarProps) {
               <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             </Button>
             
-            <nav className="md:hidden flex items-center gap-1">
-              {navItems.map((item) => (
-                <Link key={item.href} href={item.href}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "text-gray-600 hover:text-black dark:text-gray-400 dark:hover:text-white",
-                      location === item.href && "bg-gray-100 text-black dark:bg-gray-800 dark:text-white"
-                    )}
-                  >
-                    <item.icon className="h-4 w-4" />
-                  </Button>
-                </Link>
-              ))}
-            </nav>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="md:hidden"
+                >
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuGroup>
+                  {navItems.map((item) => (
+                    <Link key={item.href} href={item.href}>
+                      <DropdownMenuItem className="flex items-center gap-2">
+                        <item.icon className="h-4 w-4" />
+                        {item.label}
+                      </DropdownMenuItem>
+                    </Link>
+                  ))}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
