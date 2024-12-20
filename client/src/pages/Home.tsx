@@ -133,30 +133,6 @@ export function Home() {
       />
       
       <main className="px-4 pt-4 pb-8 sm:px-6 lg:px-8">
-        {/* Status Bar */}
-        <div className="container mx-auto mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-xl bg-gradient-to-r from-primary/90 to-primary/60 bg-clip-text text-transparent">
-                BP
-              </span>
-            </div>
-            <span className="text-sm font-medium text-muted-foreground">
-              {new Date().toLocaleDateString('en-US', { 
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-primary/10 text-primary">
-              Active Orders: {cart.length}
-            </Badge>
-          </div>
-        </div>
-
         {/* Category Selector */}
         <div className="flex overflow-x-auto gap-4 pb-4 -mx-4 px-4 scrollbar-hide">
           <motion.button
