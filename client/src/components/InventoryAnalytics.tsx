@@ -43,99 +43,113 @@ export function InventoryAnalytics({ drinks, inventoryHistory = [] }: InventoryA
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
-      <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-primary" />
-            Stock Levels & Predictions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={stockMovement}>
-                <defs>
-                  <linearGradient id="colorInventory" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200/50" />
-                <XAxis 
-                  dataKey="name"
-                  tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
-                  tickLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--background))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '0.5rem',
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="current"
-                  stroke="hsl(var(--primary))"
-                  fillOpacity={1}
-                  fill="url(#colorInventory)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="predicted"
-                  stroke="hsl(var(--primary))"
-                  strokeDasharray="5 5"
-                  fill="none"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+      >
+        <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl
+                      hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              Stock Levels & Predictions
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={stockMovement}>
+                  <defs>
+                    <linearGradient id="colorInventory" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200/50" />
+                  <XAxis 
+                    dataKey="name"
+                    tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '0.5rem',
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="current"
+                    stroke="hsl(var(--primary))"
+                    fillOpacity={1}
+                    fill="url(#colorInventory)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="predicted"
+                    stroke="hsl(var(--primary))"
+                    strokeDasharray="5 5"
+                    fill="none"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
 
-      <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ArrowUpRight className="h-5 w-5 text-emerald-500" />
-            Top Product Turnover
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={turnoverRate}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200/50" />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
-                  tickLine={false}
-                  label={{ value: 'Turnover Rate (%)', angle: -90, position: 'insideLeft' }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--background))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '0.5rem',
-                  }}
-                />
-                <Bar
-                  dataKey="rate"
-                  fill="hsl(var(--primary))"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
+      >
+        <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl
+                      hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ArrowUpRight className="h-5 w-5 text-emerald-500" />
+              Top Product Turnover
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={turnoverRate}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200/50" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
+                    tickLine={false}
+                    label={{ value: 'Turnover Rate (%)', angle: -90, position: 'insideLeft' }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '0.5rem',
+                    }}
+                  />
+                  <Bar
+                    dataKey="rate"
+                    fill="hsl(var(--primary))"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 }
