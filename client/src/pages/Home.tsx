@@ -125,7 +125,7 @@ export function Home() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-50 via-pearl-light to-pearl-dark">
-      <NavBar />
+      <NavBar drinks={drinks} onAddToCart={addToCart} />
       <VoiceFeedback 
         message={voiceMessage}
         isPlaying={isPlaying}
@@ -256,21 +256,7 @@ export function Home() {
             </div>
           </div>
 
-          {/* Voice Control - Desktop */}
-          <div className="hidden lg:block fixed right-8 top-24 z-50">
-            <VoiceControl 
-              drinks={drinks}
-              onAddToCart={addToCart}
-            />
-          </div>
-
-          {/* Voice Control - Mobile */}
-          <div className="lg:hidden fixed left-1/2 -translate-x-1/2 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-50">
-            <VoiceControl 
-              drinks={drinks}
-              onAddToCart={addToCart}
-            />
-          </div>
+          {/* Voice Control removed from here and moved to NavBar */}
 
           {/* Order Summary - Mobile */}
           <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40">

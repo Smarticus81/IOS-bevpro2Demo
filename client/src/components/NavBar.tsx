@@ -3,8 +3,16 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { BevProLogo } from "./BevProLogo";
+import { VoiceControl } from "./VoiceControl";
+import type { Drink } from "@db/schema";
+import type { CartAction } from "./VoiceControl";
 
-export function NavBar() {
+interface NavBarProps {
+  drinks?: Drink[];
+  onAddToCart?: (params: CartAction) => void;
+}
+
+export function NavBar({ drinks = [], onAddToCart }: NavBarProps) {
   const [location] = useLocation();
 
   const navItems = [
@@ -39,8 +47,16 @@ export function NavBar() {
             </nav>
           </div>
 
-          {/* Theme Toggle & Mobile Navigation */}
+          {/* Voice Control, Theme Toggle & Mobile Navigation */}
           <div className="flex items-center gap-2">
+            {drinks.length > 0 && onAddToCart && (
+              <VoiceControl
+                drinks={drinks}
+                onAddToCart={onAddToCart}
+                variant="compact"
+              />
+            )}
+            
             <Button
               variant="ghost"
               size="icon"
