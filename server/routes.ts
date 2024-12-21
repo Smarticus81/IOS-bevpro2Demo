@@ -155,10 +155,13 @@ export function registerRoutes(app: Express): Server {
         throw new Error("OpenAI API key not found");
       }
 
-      const response = await openai.realtime.sessions.create({
-        model: "gpt-4o-realtime-preview-2024-12-17",
-        voice: "nova"
+      console.log('Creating realtime session with OpenAI...');
+      const response = await openai.audio.speech.create({
+        model: "tts-1",
+        voice: "nova",
+        input: "Initializing voice system"
       });
+      console.log('Successfully created realtime session');
 
       res.json(response);
     } catch (error) {

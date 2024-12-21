@@ -78,7 +78,9 @@ class RealtimeVoiceService extends EventHandler {
   }
 
   private async setupPeerConnection() {
+    console.log('Setting up audio connection...');
     if (!this.audioContext || !this.audioElement) {
+      console.error('Audio context or element not initialized');
       throw new Error('Audio context not initialized');
     }
 
@@ -109,17 +111,25 @@ class RealtimeVoiceService extends EventHandler {
 
       // Get ephemeral key and establish connection
       const ephemeralKey = await this.getEphemeralKey();
-      const baseUrl = 'https://api.openai.com/v1/realtime';
-      const model = 'gpt-4o-realtime-preview-2024-12-17';
-
-      const response = await fetch(`${baseUrl}?model=${model}`, {
-        method: 'POST',
+      console.log('Initializing audio streaming...');
+      const response = await fetch('/api/session', {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${ephemeralKey}`,
-          'Content-Type': 'application/sdp'
-        },
-        body: offer.sdp
+          'Content-Type': 'application/json'
+        }
       });
+
+      if (!response.ok) {
+        console.error('Failed to initialize audio session:', response.status);
+        throw new Error('Failed to initialize audio session');
+      }
+
+      const audioData = await response.blob();
+      if (this.audioElement) {
+        const audioUrl = URL.createObjectURL(audioData);
+        this.audioElement.src = audioUrl;
+        console.log('Audio streaming initialized successfully');
+      }
 
       if (!response.ok) {
         throw new Error(`Failed to connect to Realtime API: ${response.status}`);
