@@ -51,7 +51,6 @@ export function Home() {
         description: "Your order has been placed successfully"
       });
       setCart([]);
-      playVoiceResponse("Order placed successfully! Thank you for your order.");
     },
     onError: () => {
       toast({
@@ -67,14 +66,12 @@ export function Home() {
       setCart(prev => {
         const existing = prev.find(item => item.drink.id === drink.id);
         if (existing) {
-          playVoiceResponse(`Updated ${drink.name} quantity to ${existing.quantity + quantity}`);
           return prev.map(item => 
             item.drink.id === drink.id 
               ? { ...item, quantity: item.quantity + quantity }
               : item
           );
         }
-        playVoiceResponse(`Added ${drink.name} to your order`);
         return [...prev, { drink, quantity }];
       });
     } else if (action.type === 'COMPLETE_TRANSACTION') {
@@ -118,10 +115,6 @@ export function Home() {
       setCart([]);
       console.log('Cart cleared');
       
-      // Play voice response
-      // Voice response will be implemented later
-      console.log('Voice response played');
-      
       toast({
         title: "Order Completed",
         description: "Your order has been placed successfully!",
@@ -145,7 +138,6 @@ export function Home() {
         variant: "destructive"
       });
       
-      // Throw error to be handled by the voice control component
       throw new Error('Order placement failed');
     }
   };
