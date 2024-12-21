@@ -27,17 +27,29 @@ export function VoiceOrderControl({ onOrderProcessed, disabled }: VoiceOrderCont
 
   const startListening = async () => {
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Your browser does not support voice recording');
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          sampleRate: 44100
+          sampleRate: 44100,
+          channelCount: 1 // Mono audio for better compatibility
         } 
       });
       
+      // Check for WebM support
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+        ? 'audio/webm;codecs=opus'
+        : 'audio/webm';
+      
       mediaRecorder.current = new MediaRecorder(stream, {
-        mimeType: 'audio/webm'
+        mimeType,
+        audioBitsPerSecond: 128000 // 128kbps for good quality
       });
+      
       audioChunks.current = [];
 
       mediaRecorder.current.ondataavailable = (event) => {
@@ -47,17 +59,25 @@ export function VoiceOrderControl({ onOrderProcessed, disabled }: VoiceOrderCont
       };
 
       mediaRecorder.current.onstop = async () => {
-        if (audioChunks.current.length === 0) {
+        try {
+          if (audioChunks.current.length === 0) {
+            throw new Error('No audio recorded');
+          }
+
+          const audioBlob = new Blob(audioChunks.current, { type: mimeType });
+          await processOrder(audioBlob);
+          
+        } catch (error) {
+          console.error('Error processing audio:', error);
           toast({
-            title: "No audio recorded",
-            description: "Please try speaking again",
+            title: "Recording Error",
+            description: error instanceof Error ? error.message : "Failed to process audio",
             variant: "destructive"
           });
-          return;
+        } finally {
+          // Clean up the media stream
+          stream.getTracks().forEach(track => track.stop());
         }
-
-        const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
-        await processOrder(audioBlob);
       };
 
       mediaRecorder.current.start();

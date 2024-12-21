@@ -1,10 +1,21 @@
 import OpenAI from "openai";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true
-});
+let openai: OpenAI | null = null;
+
+try {
+  if (!import.meta.env.VITE_OPENAI_API_KEY) {
+    console.error('OpenAI API key not found in environment');
+    throw new Error('OpenAI API key not configured');
+  }
+  
+  openai = new OpenAI({
+    apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+    dangerouslyAllowBrowser: true
+  });
+} catch (error) {
+  console.error('Failed to initialize OpenAI client:', error);
+}
 
 interface VoiceOrderResult {
   success: boolean;
@@ -20,17 +31,30 @@ interface VoiceOrderResult {
 }
 
 export async function processVoiceOrder(audioBlob: Blob): Promise<VoiceOrderResult> {
-  try {
-    // Convert audio blob to base64
-    // First, transcribe the audio
-    const formData = new FormData();
-    formData.append('file', audioBlob, 'voice-order.wav');
-    formData.append('model', 'whisper-1');
+  if (!openai) {
+    return {
+      success: false,
+      error: 'Voice processing service is not configured'
+    };
+  }
 
-    const transcription = await openai.audio.transcriptions.create({
-      file: audioBlob,
-      model: "whisper-1",
+  try {
+    // Convert webm to wav for Whisper API compatibility
+    const audioFile = new File([audioBlob], "voice-order.wav", { 
+      type: "audio/wav" 
     });
+
+    // First, transcribe the audio
+    const transcription = await openai.audio.transcriptions.create({
+      file: audioFile,
+      model: "whisper-1",
+      language: "en",
+      response_format: "json",
+    });
+
+    if (!transcription.text) {
+      throw new Error('No speech detected');
+    }
 
     // Then, process the transcription with GPT-4 to understand the order
     const completion = await openai.chat.completions.create({
@@ -56,7 +80,9 @@ export async function processVoiceOrder(audioBlob: Blob): Promise<VoiceOrderResu
           content: transcription.text
         }
       ],
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
+      temperature: 0.3, // Lower temperature for more consistent responses
+      max_tokens: 500
     });
 
     const orderDetails = JSON.parse(completion.choices[0].message.content);
