@@ -148,49 +148,7 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
-  // Voice API endpoints
-  app.get("/api/voice/token", async (_req, res) => {
-    try {
-      if (!process.env.OPENAI_API_KEY) {
-        throw new Error('OPENAI_API_KEY is not configured');
-      }
-
-      console.log('Requesting OpenAI realtime session token...');
-      
-      const sessionResponse = await fetch("https://api.openai.com/v1/realtime/sessions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-realtime-preview-2024-12-17",
-          voice: "verse",
-        }),
-      });
-
-      if (!sessionResponse.ok) {
-        const errorText = await sessionResponse.text();
-        console.error('OpenAI API error:', errorText);
-        throw new Error(`OpenAI API responded with status: ${sessionResponse.status} - ${errorText}`);
-      }
-
-      const data = await sessionResponse.json();
-      console.log('Realtime session token generated successfully');
-      res.json({
-        client_secret: {
-          value: data.client_secret,
-          expires_at: Math.floor(Date.now() / 1000) + 60 // Token expires in 1 minute
-        }
-      });
-    } catch (error) {
-      console.error("Error generating voice token:", error);
-      res.status(500).json({ 
-        error: "Failed to generate voice token",
-        message: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
+  
 
 
   // Payment routes

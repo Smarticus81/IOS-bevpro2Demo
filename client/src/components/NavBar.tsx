@@ -10,14 +10,11 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { BevProLogo } from "./BevProLogo";
-import { VoiceControl } from "./VoiceControl";
 import { motion } from "framer-motion";
 import type { Drink } from "@db/schema";
-import type { CartAction } from "./VoiceControl";
 
 interface NavBarProps {
   drinks?: Drink[];
-  onAddToCart?: (params: CartAction) => void;
 }
 
 export function NavBar({ drinks = [], onAddToCart }: NavBarProps) {
@@ -40,17 +37,13 @@ export function NavBar({ drinks = [], onAddToCart }: NavBarProps) {
     >
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
-          {/* Voice Control */}
+          {/* Logo or branding can go here */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <VoiceControl
-              drinks={drinks || []}
-              onAddToCart={onAddToCart || (() => {})}
-              variant="compact"
-            />
+            <BevProLogo />
           </motion.div>
 
           {/* Navigation Items - Desktop */}
