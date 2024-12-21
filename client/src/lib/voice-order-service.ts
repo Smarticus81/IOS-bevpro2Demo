@@ -59,7 +59,16 @@ async function transcribeAudio(audioFile: File): Promise<string> {
 async function processTranscription(text: string): Promise<VoiceOrderResult['order']> {
   if (!openai) throw new Error('Voice processing service is not configured');
 
-  // Check for shutdown commands first
+  // Check for completion commands first
+  const completionCommands = ['complete', 'finish', 'done', 'checkout', 'pay', 'confirm'];
+  if (completionCommands.some(cmd => text.toLowerCase().includes(cmd))) {
+    return {
+      items: [],
+      specialInstructions: 'complete_order'
+    };
+  }
+
+  // Check for shutdown commands next
   const shutdownCommands = ['stop', 'shutdown', 'quit', 'exit', 'end'];
   if (shutdownCommands.some(cmd => text.toLowerCase().includes(cmd))) {
     return {
