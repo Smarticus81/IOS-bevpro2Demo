@@ -3,7 +3,6 @@ import { DrinkCard } from "@/components/DrinkCard";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { VoiceControl } from "@/components/VoiceControl";
 import { OrderSummary } from "@/components/OrderSummary";
-import { VoiceFeedback } from "@/components/VoiceFeedback";
 import OrderSummaryDrawer from "@/components/OrderSummaryDrawer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,17 +17,9 @@ type CartAction =
 
 export function Home() {
   const [cart, setCart] = useState<Array<{ drink: Drink; quantity: number }>>([]);
-  const [voiceMessage, setVoiceMessage] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isOrderSummaryCollapsed, setIsOrderSummaryCollapsed] = useState(false);
   const { toast } = useToast();
-
-  const playVoiceResponse = useCallback(async (message: string) => {
-    setVoiceMessage(message);
-    setIsPlaying(true);
-    setTimeout(() => setIsPlaying(false), 5000);
-  }, []);
 
   const { data: drinks = [] } = useQuery<Drink[]>({
     queryKey: ["/api/drinks"],
@@ -128,7 +119,7 @@ export function Home() {
       console.log('Cart cleared');
       
       // Play voice response
-      await playVoiceResponse("Order placed successfully! Thank you for your order.");
+      // Voice response will be implemented later
       console.log('Voice response played');
       
       toast({
@@ -162,12 +153,6 @@ export function Home() {
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-50 via-pearl-light to-pearl-dark">
       <NavBar drinks={drinks} onAddToCart={addToCart} />
-      <VoiceFeedback 
-        message={voiceMessage}
-        isPlaying={isPlaying}
-        voice="nova"
-      />
-      
       <main className="px-4 pt-4 pb-8 sm:px-6 lg:px-8">
         {/* Category Selector */}
         <div className="flex overflow-x-auto gap-2 py-2 mb-4 -mx-4 px-4 scrollbar-hide">
