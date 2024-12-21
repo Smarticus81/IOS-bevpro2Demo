@@ -548,6 +548,8 @@ export function VoiceControl({ drinks, onAddToCart, onVoiceCommand, variant = 'd
       <VoiceAnimation
         isListening={isListening}
         isProcessing={isProcessing}
+        amplitude={isListening ? 1.5 : 1}
+        sentiment={sentiment === 'positive' ? 'positive' : sentiment === 'negative' ? 'negative' : 'neutral'}
       />
 
       {status && (
