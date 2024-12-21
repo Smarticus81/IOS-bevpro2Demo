@@ -60,8 +60,42 @@ async function processTranscription(text: string): Promise<VoiceOrderResult['ord
   if (!openai) throw new Error('Voice processing service is not configured');
 
   // Check for completion commands first
-  const completionCommands = ['complete', 'finish', 'done', 'checkout', 'pay', 'confirm'];
-  if (completionCommands.some(cmd => text.toLowerCase().includes(cmd))) {
+  const completionCommands = ['complete', 'finish', 'done', 'checkout', 'pay', 'confirm', 'process', 'submit'];
+  const normalizedText = text.toLowerCase().trim();
+  const words = normalizedText.split(/\s+/);
+  
+  console.log('Processing voice input:', {
+    originalText: text,
+    normalizedText,
+    words,
+    timestamp: new Date().toISOString()
+  });
+
+  // Check for completion phrases
+  const isCompletionCommand = completionCommands.some(cmd => {
+    const isCommand = words.some(word => {
+      const match = word === cmd || 
+                   (word.includes(cmd) && word.length <= cmd.length + 2) ||
+                   (cmd === 'complete' && word === 'completing') ||
+                   (cmd === 'finish' && word === 'finishing');
+      if (match) {
+        console.log('Detected completion command:', {
+          command: cmd,
+          matchedWord: word,
+          fullText: normalizedText,
+          timestamp: new Date().toISOString()
+        });
+      }
+      return match;
+    });
+    return isCommand;
+  });
+
+  if (isCompletionCommand) {
+    console.log('Processing completion command:', {
+      text: normalizedText,
+      timestamp: new Date().toISOString()
+    });
     return {
       items: [],
       specialInstructions: 'complete_order'

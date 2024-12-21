@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Mic, MicOff, Minimize2, Maximize2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { voiceRecognition } from "@/lib/voice";
 import { processVoiceCommand } from "@/lib/openai";
 import { voiceSynthesis } from "@/lib/voice-synthesis";
@@ -424,59 +425,82 @@ export function VoiceControl({ drinks, onAddToCart, onVoiceCommand, variant = 'd
         }
 
         case "order_complete": {
+          console.log('Processing order completion command:', {
+            mode,
+            isWakeWordOnly,
+            timestamp: new Date().toISOString()
+          });
+          
           try {
-            await orderProcessingDebouncer('complete-order', async () => {
-              console.log('Starting order completion:', {
+            if (isProcessingCommand) {
+              console.log('Skipping order completion - already processing a command');
+              return;
+            }
+
+            setIsProcessingCommand(true);
+            
+            try {
+              // Dispatch the completion action
+              console.log('Dispatching order completion action');
+              onAddToCart({ type: 'COMPLETE_TRANSACTION' });
+              
+              // Wait briefly for UI updates and animations
+              await new Promise(resolve => setTimeout(resolve, 800));
+              
+              // Play success sound and update UI
+              await soundEffects.playSuccess();
+              
+              // Reset state
+              setMode('order');
+              setIsWakeWordOnly(true);
+              
+              const completionMessage = "Order processed successfully! Say 'hey bar' to start a new order or 'hey bev' for questions.";
+              setStatus(completionMessage);
+              
+              // Provide voice feedback if in inquiry mode
+              if (mode === 'inquiry') {
+                await handleResponse(intent.conversational_response || completionMessage);
+              }
+
+              console.log('Order completion successful:', {
                 mode,
-                intent,
+                isWakeWordOnly,
                 timestamp: new Date().toISOString()
               });
 
-              setIsProcessingCommand(true);
+              // Show success toast or dialog
+              toast({
+                title: "Order Complete",
+                description: "Your order has been processed successfully!",
+                variant: "default"
+              });
+
+            } catch (error) {
+              console.error('Error during order completion:', error);
               
-              try {
-                // Process the transaction
-                onAddToCart({ 
-                  type: 'COMPLETE_TRANSACTION'
-                });
-                
-                // Wait briefly to allow the UI to update
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                await soundEffects.playSuccess();
-                setMode('order'); // Reset to order mode
-                setIsWakeWordOnly(true); // Enter wake word only mode
-                
-                const completionMessage = "Order complete. Say 'hey bar' to start a new order or 'hey bev' for questions.";
-                setStatus(completionMessage);
-                
-                if (mode === 'inquiry') {
-                  await handleResponse(intent.conversational_response || completionMessage);
-                }
-
-                console.log('Order completed successfully', {
-                  timestamp: new Date().toISOString()
-                });
-
-                return { success: true };
-              } catch (error) {
-                console.error('Error during order completion:', error);
-                throw error;
+              await soundEffects.playError();
+              const errorMessage = "Sorry, there was a problem completing your order. Please try again.";
+              
+              setStatus(errorMessage);
+              if (mode === 'inquiry') {
+                await handleResponse(errorMessage);
               }
-            });
+
+              toast({
+                title: "Order Error",
+                description: errorMessage,
+                variant: "destructive"
+              });
+
+              throw error;
+            }
           } catch (error) {
             if (error.message === 'Command in cooldown period') {
-              console.log('Order completion in cooldown period, ignoring request');
+              console.log('Order completion in cooldown period');
               return;
             }
             
-            console.error('Failed to complete order:', error);
-            await soundEffects.playError();
-            const errorMessage = "Sorry, there was an issue completing your order. Please try again.";
-            setStatus(errorMessage);
-            if (mode === 'inquiry') {
-              await handleResponse(errorMessage);
-            }
+            console.error('Failed to process order completion:', error);
           } finally {
             setIsProcessingCommand(false);
           }
