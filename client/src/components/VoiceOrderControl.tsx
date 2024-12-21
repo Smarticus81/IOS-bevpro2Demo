@@ -105,18 +105,62 @@ export function VoiceOrderControl({ onOrderProcessed, disabled }: VoiceOrderCont
   };
 
   const processOrder = async (audioBlob: Blob) => {
+    if (isProcessing) {
+      console.log('Skipping order processing - already processing');
+      return;
+    }
+
     setIsProcessing(true);
     try {
       const result = await processVoiceOrder(audioBlob);
       
       if (result.success && result.order) {
-        // Generate and play confirmation audio
-        const confirmationAudioUrl = await synthesizeOrderConfirmation(result.order);
-        const audio = new Audio(confirmationAudioUrl);
-        await audio.play();
+        // Handle shutdown command
+        if (result.isShutdown || result.order.specialInstructions === 'shutdown_requested') {
+          setIsListening(false);
+          toast({
+            title: "Voice Control Stopped",
+            description: "Voice ordering has been disabled",
+            variant: "default",
+          });
+          return;
+        }
 
-        onOrderProcessed(result.order);
+        // Handle empty orders
+        if (result.order.items.length === 0) {
+          toast({
+            title: "No Order Detected",
+            description: "Please try speaking your order again",
+            variant: "default",
+          });
+          return;
+        }
+
+        try {
+          // Generate and play confirmation audio
+          const confirmationAudioUrl = await synthesizeOrderConfirmation(result.order);
+          const audio = new Audio(confirmationAudioUrl);
+          await audio.play();
+
+          // Process the order
+          onOrderProcessed(result.order);
+          
+          // Show success notification
+          toast({
+            title: "Order Received",
+            description: `Added ${result.order.items.map(item => 
+              `${item.quantity} ${item.name}`).join(', ')}`,
+          });
+        } catch (error) {
+          console.error('Error processing successful order:', error);
+          // Continue with order processing even if audio feedback fails
+          onOrderProcessed(result.order);
+        }
+      } else if (result.error?.toLowerCase().includes('cooldown')) {
+        // Handle debounce rejection gracefully
+        console.log('Order processing debounced');
       } else {
+        // Handle other errors
         toast({
           title: "Error",
           description: result.error || "Could not process your order. Please try again.",

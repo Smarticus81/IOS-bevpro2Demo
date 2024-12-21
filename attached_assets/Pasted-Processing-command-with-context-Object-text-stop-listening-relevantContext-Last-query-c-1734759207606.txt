@@ -1,0 +1,112 @@
+Processing command with context: 
+Object {text: " stop listening", relevantContext: "Last query:  can you add two moscow mules", historyLength: 8}
+Starting command processing: 
+Object {text: " stop listening", commandHash: " stop listening-1734759164", timestamp: "2024-12-21T05:32:44.717Z"}
+Processing voice input:  stop listening
+Processing voice command:  stop listening
+Processing command with context: 
+Object {text: " stop listening", relevantContext: "Last query:  can you add two moscow mules", historyLength: 8}
+Starting command processing: 
+Object {text: " stop listening", commandHash: " stop listening-1734759164", timestamp: "2024-12-21T05:32:44.719Z"}
+Processing voice input:  stop listening
+Processing voice command:  stop listening
+Processing command with context: 
+Object {text: " stop listening", relevantContext: "Last query:  can you add two moscow mules", historyLength: 8}
+Starting command processing: 
+Object {text: " stop listening", commandHash: " stop listening-1734759164", timestamp: "2024-12-21T05:32:44.721Z"}
+Processing voice input:  stop listening
+Processing voice command:  stop listening
+Processing command with context: 
+Object {text: " stop listening", relevantContext: "Last query:  can you add two moscow mules", historyLength: 8}
+Starting command processing: 
+Object {text: " stop listening", commandHash: " stop listening-1734759164", timestamp: "2024-12-21T05:32:44.722Z"}
+Processing voice input:  stop listening
+Processing voice command:  stop listening
+Processing command with context: 
+Object {text: " stop listening", relevantContext: "Last query:  can you add two moscow mules", historyLength: 8}
+OpenAI response: {
+  "type": "shutdown",
+  "conversational_response": "Turning off voice commands."
+}
+Updating conversation context: 
+Object {previousContext: {…}, newIntent: {…}, query: " stop listening"}
+Updated context: 
+Object {timestamp: 1734759165266, topics: Array(0), relevantDrinks: Array(0), contextExpiry: 300000, lastIntent: {…}, …}
+Processing intent: {
+  "type": "shutdown",
+  "conversational_response": "Turning off voice commands."
+}
+Current mode: order Attempting response: Turning off voice commands.
+HandleResponse - Current mode: order Response: Turning off voice commands.
+Skipping voice response - currently in order mode
+Completed command processing: 
+Object {text: " stop listening", commandHash: " stop listening-1734759164", timestamp: "2024-12-21T05:32:45.267Z"}
+OpenAI response: {
+  "type": "shutdown",
+  "conversational_response": "Shutting down voice commands."
+}
+Updating conversation context: 
+Object {previousContext: {…}, newIntent: {…}, query: " stop listening"}
+Updated context: 
+Object {timestamp: 1734759165306, topics: Array(0), relevantDrinks: Array(0), contextExpiry: 300000, lastIntent: {…}, …}
+Processing intent: {
+  "type": "shutdown",
+  "conversational_response": "Shutting down voice commands."
+}
+Current mode: order Attempting response: Shutting down voice commands.
+HandleResponse - Current mode: order Response: Shutting down voice commands.
+Skipping voice response - currently in order mode
+Completed command processing: 
+Object {text: " stop listening", commandHash: " stop listening-1734759164", timestamp: "2024-12-21T05:32:45.290Z"}
+OpenAI response: { "type": "shutdown", "conversational_response": "Shutting down voice commands." }
+Updating conversation context: 
+Object {previousContext: {…}, newIntent: {…}, query: " stop listening"}
+Updated context: 
+Object {timestamp: 1734759165306, topics: Array(0), relevantDrinks: Array(0), contextExpiry: 300000, lastIntent: {…}, …}
+Processing intent: {
+  "type": "shutdown",
+  "conversational_response": "Shutting down voice commands."
+}
+Current mode: order Attempting response: Shutting down voice commands.
+HandleResponse - Current mode: order Response: Shutting down voice commands.
+Skipping voice response - currently in order mode
+Completed command processing: 
+Object {text: " stop listening", commandHash: " stop listening-1734759164", timestamp: "2024-12-21T05:32:45.297Z"}
+OpenAI response: {
+  "type": "shutdown",
+  "conversational_response": "Shutting down. Goodbye!"
+}
+Updating conversation context: 
+Object {previousContext: {…}, newIntent: {…}, query: " stop listening"}
+Updated context: 
+Object {timestamp: 1734759165306, topics: Array(0), relevantDrinks: Array(0), contextExpiry: 300000, lastIntent: {…}, …}
+Processing intent: {
+  "type": "shutdown",
+  "conversational_response": "Shutting down. Goodbye!"
+}
+Current mode: order Attempting response: Shutting down. Goodbye!
+HandleResponse - Current mode: order Response: Shutting down. Goodbye!
+Skipping voice response - currently in order mode
+Completed command processing: 
+Object {text: " stop listening", commandHash: " stop listening-1734759164", timestamp: "2024-12-21T05:32:45.306Z"}
+OpenAI response: {
+  "type": "shutdown",
+  "conversational_response": "Shutting down voice commands."
+}
+Updating conversation context: 
+Object {previousContext: {…}, newIntent: {…}, query: " stop listening"}
+Updated context: 
+Object {timestamp: 1734759165348, topics: Array(0), relevantDrinks: Array(0), contextExpiry: 300000, lastIntent: {…}, …}
+Processing intent: {
+  "type": "shutdown",
+  "conversational_response": "Shutting down voice commands."
+}
+Current mode: order Attempting response: Shutting down voice commands.
+HandleResponse - Current mode: order Response: Shutting down voice commands.
+Skipping voice response - currently in order mode
+Completed command processing: 
+Object {text: " stop listening", commandHash: " stop listening-1734759164", timestamp: "2024-12-21T05:32:45.349Z"}
+OpenAI response: {
+  "type": "shutdown",
+  "conversational_response": "Shutting down voice commands."
+}

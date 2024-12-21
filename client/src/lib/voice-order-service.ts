@@ -1,21 +1,29 @@
 import OpenAI from "openai";
+import { voiceCommandDebouncer, orderProcessingDebouncer, audioSynthesisDebouncer } from "./debounce";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
 let openai: OpenAI | null = null;
 
-try {
-  if (!import.meta.env.VITE_OPENAI_API_KEY) {
-    console.error('OpenAI API key not found in environment');
-    throw new Error('OpenAI API key not configured');
+const initializeOpenAI = () => {
+  try {
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+    if (!apiKey) {
+      console.warn('OpenAI API key not found - voice features will be limited');
+      return null;
+    }
+
+    return new OpenAI({
+      apiKey,
+      dangerouslyAllowBrowser: true
+    });
+  } catch (error) {
+    console.error('Failed to initialize OpenAI client:', error);
+    return null;
   }
-  
-  openai = new OpenAI({
-    apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-    dangerouslyAllowBrowser: true
-  });
-} catch (error) {
-  console.error('Failed to initialize OpenAI client:', error);
-}
+};
+
+// Initialize OpenAI client
+openai = initializeOpenAI();
 
 interface VoiceOrderResult {
   success: boolean;
@@ -28,35 +36,39 @@ interface VoiceOrderResult {
     specialInstructions?: string;
   };
   error?: string;
+  isShutdown?: boolean;
 }
 
-export async function processVoiceOrder(audioBlob: Blob): Promise<VoiceOrderResult> {
-  if (!openai) {
+async function transcribeAudio(audioFile: File): Promise<string> {
+  if (!openai) throw new Error('Voice processing service is not configured');
+
+  const transcription = await openai.audio.transcriptions.create({
+    file: audioFile,
+    model: "whisper-1",
+    language: "en",
+    response_format: "json",
+  });
+
+  if (!transcription.text) {
+    throw new Error('No speech detected');
+  }
+
+  return transcription.text;
+}
+
+async function processTranscription(text: string): Promise<VoiceOrderResult['order']> {
+  if (!openai) throw new Error('Voice processing service is not configured');
+
+  // Check for shutdown commands first
+  const shutdownCommands = ['stop', 'shutdown', 'quit', 'exit', 'end'];
+  if (shutdownCommands.some(cmd => text.toLowerCase().includes(cmd))) {
     return {
-      success: false,
-      error: 'Voice processing service is not configured'
+      items: [],
+      specialInstructions: 'shutdown_requested'
     };
   }
 
   try {
-    // Convert webm to wav for Whisper API compatibility
-    const audioFile = new File([audioBlob], "voice-order.wav", { 
-      type: "audio/wav" 
-    });
-
-    // First, transcribe the audio
-    const transcription = await openai.audio.transcriptions.create({
-      file: audioFile,
-      model: "whisper-1",
-      language: "en",
-      response_format: "json",
-    });
-
-    if (!transcription.text) {
-      throw new Error('No speech detected');
-    }
-
-    // Then, process the transcription with GPT-4 to understand the order
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -73,27 +85,59 @@ export async function processVoiceOrder(audioBlob: Blob): Promise<VoiceOrderResu
               }
             ],
             "specialInstructions": "any special instructions"
-          }`
+          }
+
+          If you detect a command to stop or shutdown, return an empty items array with specialInstructions: "shutdown_requested"`
         },
         {
           role: "user",
-          content: transcription.text
+          content: text
         }
       ],
       response_format: { type: "json_object" },
-      temperature: 0.3, // Lower temperature for more consistent responses
+      temperature: 0.3,
       max_tokens: 500
     });
 
-    const orderDetails = JSON.parse(completion.choices[0].message.content);
-
-    return {
-      success: true,
-      order: orderDetails
-    };
-
+    const result = JSON.parse(completion.choices[0].message.content);
+    return result;
   } catch (error) {
-    console.error('Error processing voice order:', error);
+    console.error('Error processing transcription:', error);
+    if (error instanceof Error && error.message.includes('API key')) {
+      throw new Error('Voice processing service not available');
+    }
+    throw error;
+  }
+}
+
+export async function processVoiceOrder(audioBlob: Blob): Promise<VoiceOrderResult> {
+  const commandId = `voice-${Date.now()}`;
+
+  try {
+    return await voiceCommandDebouncer(commandId, async () => {
+      console.log('Starting voice order processing:', { commandId });
+      
+      // Convert webm to wav for Whisper API compatibility
+      const audioFile = new File([audioBlob], "voice-order.wav", { 
+        type: "audio/wav" 
+      });
+
+      const transcribedText = await transcribeAudio(audioFile);
+      console.log('Transcribed text:', { commandId, text: transcribedText });
+
+      const orderDetails = await orderProcessingDebouncer(
+        `order-${commandId}`, 
+        () => processTranscription(transcribedText)
+      );
+
+      return {
+        success: true,
+        order: orderDetails,
+        isShutdown: orderDetails.specialInstructions === 'shutdown_requested'
+      };
+    });
+  } catch (error) {
+    console.error('Error processing voice order:', { commandId, error });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to process voice order'
@@ -102,18 +146,18 @@ export async function processVoiceOrder(audioBlob: Blob): Promise<VoiceOrderResu
 }
 
 export async function synthesizeOrderConfirmation(order: VoiceOrderResult['order']): Promise<string> {
-  if (!order) return '';
+  if (!order || !openai) return '';
 
   try {
-    const response = await openai.audio.speech.create({
-      model: "tts-1",
-      voice: "nova",
-      input: generateConfirmationMessage(order),
+    return await audioSynthesisDebouncer('synthesis', async () => {
+      const response = await openai.audio.speech.create({
+        model: "tts-1",
+        voice: "nova",
+        input: generateConfirmationMessage(order),
+      });
+
+      return URL.createObjectURL(new Blob([await response.arrayBuffer()]));
     });
-
-    const audioUrl = URL.createObjectURL(new Blob([await response.arrayBuffer()]));
-    return audioUrl;
-
   } catch (error) {
     console.error('Error synthesizing order confirmation:', error);
     throw error;
@@ -121,7 +165,13 @@ export async function synthesizeOrderConfirmation(order: VoiceOrderResult['order
 }
 
 function generateConfirmationMessage(order: VoiceOrderResult['order']): string {
-  if (!order?.items.length) return "I couldn't understand your order. Could you please repeat that?";
+  if (!order?.items.length) {
+    return "I couldn't understand your order. Could you please repeat that?";
+  }
+
+  if (order.specialInstructions === 'shutdown_requested') {
+    return "Voice ordering has been disabled. Tap the microphone icon to enable it again.";
+  }
 
   const itemDescriptions = order.items.map(item => {
     const customizations = item.customizations?.length 
@@ -131,7 +181,7 @@ function generateConfirmationMessage(order: VoiceOrderResult['order']): string {
   }).join(', ');
 
   let message = `I've got your order: ${itemDescriptions}.`;
-  if (order.specialInstructions) {
+  if (order.specialInstructions && order.specialInstructions !== 'shutdown_requested') {
     message += ` Special instructions: ${order.specialInstructions}.`;
   }
   message += " Is this correct?";
