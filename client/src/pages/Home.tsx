@@ -118,8 +118,24 @@ export function Home() {
     try {
       await orderMutation.mutateAsync({ items, total });
       console.log('Order placed successfully');
+      
+      // Clear the cart after successful order
+      setCart([]);
+      
+      // Play voice response
+      await playVoiceResponse("Order placed successfully! Thank you for your order.");
+      
+      toast({
+        title: "Order Completed",
+        description: "Your order has been placed successfully!",
+      });
     } catch (error) {
       console.error('Failed to place order:', error);
+      toast({
+        title: "Failed to place order",
+        description: "There was an error processing your order. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
