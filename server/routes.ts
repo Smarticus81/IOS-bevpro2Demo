@@ -22,6 +22,20 @@ import {
 } from "./services/stripe";
 import type { StripeUninitializedError } from "./services/stripe";
 
+// OpenAI Realtime API imports and types
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+interface RealtimeSession {
+  client_secret: {
+    value: string;
+    expires_at: number;
+  };
+}
+
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
   console.log('Setting up routes and realtime proxy...');
@@ -134,6 +148,28 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
+  // Session creation endpoint for WebRTC
+  app.get("/api/session", async (_req, res) => {
+    try {
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error("OpenAI API key not found");
+      }
+
+      const response = await openai.realtime.sessions.create({
+        model: "gpt-4o-realtime-preview-2024-12-17",
+        voice: "nova"
+      });
+
+      res.json(response);
+    } catch (error) {
+      console.error("Error creating realtime session:", error);
+      res.status(500).json({
+        error: "Failed to create realtime session",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
 
   // Payment routes
   app.post("/api/payment/create-intent", async (req, res) => {

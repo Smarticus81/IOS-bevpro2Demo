@@ -21,34 +21,36 @@ class EventHandler {
   }
 }
 
-class RealtimeVoiceSynthesis extends EventHandler {
-  private static instance: RealtimeVoiceSynthesis;
-  private ws: WebSocket | null = null;
-  private isConnected = false;
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 3;
-  private messageQueue: string[] = [];
+class RealtimeVoiceService extends EventHandler {
+  private static instance: RealtimeVoiceService;
+  private peerConnection: RTCPeerConnection | null = null;
+  private dataChannel: RTCDataChannel | null = null;
   private audioContext: AudioContext | null = null;
-  private audioQueue: AudioBuffer[] = [];
-  private isPlaying = false;
+  private audioElement: HTMLAudioElement | null = null;
+  private isConnected = false;
+  private messageQueue: string[] = [];
   private connectionPromise: Promise<void> | null = null;
 
   private constructor() {
     super();
-    // Initialize Web Audio API context on first user interaction
+    this.initializeAudioContext();
+  }
+
+  static getInstance(): RealtimeVoiceService {
+    if (!RealtimeVoiceService.instance) {
+      RealtimeVoiceService.instance = new RealtimeVoiceService();
+    }
+    return RealtimeVoiceService.instance;
+  }
+
+  private initializeAudioContext() {
     const initAudio = () => {
       if (!this.audioContext) {
         try {
           this.audioContext = new AudioContext();
+          this.audioElement = document.createElement('audio');
+          this.audioElement.autoplay = true;
           console.log('Audio context initialized on user interaction');
-          // After audio context is initialized, attempt WebSocket connection
-          this.connectionPromise = this.connect().catch(error => {
-            console.error('Failed to establish connection:', error);
-            this.emit<VoiceError>('error', {
-              type: 'synthesis',
-              message: 'Failed to initialize voice synthesis'
-            });
-          });
         } catch (error) {
           console.error('Failed to initialize audio context:', error);
           this.emit<VoiceError>('error', {
@@ -59,29 +61,125 @@ class RealtimeVoiceSynthesis extends EventHandler {
       }
     };
 
-    // Handle both click and touch events for mobile
+    // Initialize on user interaction
     document.addEventListener('click', initAudio, { once: true });
     document.addEventListener('touchstart', initAudio, { once: true });
   }
 
-  static getInstance(): RealtimeVoiceSynthesis {
-    if (!RealtimeVoiceSynthesis.instance) {
-      RealtimeVoiceSynthesis.instance = new RealtimeVoiceSynthesis();
+  private async getEphemeralKey(): Promise<string> {
+    try {
+      const response = await fetch('/api/session');
+      const data = await response.json();
+      return data.client_secret.value;
+    } catch (error) {
+      console.error('Failed to get ephemeral key:', error);
+      throw new Error('Could not obtain session key');
     }
-    return RealtimeVoiceSynthesis.instance;
   }
 
-  private async initAudioContext() {
-    if (!this.audioContext) {
-      try {
-        this.audioContext = new AudioContext();
-        console.log('Audio context initialized');
-      } catch (error) {
-        console.error('Failed to initialize audio context:', error);
-        throw new Error('Could not initialize audio playback');
-      }
+  private async setupPeerConnection() {
+    if (!this.audioContext || !this.audioElement) {
+      throw new Error('Audio context not initialized');
     }
-    return this.audioContext;
+
+    try {
+      // Create RTCPeerConnection
+      this.peerConnection = new RTCPeerConnection();
+
+      // Set up audio stream handling
+      this.peerConnection.ontrack = (event) => {
+        if (this.audioElement) {
+          this.audioElement.srcObject = event.streams[0];
+        }
+      };
+
+      // Add local audio track for microphone input
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStream.getTracks().forEach(track => {
+        this.peerConnection?.addTrack(track, mediaStream);
+      });
+
+      // Set up data channel for events
+      this.dataChannel = this.peerConnection.createDataChannel('oai-events');
+      this.setupDataChannelHandlers();
+
+      // Create and set local description
+      const offer = await this.peerConnection.createOffer();
+      await this.peerConnection.setLocalDescription(offer);
+
+      // Get ephemeral key and establish connection
+      const ephemeralKey = await this.getEphemeralKey();
+      const baseUrl = 'https://api.openai.com/v1/realtime';
+      const model = 'gpt-4o-realtime-preview-2024-12-17';
+
+      const response = await fetch(`${baseUrl}?model=${model}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${ephemeralKey}`,
+          'Content-Type': 'application/sdp'
+        },
+        body: offer.sdp
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to connect to Realtime API: ${response.status}`);
+      }
+
+      const answer = {
+        type: 'answer',
+        sdp: await response.text()
+      };
+
+      await this.peerConnection.setRemoteDescription(answer as RTCSessionDescriptionInit);
+      this.isConnected = true;
+      console.log('WebRTC connection established successfully');
+
+    } catch (error) {
+      console.error('Failed to setup WebRTC connection:', error);
+      this.emit<VoiceError>('error', {
+        type: 'synthesis',
+        message: 'Failed to initialize voice service'
+      });
+      throw error;
+    }
+  }
+
+  private setupDataChannelHandlers() {
+    if (!this.dataChannel) return;
+
+    this.dataChannel.onopen = () => {
+      console.log('Data channel opened');
+      this.processQueue();
+    };
+
+    this.dataChannel.onclose = () => {
+      console.log('Data channel closed');
+      this.isConnected = false;
+    };
+
+    this.dataChannel.onerror = (error) => {
+      console.error('Data channel error:', error);
+      this.emit<VoiceError>('error', {
+        type: 'synthesis',
+        message: 'Voice service communication error'
+      });
+    };
+
+    this.dataChannel.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        console.log('Received message:', message);
+        
+        if (message.type === 'error') {
+          this.emit<VoiceError>('error', {
+            type: 'synthesis',
+            message: message.error || 'Unknown synthesis error'
+          });
+        }
+      } catch (error) {
+        console.error('Error processing message:', error);
+      }
+    };
   }
 
   private async connect(): Promise<void> {
@@ -89,166 +187,29 @@ class RealtimeVoiceSynthesis extends EventHandler {
       return this.connectionPromise;
     }
 
-    if (!this.audioContext) {
-      throw new Error('Audio context must be initialized before connecting');
-    }
-
-    try {
-      console.log('Initializing WebSocket connection...');
-      
-      // Get OpenAI API key from server first to ensure we have credentials
-      const client = await getOpenAIClient().catch(error => {
-        console.error('Failed to initialize OpenAI client:', error);
-        throw new Error('OpenAI client initialization failed');
-      });
-
-      // Connect to our server's WebSocket proxy instead of OpenAI directly
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const url = `${protocol}//${window.location.host}/api/realtime`;
-      
-      if (this.ws?.readyState === WebSocket.OPEN) {
-        console.log('WebSocket already connected');
-        return;
-      }
-      
-      // Close any existing connection
-      if (this.ws) {
-        this.ws.close();
-        this.ws = null;
-      }
-      
-      this.ws = new WebSocket(url);
-
-      this.ws.onopen = () => {
-        console.log('Connected to OpenAI Realtime API');
-        this.isConnected = true;
-        this.reconnectAttempts = 0;
-        this.processQueue();
-      };
-
-      this.ws.onclose = (event) => {
-        console.log('Disconnected from OpenAI Realtime API:', event.code, event.reason);
-        this.isConnected = false;
-        this.clearQueue(); // Clear any pending messages
-        this.attemptReconnect();
-      };
-
-      this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        this.emit<VoiceError>('error', {
-          type: 'synthesis',
-          message: 'Voice synthesis connection error'
-        });
-      };
-
-      this.ws.onmessage = async (event) => {
-        try {
-          if (event.data instanceof Blob) {
-            // Handle binary audio data
-            if (!this.audioContext) {
-              console.warn('Audio context not initialized');
-              return;
-            }
-
-            const arrayBuffer = await event.data.arrayBuffer();
-            const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-            this.audioQueue.push(audioBuffer);
-            
-            if (!this.isPlaying) {
-              await this.playNextChunk();
-            }
-          } else {
-            // Handle JSON messages
-            const data = JSON.parse(event.data);
-            console.log('Received message:', data);
-            
-            if (data.type === 'error') {
-              this.emit<VoiceError>('error', {
-                type: 'synthesis',
-                message: data.error || 'Unknown synthesis error'
-              });
-            } else if (data.type === 'status') {
-              console.log('WebSocket status:', data.status);
-            }
-          }
-        } catch (error) {
-          console.error('Error processing WebSocket message:', error);
-          this.emit<VoiceError>('error', {
-            type: 'synthesis',
-            message: 'Failed to process audio data'
-          });
-        }
-      };
-    } catch (error) {
-      console.error('Failed to connect to Realtime API:', error);
-      this.attemptReconnect();
-    }
-  }
-
-  private attemptReconnect() {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 10000);
-      console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) after ${delay}ms`);
-      
-      setTimeout(async () => {
-        try {
-          await this.connect();
-        } catch (error) {
-          console.error('Reconnection attempt failed:', error);
-          // Only emit error on final attempt
-          if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            this.emit<VoiceError>('error', {
-              type: 'synthesis',
-              message: 'Failed to connect to voice synthesis service after multiple attempts'
-            });
-          }
-        }
-      }, delay);
-    } else {
-      console.error('Max reconnection attempts reached');
-      this.emit<VoiceError>('error', {
-        type: 'synthesis',
-        message: 'Failed to connect to voice synthesis service after multiple attempts'
-      });
-    }
+    this.connectionPromise = this.setupPeerConnection();
+    return this.connectionPromise;
   }
 
   private async processQueue() {
-    if (!this.isConnected || this.messageQueue.length === 0) return;
-    
+    if (!this.isConnected || !this.dataChannel || this.messageQueue.length === 0) return;
+
     try {
       while (this.messageQueue.length > 0) {
-        const text = this.messageQueue[0]; // Peek at the next message
-        if (!text || this.ws?.readyState !== WebSocket.OPEN) break;
-        
-        console.log('Processing text:', text);
+        const text = this.messageQueue[0];
+        if (!text) break;
+
         const event = {
-          type: "audio.create",
-          audio: {
-            text,
-            voice: "alloy",
-            model: "tts-1",
-            stream: true
+          type: 'response.create',
+          response: {
+            modalities: ['text', 'speech'],
+            instructions: text,
+            voice: 'nova'
           }
         };
-        
-        await new Promise<void>((resolve, reject) => {
-          if (!this.ws) {
-            reject(new Error('WebSocket not available'));
-            return;
-          }
-          
-          try {
-            this.ws.send(JSON.stringify(event));
-            // Only remove the message from queue after successful send
-            this.messageQueue.shift();
-            resolve();
-          } catch (error) {
-            console.error('Failed to send message:', error);
-            reject(error);
-          }
-        });
+
+        this.dataChannel.send(JSON.stringify(event));
+        this.messageQueue.shift();
       }
     } catch (error) {
       console.error('Error processing message queue:', error);
@@ -267,75 +228,30 @@ class RealtimeVoiceSynthesis extends EventHandler {
 
     console.log('Queueing text for synthesis:', text);
     this.messageQueue.push(text);
-    
-    if (this.isConnected) {
+
+    if (!this.isConnected) {
       try {
-        await this.processQueue();
+        await this.connect();
       } catch (error) {
-        console.error('Error in speak:', error);
+        console.error('Connection failed:', error);
         throw error;
       }
-    } else {
-      console.log('Not connected, message queued for later processing');
     }
+
+    await this.processQueue();
   }
 
-  clearQueue() {
+  async disconnect() {
     this.messageQueue = [];
-  }
-
-  private async playNextChunk() {
-    if (this.audioQueue.length === 0) {
-      this.isPlaying = false;
-      return;
+    if (this.dataChannel) {
+      this.dataChannel.close();
     }
-
-    if (!this.audioContext) {
-      console.warn('Audio context not available');
-      return;
+    if (this.peerConnection) {
+      this.peerConnection.close();
     }
-
-    try {
-      this.isPlaying = true;
-      const buffer = this.audioQueue.shift()!;
-      const source = this.audioContext.createBufferSource();
-      
-      // Create a gain node for smooth fade in/out
-      const gainNode = this.audioContext.createGain();
-      gainNode.connect(this.audioContext.destination);
-      
-      // Connect source through gain node
-      source.connect(gainNode);
-      
-      // Smooth fade in
-      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(1, this.audioContext.currentTime + 0.02);
-      
-      source.buffer = buffer;
-      source.onended = () => {
-        // Cleanup
-        source.disconnect();
-        gainNode.disconnect();
-        
-        // Play next chunk if available
-        if (this.audioQueue.length > 0) {
-          this.playNextChunk();
-        } else {
-          this.isPlaying = false;
-        }
-      };
-      
-      source.start();
-      console.log('Started playing audio chunk');
-    } catch (error) {
-      console.error('Error playing audio chunk:', error);
-      this.isPlaying = false;
-      this.emit<VoiceError>('error', {
-        type: 'synthesis',
-        message: 'Failed to play audio'
-      });
-    }
+    this.isConnected = false;
+    this.connectionPromise = null;
   }
 }
 
-export const realtimeVoiceSynthesis = RealtimeVoiceSynthesis.getInstance();
+export const realtimeVoiceService = RealtimeVoiceService.getInstance();
