@@ -151,7 +151,13 @@ export function registerRoutes(app: Express): Server {
   // Voice API endpoints
   app.get("/api/voice/token", async (_req, res) => {
     try {
-      const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error('OPENAI_API_KEY is not configured');
+      }
+
+      console.log('Requesting OpenAI realtime session token...');
+      
+      const sessionResponse = await fetch("https://api.openai.com/v1/realtime/sessions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -159,16 +165,24 @@ export function registerRoutes(app: Express): Server {
         },
         body: JSON.stringify({
           model: "gpt-4o-realtime-preview-2024-12-17",
-          voice: "nova",
+          voice: "verse",
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`OpenAI API responded with status: ${response.status}`);
+      if (!sessionResponse.ok) {
+        const errorText = await sessionResponse.text();
+        console.error('OpenAI API error:', errorText);
+        throw new Error(`OpenAI API responded with status: ${sessionResponse.status} - ${errorText}`);
       }
 
-      const data = await response.json();
-      res.json(data);
+      const data = await sessionResponse.json();
+      console.log('Realtime session token generated successfully');
+      res.json({
+        client_secret: {
+          value: data.client_secret,
+          expires_at: Math.floor(Date.now() / 1000) + 60 // Token expires in 1 minute
+        }
+      });
     } catch (error) {
       console.error("Error generating voice token:", error);
       res.status(500).json({ 

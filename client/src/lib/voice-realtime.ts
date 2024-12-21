@@ -24,12 +24,27 @@ class RealtimeVoiceService extends BrowserEventEmitter {
   }
 
   private async getEphemeralToken(): Promise<string> {
-    const response = await fetch('/api/voice/token');
-    if (!response.ok) {
-      throw new Error('Failed to get voice token');
+    try {
+      const response = await fetch('/api/voice/token');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to get voice token: ${errorText}`);
+      }
+      const data = await response.json();
+      if (!data.client_secret?.value || !data.client_secret?.expires_at) {
+        throw new Error('Invalid token response format');
+      }
+      
+      const now = Math.floor(Date.now() / 1000);
+      if (now >= data.client_secret.expires_at - 5) {
+        throw new Error('Token expired or about to expire');
+      }
+      
+      return data.client_secret.value;
+    } catch (error) {
+      console.error('Token fetch error:', error);
+      throw error;
     }
-    const data = await response.json();
-    return data.client_secret.value;
   }
 
   private setupDataChannel() {
@@ -55,23 +70,21 @@ class RealtimeVoiceService extends BrowserEventEmitter {
       this.state.isConnected = false;
       this.emit('disconnected');
     };
+
+    this.dc.onerror = (error) => {
+      console.error('Data channel error:', error);
+      this.emit('error', 'Data channel error occurred');
+    };
   }
 
   async connect(): Promise<void> {
     try {
-      // Cleanup any existing connections
       await this.disconnect();
       
       const token = await this.getEphemeralToken();
       
-      // Create peer connection with ICE servers
-      this.pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' }
-        ]
-      });
-      
-      // Set up connection state monitoring
+      this.pc = new RTCPeerConnection();
+
       this.pc.onconnectionstatechange = () => {
         console.log('Connection state:', this.pc?.connectionState);
         if (this.pc?.connectionState === 'failed') {
@@ -79,56 +92,54 @@ class RealtimeVoiceService extends BrowserEventEmitter {
           this.disconnect();
         }
       };
-      
-      // Set up audio playback with error handling
+
+      // Set up audio playback
       this.pc.ontrack = (e) => {
-        try {
-          if (this.audioElement && e.streams[0]) {
-            this.audioElement.srcObject = e.streams[0];
-            console.log('Audio track received:', e.streams[0].getAudioTracks()[0]?.label);
-          }
-        } catch (error) {
-          console.error('Error setting up audio playback:', error);
-          this.emit('error', 'Failed to setup audio playback');
+        if (this.audioElement) {
+          this.audioElement.srcObject = e.streams[0];
         }
       };
 
-      // Request microphone access with proper error handling
+      // Add local audio track
       try {
         this.mediaStream = await navigator.mediaDevices.getUserMedia({ 
-          audio: {
+          audio: { 
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true
           }
         });
-        this.pc.addTrack(this.mediaStream.getTracks()[0], this.mediaStream);
+        
+        const audioTrack = this.mediaStream.getAudioTracks()[0];
+        if (audioTrack) {
+          this.pc.addTrack(audioTrack, this.mediaStream);
+        }
       } catch (error) {
         console.error('Microphone access error:', error);
         throw new Error('Failed to access microphone. Please ensure microphone permissions are granted.');
       }
 
-      // Create data channel with configuration
-      this.dc = this.pc.createDataChannel('oai-events', {
-        ordered: true
-      });
+      // Set up data channel for events
+      this.dc = this.pc.createDataChannel('oai-events');
       this.setupDataChannel();
 
       // Create and set local description
-      const offer = await this.pc.createOffer({
-        offerToReceiveAudio: true
-      });
+      const offer = await this.pc.createOffer();
       await this.pc.setLocalDescription(offer);
+
+      if (!this.pc.localDescription?.sdp) {
+        throw new Error('Failed to create local description');
+      }
 
       // Get remote description from OpenAI
       const baseUrl = 'https://api.openai.com/v1/realtime';
       const model = 'gpt-4o-realtime-preview-2024-12-17';
       const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
         method: 'POST',
-        body: offer.sdp,
+        body: this.pc.localDescription.sdp,
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/sdp',
+          'Content-Type': 'application/sdp'
         },
       });
 
@@ -143,10 +154,8 @@ class RealtimeVoiceService extends BrowserEventEmitter {
       };
 
       await this.pc.setRemoteDescription(answer);
-      this.state.isConnected = true;
-      this.emit('connected');
-      
       console.log('WebRTC connection established successfully');
+      
     } catch (error) {
       console.error('Connection error:', error);
       this.state.error = error instanceof Error ? error.message : 'Unknown error';
@@ -159,12 +168,18 @@ class RealtimeVoiceService extends BrowserEventEmitter {
   async disconnect(): Promise<void> {
     if (this.mediaStream) {
       this.mediaStream.getTracks().forEach(track => track.stop());
+      this.mediaStream = null;
     }
     if (this.dc) {
       this.dc.close();
+      this.dc = null;
     }
     if (this.pc) {
       this.pc.close();
+      this.pc = null;
+    }
+    if (this.audioElement) {
+      this.audioElement.srcObject = null;
     }
     this.state.isConnected = false;
     this.state.isListening = false;
@@ -182,18 +197,20 @@ class RealtimeVoiceService extends BrowserEventEmitter {
   async stopListening(): Promise<void> {
     this.state.isListening = false;
     this.emit('stopped');
+    await this.disconnect();
+  }
+
+  sendMessage(message: any): void {
+    if (this.dc?.readyState === 'open') {
+      this.dc.send(JSON.stringify(message));
+    } else {
+      console.error('Data channel not ready');
+      this.emit('error', 'Data channel not ready to send messages');
+    }
   }
 
   getState(): VoiceServiceState {
     return { ...this.state };
-  }
-
-  sendMessage(message: any): void {
-    if (this.dc && this.dc.readyState === 'open') {
-      this.dc.send(JSON.stringify(message));
-    } else {
-      console.error('Data channel not ready');
-    }
   }
 }
 
