@@ -27,16 +27,36 @@ export function VoiceOrderControl({ onOrderProcessed, disabled }: VoiceOrderCont
 
   const startListening = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder.current = new MediaRecorder(stream);
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100
+        } 
+      });
+      
+      mediaRecorder.current = new MediaRecorder(stream, {
+        mimeType: 'audio/webm'
+      });
       audioChunks.current = [];
 
       mediaRecorder.current.ondataavailable = (event) => {
-        audioChunks.current.push(event.data);
+        if (event.data.size > 0) {
+          audioChunks.current.push(event.data);
+        }
       };
 
       mediaRecorder.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunks.current, { type: 'audio/wav' });
+        if (audioChunks.current.length === 0) {
+          toast({
+            title: "No audio recorded",
+            description: "Please try speaking again",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
         await processOrder(audioBlob);
       };
 

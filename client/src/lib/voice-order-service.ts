@@ -1,8 +1,10 @@
 import OpenAI from "openai";
-import { useToast } from "@/hooks/use-toast";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
-const openai = new OpenAI();
+const openai = new OpenAI({
+  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+  dangerouslyAllowBrowser: true
+});
 
 interface VoiceOrderResult {
   success: boolean;
@@ -20,12 +22,13 @@ interface VoiceOrderResult {
 export async function processVoiceOrder(audioBlob: Blob): Promise<VoiceOrderResult> {
   try {
     // Convert audio blob to base64
-    const buffer = await audioBlob.arrayBuffer();
-    const audioBase64 = Buffer.from(buffer).toString('base64');
-
     // First, transcribe the audio
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'voice-order.wav');
+    formData.append('model', 'whisper-1');
+
     const transcription = await openai.audio.transcriptions.create({
-      file: new File([audioBlob], "voice-order.wav", { type: "audio/wav" }),
+      file: audioBlob,
       model: "whisper-1",
     });
 
