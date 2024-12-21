@@ -124,15 +124,40 @@ class RealtimeVoiceService extends EventHandler {
         throw new Error('Failed to initialize audio session');
       }
 
-      const audioData = await response.blob();
-      if (this.audioElement) {
-        const audioUrl = URL.createObjectURL(audioData);
-        this.audioElement.src = audioUrl;
-        console.log('Audio streaming initialized successfully');
+      if (!response.ok) {
+        console.error('Failed to initialize audio session:', response.status);
+        throw new Error('Failed to initialize audio session');
       }
 
-      if (!response.ok) {
-        throw new Error(`Failed to connect to Realtime API: ${response.status}`);
+      if (!this.audioElement) {
+        throw new Error('Audio element not initialized');
+      }
+
+      try {
+        // Create blob from the response
+        const blob = await response.blob();
+        const audioUrl = URL.createObjectURL(blob);
+        
+        // Set up audio element
+        if (this.audioElement) {
+          this.audioElement.src = audioUrl;
+          this.audioElement.onloadeddata = () => {
+            console.log('Audio loaded successfully');
+            this.audioElement?.play()
+              .then(() => console.log('Audio playback started'))
+              .catch(error => console.error('Audio playback failed:', error));
+          };
+          
+          this.audioElement.onerror = (error) => {
+            console.error('Audio element error:', error);
+            throw new Error('Failed to play audio');
+          };
+        }
+
+        console.log('Audio streaming initialized successfully');
+      } catch (error) {
+        console.error('Error setting up audio stream:', error);
+        throw new Error('Failed to set up audio playback');
       }
 
       const answer = {

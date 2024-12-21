@@ -155,19 +155,46 @@ export function registerRoutes(app: Express): Server {
         throw new Error("OpenAI API key not found");
       }
 
-      console.log('Creating realtime session with OpenAI...');
+      console.log('Creating speech synthesis stream...');
       const response = await openai.audio.speech.create({
         model: "tts-1",
         voice: "nova",
-        input: "Initializing voice system"
+        input: "Hello, I'm ready to help you order drinks.",
+        response_format: 'mp3',
+        speed: 1.0
       });
-      console.log('Successfully created realtime session');
 
-      res.json(response);
+      // Set appropriate headers for streaming
+      res.setHeader('Content-Type', 'audio/mpeg');
+      
+      // Get the audio stream and send it
+      const audioStream = response.body;
+      if (!audioStream) {
+        throw new Error("No audio stream received from OpenAI");
+      }
+
+      // Stream the audio data in chunks
+      audioStream.on('data', (chunk) => {
+        res.write(chunk);
+      });
+
+      audioStream.on('end', () => {
+        console.log('Audio stream sent successfully');
+        res.end();
+      });
+
+      audioStream.on('error', (error) => {
+        console.error('Audio stream error:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Audio stream failed' });
+        }
+        res.end();
+      });
+
     } catch (error) {
-      console.error("Error creating realtime session:", error);
+      console.error("Error creating speech synthesis:", error);
       res.status(500).json({
-        error: "Failed to create realtime session",
+        error: "Failed to create speech synthesis",
         message: error instanceof Error ? error.message : "Unknown error"
       });
     }
