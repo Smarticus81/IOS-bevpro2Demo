@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Mic, MicOff, Minimize2, Maximize2 } from "lucide-react";
@@ -25,7 +24,7 @@ export interface CompleteTransactionParams {
   type: 'COMPLETE_TRANSACTION';
 }
 
-export type CartAction = AddItemParams | CompleteTransactionParams;
+export type CartAction = AddItemParams;
 
 export interface VoiceControlProps {
   drinks: Drink[];
@@ -424,60 +423,16 @@ export function VoiceControl({ drinks, onAddToCart, onVoiceCommand, variant = 'd
           break;
         }
 
-        case "complete_transaction": {
-          try {
-            await orderProcessingDebouncer('complete-order', async () => {
-              console.log('Starting transaction completion:', {
-                mode,
-                intent,
-                timestamp: new Date().toISOString()
-              });
-
-              setIsProcessingCommand(true);
-              
-              try {
-                // Process the transaction
-                onAddToCart({ type: 'COMPLETE_TRANSACTION' });
-                
-                // Wait briefly to allow the UI to update
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                await soundEffects.playSuccess();
-                setMode('order'); // Reset to order mode after completion
-                setIsWakeWordOnly(true); // Enter wake word only mode
-                
-                const completionMessage = "Order processed successfully. Say 'hey bar' to start a new order or 'hey bev' for questions.";
-                setStatus(completionMessage);
-                
-                if (mode === 'inquiry') {
-                  await handleResponse(intent.conversational_response || completionMessage);
-                }
-
-                console.log('Transaction completed successfully', {
-                  timestamp: new Date().toISOString()
-                });
-
-                return { success: true };
-              } catch (error) {
-                console.error('Error during transaction completion:', error);
-                throw error;
-              }
-            });
-          } catch (error) {
-            if (error.message === 'Command in cooldown period') {
-              console.log('Transaction in cooldown period, ignoring request');
-              return;
-            }
-            
-            console.error('Failed to process transaction:', error);
-            await soundEffects.playError();
-            const errorMessage = "Sorry, there was an issue processing your order. Please try again.";
-            setStatus(errorMessage);
-            if (mode === 'inquiry') {
-              await handleResponse(errorMessage);
-            }
-          } finally {
-            setIsProcessingCommand(false);
+        case "order_complete": {
+          await soundEffects.playSuccess();
+          setMode('order'); // Reset to order mode
+          setIsWakeWordOnly(true); // Enter wake word only mode
+          
+          const completionMessage = "Order complete. Say 'hey bar' to start a new order or 'hey bev' for questions.";
+          setStatus(completionMessage);
+          
+          if (mode === 'inquiry') {
+            await handleResponse(intent.conversational_response || completionMessage);
           }
           break;
         }
