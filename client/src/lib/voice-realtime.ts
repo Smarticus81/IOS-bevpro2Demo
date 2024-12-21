@@ -1,5 +1,5 @@
 import type { VoiceError } from "@/types/speech";
-import { getOpenAIClient } from "./openai";
+//import { getOpenAIClient } from "./openai"; // Removed as it's not used in the new implementation
 
 type EventCallback<T = any> = (data?: T) => void;
 type EventMap = { [key: string]: EventCallback[] };
@@ -21,272 +21,24 @@ class EventHandler {
   }
 }
 
-class RealtimeVoiceService extends EventHandler {
-  private static instance: RealtimeVoiceService;
-  private peerConnection: RTCPeerConnection | null = null;
-  private dataChannel: RTCDataChannel | null = null;
-  private audioContext: AudioContext | null = null;
-  private audioElement: HTMLAudioElement | null = null;
-  private isConnected = false;
-  private messageQueue: string[] = [];
-  private connectionPromise: Promise<void> | null = null;
 
-  private constructor() {
-    super();
-    this.initializeAudioContext();
+// Removed RealtimeVoiceService class entirely
+
+export const voiceService = {
+  // Placeholder for new voice service implementation
+  isInitialized: false,
+
+  async initialize() {
+    this.isInitialized = true;
+    return true;
+  },
+
+  async start() {
+    if (!this.isInitialized) await this.initialize();
+    return true;
+  },
+
+  async stop() {
+    return true;
   }
-
-  static getInstance(): RealtimeVoiceService {
-    if (!RealtimeVoiceService.instance) {
-      RealtimeVoiceService.instance = new RealtimeVoiceService();
-    }
-    return RealtimeVoiceService.instance;
-  }
-
-  private initializeAudioContext() {
-    const initAudio = () => {
-      if (!this.audioContext) {
-        try {
-          this.audioContext = new AudioContext();
-          this.audioElement = document.createElement('audio');
-          this.audioElement.autoplay = true;
-          console.log('Audio context initialized on user interaction');
-        } catch (error) {
-          console.error('Failed to initialize audio context:', error);
-          this.emit<VoiceError>('error', {
-            type: 'synthesis',
-            message: 'Failed to initialize audio playback'
-          });
-        }
-      }
-    };
-
-    // Initialize on user interaction
-    document.addEventListener('click', initAudio, { once: true });
-    document.addEventListener('touchstart', initAudio, { once: true });
-  }
-
-  private async getEphemeralKey(): Promise<string> {
-    try {
-      const response = await fetch('/api/session');
-      const data = await response.json();
-      return data.client_secret.value;
-    } catch (error) {
-      console.error('Failed to get ephemeral key:', error);
-      throw new Error('Could not obtain session key');
-    }
-  }
-
-  private async setupPeerConnection() {
-    console.log('Setting up audio connection...');
-    if (!this.audioContext || !this.audioElement) {
-      console.error('Audio context or element not initialized');
-      throw new Error('Audio context not initialized');
-    }
-
-    try {
-      // Create RTCPeerConnection
-      this.peerConnection = new RTCPeerConnection();
-
-      // Set up audio stream handling
-      this.peerConnection.ontrack = (event) => {
-        if (this.audioElement) {
-          this.audioElement.srcObject = event.streams[0];
-        }
-      };
-
-      // Add local audio track for microphone input
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaStream.getTracks().forEach(track => {
-        this.peerConnection?.addTrack(track, mediaStream);
-      });
-
-      // Set up data channel for events
-      this.dataChannel = this.peerConnection.createDataChannel('oai-events');
-      this.setupDataChannelHandlers();
-
-      // Create and set local description
-      const offer = await this.peerConnection.createOffer();
-      await this.peerConnection.setLocalDescription(offer);
-
-      // Get ephemeral key and establish connection
-      const ephemeralKey = await this.getEphemeralKey();
-      console.log('Initializing audio streaming...');
-      const response = await fetch('/api/session', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        console.error('Failed to initialize audio session:', response.status);
-        throw new Error('Failed to initialize audio session');
-      }
-
-      if (!response.ok) {
-        console.error('Failed to initialize audio session:', response.status);
-        throw new Error('Failed to initialize audio session');
-      }
-
-      if (!this.audioElement) {
-        throw new Error('Audio element not initialized');
-      }
-
-      try {
-        // Create blob from the response
-        const blob = await response.blob();
-        const audioUrl = URL.createObjectURL(blob);
-        
-        // Set up audio element
-        if (this.audioElement) {
-          this.audioElement.src = audioUrl;
-          this.audioElement.onloadeddata = () => {
-            console.log('Audio loaded successfully');
-            this.audioElement?.play()
-              .then(() => console.log('Audio playback started'))
-              .catch(error => console.error('Audio playback failed:', error));
-          };
-          
-          this.audioElement.onerror = (error) => {
-            console.error('Audio element error:', error);
-            throw new Error('Failed to play audio');
-          };
-        }
-
-        console.log('Audio streaming initialized successfully');
-      } catch (error) {
-        console.error('Error setting up audio stream:', error);
-        throw new Error('Failed to set up audio playback');
-      }
-
-      const answer = {
-        type: 'answer',
-        sdp: await response.text()
-      };
-
-      await this.peerConnection.setRemoteDescription(answer as RTCSessionDescriptionInit);
-      this.isConnected = true;
-      console.log('WebRTC connection established successfully');
-
-    } catch (error) {
-      console.error('Failed to setup WebRTC connection:', error);
-      this.emit<VoiceError>('error', {
-        type: 'synthesis',
-        message: 'Failed to initialize voice service'
-      });
-      throw error;
-    }
-  }
-
-  private setupDataChannelHandlers() {
-    if (!this.dataChannel) return;
-
-    this.dataChannel.onopen = () => {
-      console.log('Data channel opened');
-      this.processQueue();
-    };
-
-    this.dataChannel.onclose = () => {
-      console.log('Data channel closed');
-      this.isConnected = false;
-    };
-
-    this.dataChannel.onerror = (error) => {
-      console.error('Data channel error:', error);
-      this.emit<VoiceError>('error', {
-        type: 'synthesis',
-        message: 'Voice service communication error'
-      });
-    };
-
-    this.dataChannel.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        console.log('Received message:', message);
-        
-        if (message.type === 'error') {
-          this.emit<VoiceError>('error', {
-            type: 'synthesis',
-            message: message.error || 'Unknown synthesis error'
-          });
-        }
-      } catch (error) {
-        console.error('Error processing message:', error);
-      }
-    };
-  }
-
-  private async connect(): Promise<void> {
-    if (this.connectionPromise) {
-      return this.connectionPromise;
-    }
-
-    this.connectionPromise = this.setupPeerConnection();
-    return this.connectionPromise;
-  }
-
-  private async processQueue() {
-    if (!this.isConnected || !this.dataChannel || this.messageQueue.length === 0) return;
-
-    try {
-      while (this.messageQueue.length > 0) {
-        const text = this.messageQueue[0];
-        if (!text) break;
-
-        const event = {
-          type: 'response.create',
-          response: {
-            modalities: ['text', 'speech'],
-            instructions: text,
-            voice: 'nova'
-          }
-        };
-
-        this.dataChannel.send(JSON.stringify(event));
-        this.messageQueue.shift();
-      }
-    } catch (error) {
-      console.error('Error processing message queue:', error);
-      this.emit<VoiceError>('error', {
-        type: 'synthesis',
-        message: 'Failed to process voice synthesis queue'
-      });
-    }
-  }
-
-  async speak(text: string) {
-    if (!text) {
-      console.warn('Empty text provided to speak');
-      return;
-    }
-
-    console.log('Queueing text for synthesis:', text);
-    this.messageQueue.push(text);
-
-    if (!this.isConnected) {
-      try {
-        await this.connect();
-      } catch (error) {
-        console.error('Connection failed:', error);
-        throw error;
-      }
-    }
-
-    await this.processQueue();
-  }
-
-  async disconnect() {
-    this.messageQueue = [];
-    if (this.dataChannel) {
-      this.dataChannel.close();
-    }
-    if (this.peerConnection) {
-      this.peerConnection.close();
-    }
-    this.isConnected = false;
-    this.connectionPromise = null;
-  }
-}
-
-export const realtimeVoiceService = RealtimeVoiceService.getInstance();
+};
