@@ -22,8 +22,19 @@ const initializeOpenAI = () => {
   }
 };
 
-// Initialize OpenAI client
-openai = initializeOpenAI();
+// Initialize OpenAI client with proper error handling
+try {
+  console.log('Initializing OpenAI client...');
+  openai = initializeOpenAI();
+  if (openai) {
+    console.log('OpenAI client initialized successfully');
+  } else {
+    console.warn('OpenAI client initialization skipped - running in limited mode');
+  }
+} catch (error) {
+  console.error('Failed to initialize OpenAI client:', error);
+  openai = null;
+}
 
 interface VoiceOrderResult {
   success: boolean;
@@ -154,11 +165,27 @@ async function processTranscription(text: string): Promise<VoiceOrderResult['ord
 }
 
 export async function processVoiceOrder(audioBlob: Blob): Promise<VoiceOrderResult> {
+  if (!audioBlob) {
+    console.error('No audio blob provided to processVoiceOrder');
+    return {
+      success: false,
+      error: 'No audio data received'
+    };
+  }
+
   const commandId = `voice-${Date.now()}`;
+  console.log('Starting voice order processing:', {
+    commandId,
+    blobType: audioBlob.type,
+    blobSize: audioBlob.size,
+    timestamp: new Date().toISOString()
+  });
 
   try {
     return await voiceCommandDebouncer(commandId, async () => {
-      console.log('Starting voice order processing:', { commandId });
+      if (!openai) {
+        console.warn('OpenAI service not initialized, voice features will be limited');
+      }
       
       // Convert webm to wav for Whisper API compatibility
       const audioFile = new File([audioBlob], "voice-order.wav", { 

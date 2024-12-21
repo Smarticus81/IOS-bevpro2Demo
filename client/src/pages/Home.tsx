@@ -96,15 +96,18 @@ export function Home() {
   };
 
   const placeOrder = async () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0) {
+      console.log('Attempted to place empty order');
+      return;
+    }
 
     const total = cart.reduce((sum, item) => {
       const itemPrice = Number(item.drink.price);
       return sum + (itemPrice * item.quantity);
     }, 0);
 
-    console.log('Placing order:', {
-      cart,
+    console.log('Initiating order placement:', {
+      cartItems: cart.length,
       total,
       timestamp: new Date().toISOString()
     });
@@ -116,26 +119,43 @@ export function Home() {
     }));
 
     try {
+      console.log('Submitting order to backend...');
       await orderMutation.mutateAsync({ items, total });
-      console.log('Order placed successfully');
+      console.log('Order submitted successfully');
       
-      // Clear the cart after successful order
+      // Clear the cart immediately after successful submission
       setCart([]);
+      console.log('Cart cleared');
       
       // Play voice response
       await playVoiceResponse("Order placed successfully! Thank you for your order.");
+      console.log('Voice response played');
       
       toast({
         title: "Order Completed",
         description: "Your order has been placed successfully!",
       });
+      
+      console.log('Order placement completed successfully:', {
+        items: items.length,
+        total,
+        timestamp: new Date().toISOString()
+      });
     } catch (error) {
-      console.error('Failed to place order:', error);
+      console.error('Order placement failed:', {
+        error,
+        cartItems: cart.length,
+        timestamp: new Date().toISOString()
+      });
+      
       toast({
         title: "Failed to place order",
         description: "There was an error processing your order. Please try again.",
         variant: "destructive"
       });
+      
+      // Throw error to be handled by the voice control component
+      throw new Error('Order placement failed');
     }
   };
 
