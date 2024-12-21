@@ -7,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Palette, Key, CreditCard } from "lucide-react";
-import { paymentService } from "@/lib/paymentService";
+import { Palette, Key } from "lucide-react";
+
 
 export function Settings() {
 
@@ -20,7 +20,7 @@ export function Settings() {
   });
 
   const [apiSettings, setApiSettings] = useState({
-    stripeKey: "",
+    // stripeKey: "", //Removed Stripe Key
   });
 
   const handleSave = async () => {
@@ -30,36 +30,6 @@ export function Settings() {
         ui: uiSettings
       }));
 
-      // Handle Stripe API key separately
-      if (apiSettings.stripeKey) {
-        if (!apiSettings.stripeKey.startsWith('sk_')) {
-          toast({
-            title: "Invalid Stripe API Key",
-            description: "Please enter a valid Stripe secret key starting with 'sk_'",
-            variant: "destructive"
-          });
-          return;
-        }
-
-        try {
-          const isValid = await paymentService.validateStripeKey(apiSettings.stripeKey);
-          if (!isValid) {
-            throw new Error('Invalid Stripe API key');
-          }
-          
-          toast({
-            title: "Payment Configuration Updated",
-            description: "Stripe API key has been validated and saved successfully.",
-          });
-        } catch (error) {
-          toast({
-            title: "Error Saving Stripe Key",
-            description: "Failed to validate and save the Stripe API key. Please verify the key and try again.",
-            variant: "destructive"
-          });
-          return;
-        }
-      }
 
       toast({
         title: "Settings saved",
@@ -78,7 +48,7 @@ export function Settings() {
   return (
     <div className="min-h-screen bg-background">
       <NavBar />
-      
+
       <div className="container mx-auto p-4 lg:p-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Settings</h1>
@@ -145,18 +115,11 @@ export function Settings() {
                 <CardTitle>API Configuration</CardTitle>
               </CardHeader>
               <CardContent className="space-y-8">
-                {/* Payment Integration */}
+                {/* Payment Settings */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Payment Integration</h3>
-                  <div className="space-y-2">
-                    <Label>Stripe Secret Key</Label>
-                    <Input
-                      type="password"
-                      value={apiSettings.stripeKey}
-                      onChange={(e) => setApiSettings(prev => ({ ...prev, stripeKey: e.target.value }))}
-                      placeholder="sk_live_..."
-                    />
-                    <p className="text-xs text-gray-500">Required for processing payments and managing transactions</p>
+                  <h3 className="text-lg font-semibold text-gray-900">Payment Settings</h3>
+                  <div className="text-sm text-gray-600">
+                    Payment processing is handled through our internal system
                   </div>
                 </div>
               </CardContent>

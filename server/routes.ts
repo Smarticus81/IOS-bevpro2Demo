@@ -12,15 +12,6 @@ import {
 } from "@db/schema";
 import { eq, sql } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
-import {
-  createPaymentIntent,
-  retrievePaymentIntent,
-  createCustomer,
-  attachPaymentMethod,
-  reinitializeStripe,
-  type PaymentIntentRequest
-} from "./services/stripe";
-import type { StripeUninitializedError } from "./services/stripe";
 
 // OpenAI Realtime API imports and types
 import OpenAI from "openai";
@@ -56,7 +47,7 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/orders", async (req, res) => {
     try {
       const { items, total } = req.body;
-      
+
       // Create order
       const [order] = await db
         .insert(orders)
@@ -112,26 +103,59 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Simple payment processing endpoint
+  app.post("/api/payment/process", async (req, res) => {
+    try {
+      const { amount, orderId } = req.body;
+
+      // Simulate payment processing
+      const success = Math.random() > 0.1; // 90% success rate
+
+      if (success) {
+        // If we have an order ID, update its status
+        if (orderId) {
+          await db
+            .update(orders)
+            .set({ status: 'paid' })
+            .where(eq(orders.id, orderId));
+        }
+
+        res.json({ 
+          success: true,
+          message: `Payment of $${(amount / 100).toFixed(2)} processed successfully` 
+        });
+      } else {
+        throw new Error('Payment simulation failed');
+      }
+    } catch (error) {
+      console.error("Error processing payment:", error);
+      res.status(500).json({ 
+        success: false,
+        error: error instanceof Error ? error.message : "Payment processing failed" 
+      });
+    }
+  });
+
   // Get OpenAI API configuration
   app.get("/api/config", (_req, res) => {
     try {
       const openaiKey = process.env.OPENAI_API_KEY;
-      
+
       // Detailed logging for debugging
       console.log({
         hasKey: !!openaiKey,
         keyLength: openaiKey?.length || 0,
         timestamp: new Date().toISOString()
       });
-      
+
       if (!openaiKey) {
         throw new Error("OpenAI API key not found in environment");
       }
-      
+
       if (!openaiKey.startsWith('sk-')) {
         throw new Error("Invalid OpenAI API key format");
       }
-      
+
       res.json({ openaiKey });
     } catch (error: unknown) {
       const err = error as Error;
@@ -140,7 +164,7 @@ export function registerRoutes(app: Express): Server {
         stack: err.stack,
         timestamp: new Date().toISOString()
       });
-      
+
       res.status(500).json({
         error: "Configuration error",
         message: err.message,
@@ -148,148 +172,7 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
-  
 
-
-  // Payment routes
-  app.post("/api/payment/create-intent", async (req, res) => {
-    try {
-      const { amount, orderId, customerEmail, tabId } = req.body;
-      
-      // Check if Stripe is initialized
-      if (!process.env.STRIPE_SECRET_KEY) {
-        // Return a special response for simulation mode
-        return res.status(503).json({
-          error: "Payment service unavailable",
-          message: "Running in simulation mode. Please configure Stripe API key in settings to enable real payments.",
-          simulation: true
-        });
-      }
-      
-      // If this is for a tab, add the tabId to metadata
-      const metadata: Record<string, string> = {
-        ...(orderId && { orderId: orderId.toString() }),
-        ...(customerEmail && { customerEmail }),
-        ...(tabId && { tabId: tabId.toString() }),
-      };
-
-      const paymentData: PaymentIntentRequest = {
-        amount,
-        currency: 'usd',
-        payment_method_types: ['card'],
-        metadata
-      };
-
-      const intent = await createPaymentIntent(paymentData);
-      
-      // If this is for a tab, update the tab's payment status
-      if (tabId) {
-        await db
-          .update(tabs)
-          .set({ 
-            metadata: { payment_intent_id: intent.id }
-          })
-          .where(eq(tabs.id, tabId));
-      }
-
-      res.json(intent);
-    } catch (error: unknown) {
-      console.error("Error creating payment intent:", error);
-      if (error instanceof Error && error.name === 'StripeUninitializedError') {
-        res.status(503).json({ 
-          error: "Payment service unavailable",
-          message: "Please configure Stripe API key in settings to enable payments"
-        });
-      } else {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        res.status(500).json({ error: "Failed to create payment intent", message });
-      }
-    }
-  });
-
-  app.post("/api/payment/create-customer", async (req, res) => {
-    try {
-      const { email, metadata } = req.body;
-      const customer = await createCustomer(email, metadata);
-      res.json(customer);
-    } catch (error: unknown) {
-      if (error instanceof Error && error.name === 'StripeUninitializedError') {
-        res.status(503).json({ 
-          error: "Payment service unavailable",
-          message: "Please configure Stripe API key in settings to enable payments"
-        });
-      } else {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        console.error("Error creating customer:", message);
-        res.status(500).json({ error: "Failed to create customer", message });
-      }
-    }
-  });
-
-  app.post("/api/payment/attach-payment-method", async (req, res) => {
-    try {
-      const { customerId, paymentMethodId } = req.body;
-      const paymentMethod = await attachPaymentMethod(customerId, paymentMethodId);
-      res.json(paymentMethod);
-    } catch (error: unknown) {
-      if (error instanceof Error && error.name === 'StripeUninitializedError') {
-        res.status(503).json({ 
-          error: "Payment service unavailable",
-          message: "Please configure Stripe API key in settings to enable payments"
-        });
-      } else {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        console.error("Error attaching payment method:", message);
-        res.status(500).json({ error: "Failed to attach payment method", message });
-      }
-    }
-  });
-
-  app.get("/api/payment/intent/:id", async (req, res) => {
-    try {
-      const intent = await retrievePaymentIntent(req.params.id);
-      res.json(intent);
-    } catch (error: unknown) {
-      if (error instanceof Error && error.name === 'StripeUninitializedError') {
-        res.status(503).json({ 
-          error: "Payment service unavailable",
-          message: "Please configure Stripe API key in settings to enable payments"
-        });
-      } else {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        console.error("Error retrieving payment intent:", message);
-        res.status(500).json({ error: "Failed to retrieve payment intent", message });
-      }
-    }
-  });
-
-  // Settings endpoints
-  app.post("/api/settings/stripe-key", async (req, res) => {
-    try {
-      const { key } = req.body;
-      
-      if (!key || typeof key !== 'string' || !key.startsWith('sk_')) {
-        return res.status(400).json({ error: "Invalid Stripe API key format" });
-      }
-
-      // In a production environment, you would want to:
-      // 1. Encrypt the key before storing
-      // 2. Store in a secure key management service
-      // 3. Implement proper authentication
-      // For now, we'll store it in an environment variable
-      process.env.STRIPE_SECRET_KEY = key;
-      
-      // Reinitialize the Stripe client with the new key
-      if (reinitializeStripe()) {
-        res.json({ message: "Stripe API key updated successfully" });
-      } else {
-        throw new Error("Failed to initialize Stripe with the provided key");
-      }
-    } catch (error) {
-      console.error("Error updating Stripe API key:", error);
-      res.status(500).json({ error: "Failed to update Stripe API key" });
-    }
-  });
 
   // Payment Methods endpoints
   app.get("/api/payment-methods", async (_req, res) => {

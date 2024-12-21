@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
 import { DollarSign, TrendingUp, Users, Package } from "lucide-react";
 import type { Drink } from "@db/schema";
-import { DashboardVoiceControl } from "@/components/DashboardVoiceControl";
+
 
 interface SalesData {
   totalSales: number;
@@ -80,12 +80,7 @@ export function Dashboard() {
       <NavBar />
       
       <div className="container mx-auto p-4 lg:p-8">
-        <DashboardVoiceControl
-          drinks={drinks}
-          onFilterChange={({ category }) => setActiveCategory(category)}
-          onTimeRangeChange={setTimeRange}
-          onChartTypeChange={setChartType}
-        />
+        
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard</h1>
           <p className="text-muted-foreground">Welcome to your beverage management dashboard</p>
