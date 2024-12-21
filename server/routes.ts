@@ -148,7 +148,35 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
-  // Voice API endpoints will be implemented here
+  // Voice API endpoints
+  app.get("/api/voice/token", async (_req, res) => {
+    try {
+      const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-realtime-preview-2024-12-17",
+          voice: "nova",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenAI API responded with status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error generating voice token:", error);
+      res.status(500).json({ 
+        error: "Failed to generate voice token",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 
 
   // Payment routes
