@@ -3,7 +3,8 @@ import { googleVoiceService } from '@/lib/google-voice-service';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 import { voiceSynthesis } from '@/lib/voice-synthesis';
-import type { VoiceId } from '@/types/speech';
+
+type VoiceId = "alloy" | "echo" | "fable" | "onyx" | "shimmer";
 
 interface VoiceCommandsProps {
   drinks: Array<{
@@ -42,11 +43,23 @@ export function useVoiceCommands({
     emotion: "neutral" | "excited" | "apologetic" = "neutral"
   ) => {
     setLastResponse(message);
-    await voiceSynthesis.speak(message, voice, emotion);
+    try {
+      await voiceSynthesis.speak(message, voice, emotion);
+    } catch (error) {
+      console.error('Error speaking response:', error);
+    }
   }, []);
 
+  // Find matching drink by name
+  const findDrink = useCallback((name: string) => {
+    const normalizedName = name.toLowerCase().trim();
+    return drinks.find(d => 
+      d.name.toLowerCase().includes(normalizedName) ||
+      normalizedName.includes(d.name.toLowerCase())
+    );
+  }, [drinks]);
+
   const handleVoiceCommand = useCallback(async (text: string) => {
-    // Skip empty callbacks (used for error handling)
     if (!text) return;
 
     const command = text.toLowerCase().trim();
@@ -61,15 +74,6 @@ export function useVoiceCommands({
     setLastCommand({ text: command, timestamp: now });
     console.log('Processing voice command:', command);
 
-    // Find matching drink by name
-    const findDrink = (name: string) => {
-      const normalizedName = name.toLowerCase().trim();
-      return drinks.find(d => 
-        d.name.toLowerCase().includes(normalizedName) ||
-        normalizedName.includes(d.name.toLowerCase())
-      );
-    };
-
     // Voice command patterns
     const patterns = {
       navigation: /(?:go to|open|navigate to|show) (home|dashboard|inventory|events|settings)/i,
@@ -82,33 +86,6 @@ export function useVoiceCommands({
       help: /(?:help|what can I say|commands|menu|what can you do)/i,
       repeatLast: /(?:repeat that|say that again|what did you say)/i
     };
-
-    // Navigation and help command processing
-    const navMatch = command.match(patterns.navigation);
-    if (navMatch) {
-      const page = navMatch[1].toLowerCase();
-      const routes = {
-        home: '/',
-        dashboard: '/dashboard',
-        inventory: '/inventory',
-        events: '/events',
-        settings: '/settings'
-      } as const;
-      
-      if (page in routes) {
-        const response = `Navigating to ${page}`;
-        navigate(routes[page as keyof typeof routes]);
-        
-        voiceSynthesis.speak(response)
-          .catch(error => console.error('Error speaking navigation response:', error));
-        
-        toast({
-          title: "Navigation",
-          description: response,
-        });
-        return;
-      }
-    }
 
     // Help command
     if (patterns.help.test(command)) {
@@ -176,7 +153,6 @@ export function useVoiceCommands({
       const drink = findDrink(drinkName);
       
       if (drink) {
-        // Remove existing and add new quantity
         onRemoveItem(drink.id);
         onAddToCart({ type: 'ADD_ITEM', drink, quantity });
         await respondWith(
@@ -256,6 +232,30 @@ export function useVoiceCommands({
       return;
     }
 
+    // Navigation handling
+    const navMatch = command.match(patterns.navigation);
+    if (navMatch) {
+      const page = navMatch[1].toLowerCase();
+      const routes: Record<string, string> = {
+        home: '/',
+        dashboard: '/dashboard',
+        inventory: '/inventory',
+        events: '/events',
+        settings: '/settings'
+      };
+      
+      if (routes[page]) {
+        const response = `Navigating to ${page}`;
+        await respondWith(response, "alloy", "neutral");
+        navigate(routes[page]);
+        toast({
+          title: "Navigation",
+          description: response,
+        });
+        return;
+      }
+    }
+
     // Repeat last response
     if (patterns.repeatLast.test(command)) {
       if (lastResponse) {
@@ -269,45 +269,20 @@ export function useVoiceCommands({
       }
       return;
     }
-    if (navMatch) {
-      const page = navMatch[1].toLowerCase();
-      const routes: Record<string, string> = {
-        home: '/',
-        dashboard: '/dashboard',
-        inventory: '/inventory',
-        events: '/events',
-        settings: '/settings'
-      };
-      
-      if (routes[page]) {
-        const response = `Navigating to ${page}`;
-        voiceSynthesis.speak(response)
-          .catch(error => console.error('Error speaking navigation response:', error));
-        
-        navigate(routes[page]);
-        toast({
-          title: "Navigation",
-          description: response,
-        });
-        return;
-      }
-    }
 
-    // Feedback for unrecognized command with apologetic tone
-    const response = "I heard you say: " + text + ". I apologize, but I don't recognize this command. Try saying 'help' to learn what I can do.";
-    voiceSynthesis.speak(response, "shimmer", "apologetic")
-      .catch(error => console.error('Error speaking response:', error));
+    // Feedback for unrecognized command
+    const response = `I heard you say: ${text}. I apologize, but I don't recognize this command. Try saying 'help' to learn what I can do.`;
+    await respondWith(response, "shimmer", "apologetic");
     
     toast({
       title: "Voice Command Received",
       description: text,
     });
-  }, [navigate, toast]);
+  }, [navigate, toast, findDrink, respondWith, cart, lastCommand, lastResponse, onAddToCart, onRemoveItem, onPlaceOrder]);
 
   const startListening = useCallback(async () => {
     console.log('Attempting to start voice recognition...');
     try {
-      // Check if speech recognition is supported
       if (!googleVoiceService.isSupported()) {
         console.warn('Speech recognition not supported');
         toast({
@@ -324,7 +299,6 @@ export function useVoiceCommands({
       setIsListening(true);
       console.log('Voice recognition started successfully');
       
-      // Attempt to initialize voice synthesis with retry
       try {
         await voiceSynthesis.speak(
           "Voice commands activated. I'm listening and ready to help!",
@@ -341,7 +315,7 @@ export function useVoiceCommands({
       });
     } catch (error: any) {
       console.error('Failed to start voice commands:', error);
-      setIsListening(false); // Ensure state is consistent
+      setIsListening(false);
       
       const errorMessage = error.message || "Failed to start voice recognition. Please check microphone permissions.";
       console.error('Voice command error details:', errorMessage);
@@ -368,7 +342,7 @@ export function useVoiceCommands({
       });
     } catch (error: any) {
       console.error('Failed to stop voice commands:', error);
-      setIsListening(false); // Ensure state is consistent even on error
+      setIsListening(false);
       toast({
         title: "Error",
         description: error.message || "Failed to stop voice recognition",
@@ -377,29 +351,18 @@ export function useVoiceCommands({
     }
   }, [toast]);
 
-  // Enhanced cleanup effect
   useEffect(() => {
     let mounted = true;
 
-    // Cleanup function
     return () => {
       mounted = false;
       if (isListening) {
         googleVoiceService.stopListening().catch(error => {
-          if (process.env.NODE_ENV === 'development') {
-            console.error('Error during voice command cleanup:', error);
-          }
+          console.error('Error during voice command cleanup:', error);
         });
       }
     };
   }, [isListening]);
-
-  // Initial check for browser support
-  useEffect(() => {
-    if (!googleVoiceService.isSupported()) {
-      console.warn('Speech recognition is not supported in this browser');
-    }
-  }, []);
 
   return {
     isListening,
