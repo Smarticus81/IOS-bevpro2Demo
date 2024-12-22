@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { googleVoiceService } from '@/lib/google-voice-service';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
+import { voiceSynthesis } from '@/lib/voice-synthesis';
 
 export function useVoiceCommands() {
   const [isListening, setIsListening] = useState(false);
@@ -42,8 +43,46 @@ export function useVoiceCommands() {
       help: /(?:help|what can I say|commands|menu)/i
     };
 
-    // Navigation commands
+    // Navigation and help command processing
     const navMatch = command.match(patterns.navigation);
+    if (navMatch) {
+      const page = navMatch[1].toLowerCase();
+      const routes = {
+        home: '/',
+        dashboard: '/dashboard',
+        inventory: '/inventory',
+        events: '/events',
+        settings: '/settings'
+      } as const;
+      
+      if (page in routes) {
+        const response = `Navigating to ${page}`;
+        navigate(routes[page as keyof typeof routes]);
+        
+        voiceSynthesis.speak(response)
+          .catch(error => console.error('Error speaking navigation response:', error));
+        
+        toast({
+          title: "Navigation",
+          description: response,
+        });
+        return;
+      }
+    }
+
+    // Help command
+    if (patterns.help.test(command)) {
+      const helpMessage = "Available commands are: go to pages like home or inventory, add or remove drinks, and ask for help.";
+      voiceSynthesis.speak(helpMessage)
+        .catch(error => console.error('Error speaking help message:', error));
+      
+      toast({
+        title: "Voice Commands Help",
+        description: "Available commands: 'go to [page]', 'add [drink]', 'remove [drink]', 'help'",
+        duration: 5000,
+      });
+      return;
+    }
     if (navMatch) {
       const page = navMatch[1].toLowerCase();
       const routes = {
@@ -55,27 +94,24 @@ export function useVoiceCommands() {
       };
       
       if (routes[page]) {
+        const response = `Navigating to ${page}`;
+        voiceSynthesis.speak(response)
+          .catch(error => console.error('Error speaking navigation response:', error));
+        
         navigate(routes[page]);
-        console.log('Navigation command processed:', { page, route: routes[page] });
         toast({
           title: "Navigation",
-          description: `Navigating to ${page}`,
+          description: response,
         });
         return;
       }
     }
 
-    // Help command
-    if (patterns.help.test(command)) {
-      toast({
-        title: "Voice Commands Help",
-        description: "Available commands: 'go to [page]', 'add [drink]', 'remove [drink]', 'help'",
-        duration: 5000,
-      });
-      return;
-    }
-
-    // Feedback toast for received command
+    // Feedback for unrecognized command
+    const response = "I heard you say: " + text + ". This command is not recognized.";
+    voiceSynthesis.speak(response)
+      .catch(error => console.error('Error speaking response:', error));
+    
     toast({
       title: "Voice Command Received",
       description: text,
@@ -102,6 +138,13 @@ export function useVoiceCommands() {
       setIsListening(true);
       console.log('Voice recognition started successfully');
       
+      // Attempt to initialize voice synthesis with retry
+      try {
+        await voiceSynthesis.speak("Voice commands activated. I'm listening.");
+      } catch (synthError) {
+        console.error('Error with voice synthesis, falling back to text only:', synthError);
+      }
+      
       toast({
         title: "Voice Commands Active",
         description: "Listening for your commands...",
@@ -125,6 +168,10 @@ export function useVoiceCommands() {
     try {
       await googleVoiceService.stopListening();
       setIsListening(false);
+      
+      voiceSynthesis.speak("Voice commands deactivated.")
+        .catch(error => console.error('Error speaking deactivation message:', error));
+      
       toast({
         title: "Voice Commands Stopped",
         description: "Voice recognition is now inactive.",
