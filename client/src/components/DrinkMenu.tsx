@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
 import type { Drink } from "@db/schema";
 import { DrinkCarousel } from "./DrinkCarousel";
@@ -28,47 +28,47 @@ export function DrinkMenu({ drinks, onAddToCart }: DrinkMenuProps) {
   }, [drinks, search, selectedCategory]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-4">
+    <div className="space-y-6">
+      {/* Search and Categories */}
+      <div className="space-y-4">
         <Input
           placeholder="Search drinks..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm bg-white/10 border-white/20 text-white placeholder:text-white/50"
         />
+
+        <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
+          <TabsList className="p-1 bg-gradient-to-b from-white/10 to-black/20 backdrop-blur-lg 
+                             border border-white/20 rounded-xl shadow-lg">
+            {categories.map(category => (
+              <TabsTrigger
+                key={category}
+                value={category}
+                className="capitalize text-white/70 data-[state=active]:bg-gradient-to-b 
+                          data-[state=active]:from-white/20 data-[state=active]:to-white/10 
+                          data-[state=active]:shadow-inner data-[state=active]:text-white
+                          transition-all duration-200 hover:text-white/90"
+              >
+                {category}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
 
-      <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-        <TabsList className="mb-4 p-1 bg-gradient-to-b from-white/10 to-black/20 backdrop-blur-lg 
-                           border border-white/20 rounded-xl shadow-lg">
-          {categories.map(category => (
-            <TabsTrigger
-              key={category}
-              value={category}
-              className="capitalize text-white/70 data-[state=active]:bg-gradient-to-b 
-                        data-[state=active]:from-white/20 data-[state=active]:to-white/10 
-                        data-[state=active]:shadow-inner data-[state=active]:text-white
-                        transition-all duration-200 hover:text-white/90"
-            >
-              {category}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        <TabsContent value={selectedCategory}>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-          >
-            <DrinkCarousel
-              drinks={filteredDrinks}
-              onSelectDrink={(drink) => onAddToCart({ type: 'ADD_ITEM', drink, quantity: 1 })}
-            />
-          </motion.div>
-        </TabsContent>
-      </Tabs>
+      {/* Drink Carousel */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.3 }}
+      >
+        <DrinkCarousel
+          drinks={filteredDrinks}
+          onSelectDrink={(drink) => onAddToCart({ type: 'ADD_ITEM', drink, quantity: 1 })}
+        />
+      </motion.div>
     </div>
   );
 }

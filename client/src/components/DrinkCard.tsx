@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Beer, Wine, GlassWater, Coffee, Droplet } from "lucide-react";
 
 interface DrinkCardProps {
-  drink: Drink & { price: number };
+  drink: Drink;
   onAdd: () => void;
   onRemove: () => void;
   quantity: number;
