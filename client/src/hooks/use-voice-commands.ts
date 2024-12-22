@@ -3,23 +3,39 @@ import { googleVoiceService } from '@/lib/google-voice-service';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 import { voiceSynthesis } from '@/lib/voice-synthesis';
+import type { VoiceId } from '@/types/speech';
 
-export function useVoiceCommands() {
+interface VoiceCommandsProps {
+  drinks: Array<{
+    id: number;
+    name: string;
+    price: number;
+    category: string;
+  }>;
+  cart: Array<{ 
+    drink: { id: number; name: string; price: number; }; 
+    quantity: number; 
+  }>;
+  onAddToCart: (action: { type: 'ADD_ITEM'; drink: any; quantity: number }) => void;
+  onRemoveItem: (drinkId: number) => void;
+  onPlaceOrder: () => void;
+}
+
+export function useVoiceCommands({
+  drinks = [],
+  cart = [],
+  onAddToCart,
+  onRemoveItem,
+  onPlaceOrder
+}: VoiceCommandsProps) {
   const [isListening, setIsListening] = useState(false);
   const { toast } = useToast();
   const [location, navigate] = useLocation();
-  
-  // Only log initialization once during development
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Voice commands hook initialized:', { location });
-    }
-  }, []); // Empty dependency array ensures it only runs once
-
   const [lastCommand, setLastCommand] = useState<{ text: string; timestamp: number }>({ text: '', timestamp: 0 });
+  const [lastResponse, setLastResponse] = useState<string>("");
   const COMMAND_DEBOUNCE_MS = 1000; // Prevent duplicate commands within 1 second
 
-  const handleVoiceCommand = useCallback((text: string) => {
+  const handleVoiceCommand = useCallback(async (text: string) => {
     // Skip empty callbacks (used for error handling)
     if (!text) return;
 
@@ -35,12 +51,33 @@ export function useVoiceCommands() {
     setLastCommand({ text: command, timestamp: now });
     console.log('Processing voice command:', command);
 
+
+    // Helper function to speak and remember response
+    const respondWith = async (message: string, voice: VoiceId = "alloy", emotion: "neutral" | "excited" | "apologetic" = "neutral") => {
+      setLastResponse(message);
+      await voiceSynthesis.speak(message, voice, emotion);
+    };
+
+    // Find matching drink by name
+    const findDrink = (name: string) => {
+      const normalizedName = name.toLowerCase().trim();
+      return drinks.find(d => 
+        d.name.toLowerCase().includes(normalizedName) ||
+        normalizedName.includes(d.name.toLowerCase())
+      );
+    };
+
     // Voice command patterns
     const patterns = {
       navigation: /(?:go to|open|navigate to|show) (home|dashboard|inventory|events|settings)/i,
-      addDrink: /(?:add|order) (?:a |an )?([a-zA-Z\s]+)/i,
-      removeDrink: /(?:remove|delete|cancel) (?:a |an )?([a-zA-Z\s]+)/i,
-      help: /(?:help|what can I say|commands|menu)/i
+      addDrink: /(?:add|order|get me|i want|i would like|i'd like|give me) (?:a |an )?([a-zA-Z\s]+)/i,
+      removeDrink: /(?:remove|delete|cancel|take out) (?:a |an )?([a-zA-Z\s]+)/i,
+      modifyQuantity: /(?:make that|change to|update to) (\d+) ([a-zA-Z\s]+)/i,
+      checkDrink: /(?:what is|tell me about|how much is|price of) (?:a |an )?([a-zA-Z\s]+)/i,
+      confirmOrder: /(?:confirm|complete|finish|place) (?:the |my )?order/i,
+      cancelOrder: /(?:cancel|void|clear) (?:the |my )?order/i,
+      help: /(?:help|what can I say|commands|menu|what can you do)/i,
+      repeatLast: /(?:repeat that|say that again|what did you say)/i
     };
 
     // Navigation and help command processing
@@ -72,20 +109,166 @@ export function useVoiceCommands() {
 
     // Help command
     if (patterns.help.test(command)) {
-      const helpMessage = "Available commands are: go to pages like home or inventory, add or remove drinks, and ask for help.";
-      voiceSynthesis.speak(helpMessage)
-        .catch(error => console.error('Error speaking help message:', error));
+      const helpMessage = "You can order drinks by saying 'I want a [drink name]', modify orders with 'make that 2 [drink name]', ask about drinks with 'tell me about [drink name]', or complete your order by saying 'confirm order'. You can also navigate pages by saying 'go to [page name]'.";
+      await respondWith(helpMessage, "fable", "excited");
       
       toast({
         title: "Voice Commands Help",
-        description: "Available commands: 'go to [page]', 'add [drink]', 'remove [drink]', 'help'",
+        description: "Try saying: 'I want a [drink]', 'tell me about [drink]', or 'confirm order'",
         duration: 5000,
       });
       return;
     }
+
+    // Add drink to order
+    const addMatch = command.match(patterns.addDrink);
+    if (addMatch) {
+      const drinkName = addMatch[1];
+      const drink = findDrink(drinkName);
+      
+      if (drink) {
+        onAddToCart({ type: 'ADD_ITEM', drink, quantity: 1 });
+        await respondWith(
+          `Added one ${drink.name} to your order. The price is $${drink.price}. Would you like anything else?`,
+          "fable",
+          "excited"
+        );
+      } else {
+        await respondWith(
+          `I couldn't find a drink called ${drinkName}. Would you like to hear our available options?`,
+          "shimmer",
+          "apologetic"
+        );
+      }
+      return;
+    }
+
+    // Check drink information
+    const checkMatch = command.match(patterns.checkDrink);
+    if (checkMatch) {
+      const drinkName = checkMatch[1];
+      const drink = findDrink(drinkName);
+      
+      if (drink) {
+        await respondWith(
+          `${drink.name} is $${drink.price}. It's from our ${drink.category} collection. Would you like to order one?`,
+          "alloy",
+          "neutral"
+        );
+      } else {
+        await respondWith(
+          `I couldn't find information about ${drinkName}. Would you like to hear our available options?`,
+          "shimmer",
+          "apologetic"
+        );
+      }
+      return;
+    }
+
+    // Modify quantity
+    const quantityMatch = command.match(patterns.modifyQuantity);
+    if (quantityMatch) {
+      const quantity = parseInt(quantityMatch[1]);
+      const drinkName = quantityMatch[2];
+      const drink = findDrink(drinkName);
+      
+      if (drink) {
+        // Remove existing and add new quantity
+        onRemoveItem(drink.id);
+        onAddToCart({ type: 'ADD_ITEM', drink, quantity });
+        await respondWith(
+          `Updated your order to ${quantity} ${drink.name}${quantity > 1 ? 's' : ''}. Anything else?`,
+          "fable",
+          "excited"
+        );
+      } else {
+        await respondWith(
+          `I couldn't find ${drinkName} in our menu. Would you like to hear our available options?`,
+          "shimmer",
+          "apologetic"
+        );
+      }
+      return;
+    }
+
+    // Remove drink
+    const removeMatch = command.match(patterns.removeDrink);
+    if (removeMatch) {
+      const drinkName = removeMatch[1];
+      const drink = findDrink(drinkName);
+      
+      if (drink) {
+        onRemoveItem(drink.id);
+        await respondWith(
+          `Removed ${drink.name} from your order. Is there anything else you'd like?`,
+          "alloy",
+          "neutral"
+        );
+      } else {
+        await respondWith(
+          `I couldn't find ${drinkName} in your order. What would you like to do?`,
+          "shimmer",
+          "apologetic"
+        );
+      }
+      return;
+    }
+
+    // Confirm order
+    if (patterns.confirmOrder.test(command)) {
+      if (cart.length === 0) {
+        await respondWith(
+          "Your order is empty. Would you like to add some drinks?",
+          "shimmer",
+          "apologetic"
+        );
+      } else {
+        const total = cart.reduce((sum, item) => sum + (Number(item.drink.price) * item.quantity), 0);
+        await respondWith(
+          `Your order total is $${total.toFixed(2)}. Processing your order now.`,
+          "fable",
+          "excited"
+        );
+        onPlaceOrder();
+      }
+      return;
+    }
+
+    // Cancel order
+    if (patterns.cancelOrder.test(command)) {
+      if (cart.length === 0) {
+        await respondWith(
+          "Your order is already empty. Would you like to start a new order?",
+          "alloy",
+          "neutral"
+        );
+      } else {
+        cart.forEach(item => onRemoveItem(item.drink.id));
+        await respondWith(
+          "I've cleared your order. Would you like to start a new one?",
+          "alloy",
+          "neutral"
+        );
+      }
+      return;
+    }
+
+    // Repeat last response
+    if (patterns.repeatLast.test(command)) {
+      if (lastResponse) {
+        await respondWith(lastResponse, "alloy", "neutral");
+      } else {
+        await respondWith(
+          "I don't have anything to repeat yet. How can I help you?",
+          "alloy",
+          "neutral"
+        );
+      }
+      return;
+    }
     if (navMatch) {
       const page = navMatch[1].toLowerCase();
-      const routes = {
+      const routes: Record<string, string> = {
         home: '/',
         dashboard: '/dashboard',
         inventory: '/inventory',
