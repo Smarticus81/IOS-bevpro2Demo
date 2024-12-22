@@ -33,12 +33,22 @@ export function VoiceControlButton({
     cartItems: cart.length
   });
   
+  // Validate required props
+  if (!onAddToCart || !onRemoveItem || !onPlaceOrder) {
+    console.error('Missing required props:', { 
+      hasAddToCart: !!onAddToCart,
+      hasRemoveItem: !!onRemoveItem,
+      hasPlaceOrder: !!onPlaceOrder
+    });
+    return null;
+  }
+
   const { isListening, startListening, stopListening, isSupported } = useVoiceCommands({
     drinks,
-    cart: cart || [],
-    onAddToCart: onAddToCart || (() => {}),
-    onRemoveItem: onRemoveItem || (() => {}),
-    onPlaceOrder: onPlaceOrder || (() => {})
+    cart,
+    onAddToCart,
+    onRemoveItem,
+    onPlaceOrder
   });
   
   const { toast } = useToast();

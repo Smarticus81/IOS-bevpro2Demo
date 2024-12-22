@@ -61,73 +61,6 @@ export function Home() {
     }
   });
 
-  const placeOrder = useCallback(async () => {
-    if (cart.length === 0) {
-      console.log('Attempted to place empty order');
-      return;
-    }
-
-    console.log('Initiating order placement:', {
-      cartItems: cart.length,
-      timestamp: new Date().toISOString()
-    });
-
-    const total = cart.reduce((sum, item) => {
-      const itemPrice = Number(item.drink.price);
-      return sum + (itemPrice * item.quantity);
-    }, 0);
-
-    console.log('Initiating order placement:', {
-      cartItems: cart.length,
-      total,
-      timestamp: new Date().toISOString()
-    });
-
-    const items = cart.map(item => ({
-      id: item.drink.id,
-      quantity: item.quantity,
-      price: Number(item.drink.price)
-    }));
-
-    try {
-      console.log('Submitting order to backend...');
-      await orderMutation.mutateAsync({ items, total });
-      console.log('Order submitted successfully');
-      
-      // Clear the cart immediately after successful submission
-      setCart([]);
-      console.log('Cart cleared');
-      
-      toast({
-        title: "Order Completed",
-        description: "Your order has been placed successfully!",
-      });
-      
-      console.log('Order placement completed successfully:', {
-        items: items.length,
-        total,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Order placement failed:', {
-        error,
-        cartItems: cart.length,
-        timestamp: new Date().toISOString()
-      });
-      
-      toast({
-        title: "Failed to place order",
-        description: "There was an error processing your order. Please try again.",
-        variant: "destructive"
-      });
-    }
-  }, [cart, orderMutation, setCart, toast]);
-
-  const removeFromCart = useCallback((drinkId: number) => {
-    console.log('Removing from cart:', drinkId);
-    setCart(prev => prev.filter(item => item.drink.id !== drinkId));
-  }, [setCart]);
-
   const addToCart = useCallback((action: CartAction) => {
     console.log('Adding to cart:', action);
     if (action.type === 'ADD_ITEM') {
@@ -144,9 +77,65 @@ export function Home() {
         return [...prev, { drink, quantity }];
       });
     } else if (action.type === 'COMPLETE_TRANSACTION') {
+      // We'll handle this in placeOrder
       placeOrder();
     }
-  }, [placeOrder, setCart]);
+  }, [setCart]); // Remove placeOrder dependency
+
+  const removeFromCart = useCallback((drinkId: number) => {
+    console.log('Removing from cart:', drinkId);
+    setCart(prev => prev.filter(item => item.drink.id !== drinkId));
+  }, [setCart]);
+
+  const placeOrder = useCallback(async () => {
+    if (cart.length === 0) {
+      console.log('Attempted to place empty order');
+      toast({
+        title: "Empty Order",
+        description: "Please add items to your cart first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    console.log('Initiating order placement:', {
+      cartItems: cart.length,
+      timestamp: new Date().toISOString()
+    });
+
+    const total = cart.reduce((sum, item) => {
+      const itemPrice = Number(item.drink.price);
+      return sum + (itemPrice * item.quantity);
+    }, 0);
+
+    const items = cart.map(item => ({
+      id: item.drink.id,
+      quantity: item.quantity,
+      price: Number(item.drink.price)
+    }));
+
+    try {
+      console.log('Submitting order to backend...');
+      await orderMutation.mutateAsync({ items, total });
+      console.log('Order submitted successfully');
+      
+      setCart([]);
+      console.log('Cart cleared');
+      
+      toast({
+        title: "Order Completed",
+        description: "Your order has been placed successfully!",
+      });
+    } catch (error) {
+      console.error('Order placement failed:', error);
+      
+      toast({
+        title: "Failed to place order",
+        description: "There was an error processing your order. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }, [cart, orderMutation, setCart, toast]);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-50 via-pearl-light to-pearl-dark">
