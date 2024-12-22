@@ -6,7 +6,7 @@ import { useLocation } from 'wouter';
 export function useVoiceCommands() {
   const [isListening, setIsListening] = useState(false);
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
+  const [, navigate] = useLocation();
 
   const handleVoiceCommand = useCallback((text: string) => {
     // Skip empty callbacks (used for error handling)
@@ -17,11 +17,13 @@ export function useVoiceCommands() {
 
     // Simple navigation commands
     if (command.includes('go to') || command.includes('open')) {
-      if (command.includes('home')) setLocation('/');
-      else if (command.includes('dashboard')) setLocation('/dashboard');
-      else if (command.includes('inventory')) setLocation('/inventory');
-      else if (command.includes('events')) setLocation('/events');
-      else if (command.includes('settings')) setLocation('/settings');
+      if (command.includes('home')) navigate('/');
+      else if (command.includes('dashboard')) navigate('/dashboard');
+      else if (command.includes('inventory')) navigate('/inventory');
+      else if (command.includes('events')) navigate('/events');
+      else if (command.includes('settings')) navigate('/settings');
+      
+      console.log('Navigation command processed:', command);
     }
 
     // Feedback toast for received command
@@ -29,12 +31,14 @@ export function useVoiceCommands() {
       title: "Voice Command Received",
       description: text,
     });
-  }, [setLocation, toast]);
+  }, [navigate, toast]);
 
   const startListening = useCallback(async () => {
+    console.log('Attempting to start voice recognition...');
     try {
       // Check if speech recognition is supported
       if (!googleVoiceService.isSupported()) {
+        console.warn('Speech recognition not supported');
         toast({
           title: "Error",
           description: "Speech recognition is not supported in this browser.",
@@ -43,8 +47,12 @@ export function useVoiceCommands() {
         return;
       }
 
+      console.log('Speech recognition supported, initializing...');
       await googleVoiceService.startListening(handleVoiceCommand);
+      
       setIsListening(true);
+      console.log('Voice recognition started successfully');
+      
       toast({
         title: "Voice Commands Active",
         description: "Listening for your commands...",
@@ -52,9 +60,13 @@ export function useVoiceCommands() {
     } catch (error: any) {
       console.error('Failed to start voice commands:', error);
       setIsListening(false); // Ensure state is consistent
+      
+      const errorMessage = error.message || "Failed to start voice recognition. Please check microphone permissions.";
+      console.error('Voice command error details:', errorMessage);
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to start voice recognition. Please check microphone permissions.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
