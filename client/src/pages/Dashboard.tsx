@@ -1,10 +1,18 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NavBar } from "@/components/NavBar";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
-import { DollarSign, TrendingUp, Users, Package } from "lucide-react";
+import { DollarSign, TrendingUp, Users, Package, ShoppingCart } from "lucide-react";
+import { motion } from "framer-motion";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import type { Drink } from "@db/schema";
+
+type CartAction = 
+  | { type: 'ADD_ITEM'; drink: Drink; quantity: number }
+  | { type: 'COMPLETE_TRANSACTION' };
 
 
 interface SalesData {
@@ -75,9 +83,78 @@ export function Dashboard() {
       sales: drink.sales || 0
     }));
 
+  const [cart, setCart] = useState<Array<{ drink: Drink; quantity: number }>>([]);
+  const [isOrderDrawerOpen, setIsOrderDrawerOpen] = useState(false);
+  const { toast } = useToast();
+
+  const addToCart = (action: CartAction) => {
+    if (action.type === 'ADD_ITEM') {
+      const { drink, quantity } = action;
+      setCart(prev => {
+        const existing = prev.find(item => item.drink.id === drink.id);
+        if (existing) {
+          return prev.map(item => 
+            item.drink.id === drink.id 
+              ? { ...item, quantity: item.quantity + quantity }
+              : item
+          );
+        }
+        return [...prev, { drink, quantity }];
+      });
+    } else if (action.type === 'COMPLETE_TRANSACTION') {
+      placeOrder();
+    }
+  };
+
+  const removeFromCart = (drinkId: number) => {
+    setCart(prev => prev.filter(item => item.drink.id !== drinkId));
+  };
+
+  const orderMutation = useMutation({
+    mutationFn: async (orderData: any) => {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(orderData)
+      });
+      if (!response.ok) throw new Error("Failed to create order");
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Order placed successfully",
+        description: "Your order has been placed successfully"
+      });
+      setCart([]);
+      setIsOrderDrawerOpen(false);
+    },
+    onError: () => {
+      toast({
+        title: "Failed to place order",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const placeOrder = async () => {
+    if (cart.length === 0) return;
+
+    const total = cart.reduce((sum, item) => {
+      return sum + (Number(item.drink.price) * item.quantity);
+    }, 0);
+
+    const items = cart.map(item => ({
+      id: item.drink.id,
+      quantity: item.quantity,
+      price: Number(item.drink.price)
+    }));
+
+    await orderMutation.mutateAsync({ items, total });
+  };
+
   return (
-    <div className="min-h-screen bg-background">
-      <NavBar />
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black">
+      <NavBar drinks={drinks} onAddToCart={addToCart} />
       
       <div className="container mx-auto p-4 lg:p-8">
         
@@ -303,6 +380,72 @@ export function Dashboard() {
           </Card>
         </div>
       </div>
+
+      {/* Mobile Order Summary Drawer */}
+      <Drawer
+        open={isOrderDrawerOpen}
+        onOpenChange={setIsOrderDrawerOpen}
+        snapPoints={[0.9, 0.5, 0.1]}
+        activeSnapPoint={0.5}
+        className="fixed bottom-0 left-0 right-0 z-50"
+      >
+        <DrawerContent className="bg-white/95 backdrop-blur-lg border-t border-white/20 rounded-t-xl shadow-2xl">
+          <DrawerHeader>
+            <DrawerTitle className="flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5" />
+              Order Summary
+            </DrawerTitle>
+          </DrawerHeader>
+          <div className="px-4 pb-8">
+            <div className="space-y-4 max-h-[50vh] overflow-y-auto">
+              {cart.map((item) => (
+                <Card key={item.drink.id} className="bg-white/50 border-white/20">
+                  <CardContent className="p-4 flex justify-between items-center">
+                    <div>
+                      <p className="font-medium">{item.drink.name}</p>
+                      <p className="text-sm text-gray-600">${item.drink.price} × {item.quantity}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeFromCart(item.drink.id)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      Remove
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            {cart.length > 0 && (
+              <div className="mt-4">
+                <Button
+                  className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white"
+                  onClick={() => placeOrder()}
+                  disabled={orderMutation.isPending}
+                >
+                  {orderMutation.isPending ? "Processing..." : "Place Order"}
+                </Button>
+              </div>
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Mobile Order Summary Toggle Button */}
+      <motion.button
+        className="fixed bottom-4 right-4 lg:hidden z-40 p-4 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => setIsOrderDrawerOpen(true)}
+      >
+        <ShoppingCart className="w-6 h-6" />
+        {cart.length > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+            {cart.length}
+          </span>
+        )}
+      </motion.button>
     </div>
   );
 }
