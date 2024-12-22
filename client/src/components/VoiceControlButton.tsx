@@ -6,12 +6,30 @@ import { useToast } from "@/hooks/use-toast";
 import { voiceSynthesis } from "@/lib/voice-synthesis";
 
 export function VoiceControlButton() {
-  const { isListening, startListening, stopListening, isSupported } = useVoiceCommands();
+  // Initialize with empty arrays for drinks and cart
+  const { isListening, startListening, stopListening, isSupported } = useVoiceCommands({
+    drinks: [],
+    cart: [],
+    onAddToCart: () => {
+      console.log('Add to cart not implemented in VoiceControlButton');
+    },
+    onRemoveItem: () => {
+      console.log('Remove item not implemented in VoiceControlButton');
+    },
+    onPlaceOrder: () => {
+      console.log('Place order not implemented in VoiceControlButton');
+    }
+  });
+  
   const { toast } = useToast();
 
   const handleClick = async () => {
     try {
-      console.log('Voice control button clicked:', { isSupported, isListening });
+      console.log('Voice control button clicked:', { 
+        isSupported, 
+        isListening,
+        hookState: 'initialized'
+      });
       
       if (!isSupported) {
         console.warn('Voice commands not supported in this browser');
