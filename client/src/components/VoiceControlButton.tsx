@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Mic, MicOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useVoiceCommands } from "@/hooks/use-voice-commands";
+import { useToast } from "@/hooks/use-toast";
 
 export function VoiceControlButton() {
   const { isListening, startListening, stopListening, isSupported } = useVoiceCommands();
@@ -9,7 +10,10 @@ export function VoiceControlButton() {
 
   const handleClick = async () => {
     try {
+      console.log('Voice control button clicked:', { isSupported, isListening });
+      
       if (!isSupported) {
+        console.warn('Voice commands not supported in this browser');
         toast({
           title: "Not Supported",
           description: "Voice commands are not supported in this browser.",
@@ -19,12 +23,19 @@ export function VoiceControlButton() {
       }
 
       if (isListening) {
+        console.log('Stopping voice recognition...');
         await stopListening();
       } else {
+        console.log('Starting voice recognition...');
         await startListening();
       }
     } catch (error) {
       console.error('Voice control error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred with voice control",
+        variant: "destructive",
+      });
     }
   };
 
