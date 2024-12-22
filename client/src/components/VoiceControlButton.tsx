@@ -1,8 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff } from "lucide-react";
+import { Mic, MicOff, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useVoiceCommands } from "@/hooks/use-voice-commands";
 import { useToast } from "@/hooks/use-toast";
+import { voiceSynthesis } from "@/lib/voice-synthesis";
 
 export function VoiceControlButton() {
   const { isListening, startListening, stopListening, isSupported } = useVoiceCommands();
@@ -44,13 +45,30 @@ export function VoiceControlButton() {
     return null;
   }
 
+  const handleTestVoice = async () => {
+    try {
+      await voiceSynthesis.speak("Hello! Voice synthesis is working correctly.");
+      toast({
+        title: "Voice Test",
+        description: "Testing voice synthesis...",
+      });
+    } catch (error) {
+      console.error('Voice synthesis test error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to test voice synthesis",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <AnimatePresence mode="wait">
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="fixed bottom-6 right-6 z-50"
+        className="fixed bottom-6 right-6 z-50 flex gap-2"
       >
         <Button
           onClick={handleClick}
@@ -86,6 +104,15 @@ export function VoiceControlButton() {
               </motion.div>
             )}
           </AnimatePresence>
+        </Button>
+        
+        <Button
+          onClick={handleTestVoice}
+          size="lg"
+          className="rounded-full p-6 shadow-lg transition-all duration-300 bg-gradient-to-b from-indigo-500 to-indigo-700 hover:from-indigo-400 hover:to-indigo-600"
+          title="Test voice synthesis"
+        >
+          <Volume2 className="h-6 w-6" />
         </Button>
       </motion.div>
     </AnimatePresence>
