@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { SplashScreen } from "@/components/SplashScreen";
+import { VoiceControlButton } from "@/components/VoiceControlButton";
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -18,15 +19,18 @@ function App() {
   }
 
   return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/dashboard" component={Dashboard} />
-      <Route path="/inventory" component={Inventory} />
-      <Route path="/events" component={Events} />
-      <Route path="/settings" component={Settings} />
-      <Route path="/payment-confirmation" component={PaymentConfirmation} />
-      <Route component={NotFound} />
-    </Switch>
+    <>
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route path="/dashboard" component={Dashboard} />
+        <Route path="/inventory" component={Inventory} />
+        <Route path="/events" component={Events} />
+        <Route path="/settings" component={Settings} />
+        <Route path="/payment-confirmation" component={PaymentConfirmation} />
+        <Route component={NotFound} />
+      </Switch>
+      <VoiceControlButton />
+    </>
   );
 }
 

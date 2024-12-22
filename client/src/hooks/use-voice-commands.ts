@@ -1,14 +1,36 @@
 import { useState, useEffect, useCallback } from 'react';
 import { googleVoiceService } from '@/lib/google-voice-service';
 import { useToast } from '@/hooks/use-toast';
+import { useLocation } from 'wouter';
 
 export function useVoiceCommands() {
   const [isListening, setIsListening] = useState(false);
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+
+  const handleVoiceCommand = useCallback((text: string) => {
+    const command = text.toLowerCase().trim();
+    console.log('Processing voice command:', command);
+
+    // Simple navigation commands
+    if (command.includes('go to') || command.includes('open')) {
+      if (command.includes('home')) setLocation('/');
+      else if (command.includes('dashboard')) setLocation('/dashboard');
+      else if (command.includes('inventory')) setLocation('/inventory');
+      else if (command.includes('events')) setLocation('/events');
+      else if (command.includes('settings')) setLocation('/settings');
+    }
+
+    // Feedback toast for received command
+    toast({
+      title: "Voice Command Received",
+      description: text,
+    });
+  }, [navigate, toast]);
 
   const startListening = useCallback(async () => {
     try {
-      await googleVoiceService.startListening();
+      await googleVoiceService.startListening(handleVoiceCommand);
       setIsListening(true);
       toast({
         title: "Voice Commands Active",
@@ -22,7 +44,7 @@ export function useVoiceCommands() {
         variant: "destructive",
       });
     }
-  }, [toast]);
+  }, [handleVoiceCommand, toast]);
 
   const stopListening = useCallback(async () => {
     try {
@@ -34,6 +56,11 @@ export function useVoiceCommands() {
       });
     } catch (error) {
       console.error('Failed to stop voice commands:', error);
+      toast({
+        title: "Error",
+        description: "Failed to stop voice recognition",
+        variant: "destructive",
+      });
     }
   }, [toast]);
 
@@ -41,7 +68,7 @@ export function useVoiceCommands() {
     return () => {
       // Cleanup on component unmount
       if (isListening) {
-        googleVoiceService.stopListening();
+        googleVoiceService.stopListening().catch(console.error);
       }
     };
   }, [isListening]);

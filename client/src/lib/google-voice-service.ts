@@ -1,107 +1,93 @@
-import { SpeechClient } from '@google-cloud/speech';
+interface VoiceRecognitionCallback {
+  (text: string): void;
+}
 
 class GoogleVoiceService {
-  private speechClient: SpeechClient;
+  private recognition: SpeechRecognition | null = null;
   private isListening: boolean = false;
-  private mediaRecorder: MediaRecorder | null = null;
-  private audioChunks: Blob[] = [];
+  private callback: VoiceRecognitionCallback | null = null;
 
   constructor() {
-    this.speechClient = new SpeechClient();
-    this.initializeAudioContext();
+    this.initializeSpeechRecognition();
   }
 
-  private async initializeAudioContext() {
+  private initializeSpeechRecognition() {
     try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-      console.log('Audio permissions granted');
-    } catch (error) {
-      console.error('Failed to initialize audio context:', error);
-      throw new Error('Microphone access is required');
-    }
-  }
+      // Initialize Web Speech API
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        throw new Error('Speech recognition not supported in this browser');
+      }
 
-  async startListening(): Promise<void> {
-    if (this.isListening) return;
+      this.recognition = new SpeechRecognition();
+      this.recognition.continuous = false;
+      this.recognition.interimResults = false;
+      this.recognition.lang = 'en-US';
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      this.mediaRecorder = new MediaRecorder(stream);
-      this.audioChunks = [];
-
-      this.mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          this.audioChunks.push(event.data);
+      this.recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        console.log('Voice command recognized:', text);
+        if (this.callback) {
+          this.callback(text);
         }
       };
 
-      this.mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(this.audioChunks, { type: 'audio/wav' });
-        await this.processAudio(audioBlob);
+      this.recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        this.isListening = false;
       };
 
-      this.mediaRecorder.start();
+      this.recognition.onend = () => {
+        this.isListening = false;
+        console.log('Speech recognition ended');
+      };
+
+      console.log('Speech recognition initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize speech recognition:', error);
+      throw error;
+    }
+  }
+
+  async startListening(callback: VoiceRecognitionCallback): Promise<void> {
+    if (this.isListening || !this.recognition) return;
+
+    try {
+      this.callback = callback;
+      this.recognition.start();
       this.isListening = true;
       console.log('Started listening for voice commands');
     } catch (error) {
       console.error('Error starting voice recognition:', error);
+      this.isListening = false;
       throw error;
     }
   }
 
   async stopListening(): Promise<void> {
-    if (!this.isListening || !this.mediaRecorder) return;
+    if (!this.isListening || !this.recognition) return;
 
-    this.mediaRecorder.stop();
-    this.isListening = false;
-    console.log('Stopped listening for voice commands');
-  }
-
-  private async processAudio(audioBlob: Blob): Promise<string> {
     try {
-      // Convert blob to base64
-      const reader = new FileReader();
-      const audioBase64Promise = new Promise<string>((resolve) => {
-        reader.onloadend = () => {
-          const base64Audio = reader.result as string;
-          resolve(base64Audio.split(',')[1]);
-        };
-      });
-      reader.readAsDataURL(audioBlob);
-      const audioBytes = await audioBase64Promise;
-
-      // Configure the request
-      const audio = {
-        content: audioBytes,
-      };
-      const config = {
-        encoding: 'LINEAR16',
-        sampleRateHertz: 16000,
-        languageCode: 'en-US',
-        model: 'command_and_search',
-        useEnhanced: true,
-      };
-      const request = {
-        audio: audio,
-        config: config,
-      };
-
-      // Perform the transcription
-      const [response] = await this.speechClient.recognize(request);
-      const transcription = response.results
-        ?.map(result => result.alternatives?.[0]?.transcript)
-        .join('\n');
-
-      console.log('Transcription completed:', transcription);
-      return transcription || '';
+      this.recognition.stop();
+      this.isListening = false;
+      this.callback = null;
+      console.log('Stopped listening for voice commands');
     } catch (error) {
-      console.error('Error processing audio:', error);
+      console.error('Error stopping voice recognition:', error);
       throw error;
     }
   }
 
   isActive(): boolean {
     return this.isListening;
+  }
+}
+
+// Add type declarations for Web Speech API
+declare global {
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition;
+    webkitSpeechRecognition: typeof SpeechRecognition;
   }
 }
 
