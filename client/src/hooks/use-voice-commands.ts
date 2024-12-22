@@ -35,6 +35,16 @@ export function useVoiceCommands({
   const [lastResponse, setLastResponse] = useState<string>("");
   const COMMAND_DEBOUNCE_MS = 1000; // Prevent duplicate commands within 1 second
 
+  // Helper function to speak and remember response
+  const respondWith = useCallback(async (
+    message: string, 
+    voice: VoiceId = "alloy", 
+    emotion: "neutral" | "excited" | "apologetic" = "neutral"
+  ) => {
+    setLastResponse(message);
+    await voiceSynthesis.speak(message, voice, emotion);
+  }, []);
+
   const handleVoiceCommand = useCallback(async (text: string) => {
     // Skip empty callbacks (used for error handling)
     if (!text) return;
@@ -50,13 +60,6 @@ export function useVoiceCommands({
 
     setLastCommand({ text: command, timestamp: now });
     console.log('Processing voice command:', command);
-
-
-    // Helper function to speak and remember response
-    const respondWith = async (message: string, voice: VoiceId = "alloy", emotion: "neutral" | "excited" | "apologetic" = "neutral") => {
-      setLastResponse(message);
-      await voiceSynthesis.speak(message, voice, emotion);
-    };
 
     // Find matching drink by name
     const findDrink = (name: string) => {
