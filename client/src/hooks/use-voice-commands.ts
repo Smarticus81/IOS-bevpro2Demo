@@ -52,9 +52,14 @@ export function useVoiceCommands({
 
   // Find matching drink by name with improved matching
   const findDrink = useCallback((name: string) => {
-    const normalizedInput = name.toLowerCase().trim();
+    // Remove common filler words and normalize input
+    const normalizedInput = name.toLowerCase()
+      .replace(/please|get|me|a|an|some|the/g, '')
+      .trim();
+    
     console.log('Searching for drink:', {
-      input: normalizedInput,
+      originalInput: name,
+      normalizedInput,
       availableDrinks: drinks.map(d => d.name.toLowerCase())
     });
     
@@ -68,18 +73,30 @@ export function useVoiceCommands({
       return exactMatch;
     }
     
-    // Then try partial matches
-    const partialMatch = drinks.find(d => 
-      d.name.toLowerCase().includes(normalizedInput) ||
-      normalizedInput.includes(d.name.toLowerCase())
-    );
+    // Then try partial matches with word boundaries
+    const partialMatches = drinks.filter(d => {
+      const drinkName = d.name.toLowerCase();
+      return drinkName.includes(normalizedInput) ||
+             normalizedInput.includes(drinkName) ||
+             // Handle special cases like "cooler" variants
+             (drinkName.includes('cooler') && normalizedInput.includes('cooler'));
+    });
     
-    if (partialMatch) {
-      console.log('Found partial match:', partialMatch.name);
-      return partialMatch;
+    if (partialMatches.length > 0) {
+      // If multiple matches, prefer the shortest name as it's likely more specific
+      const bestMatch = partialMatches.sort((a, b) => a.name.length - b.name.length)[0];
+      console.log('Found best partial match:', {
+        searchTerm: normalizedInput,
+        matchedDrink: bestMatch.name,
+        allMatches: partialMatches.map(d => d.name)
+      });
+      return bestMatch;
     }
     
-    console.log('No drink match found for:', normalizedInput);
+    console.log('No drink match found:', {
+      searchTerm: normalizedInput,
+      availableDrinks: drinks.map(d => d.name)
+    });
     return null;
   }, [drinks]);
 
@@ -356,8 +373,22 @@ export function useVoiceCommands({
   }, [navigate, toast, findDrink, respondWith, cart, lastCommand, lastResponse, onAddToCart, onRemoveItem, onPlaceOrder]);
 
   const startListening = useCallback(async () => {
-    console.log('Attempting to start voice recognition...');
+    console.log('Attempting to start voice recognition...', {
+      drinksAvailable: drinks.length,
+      hasAddToCart: !!onAddToCart,
+      isVoiceSupported: googleVoiceService.isSupported()
+    });
+    
     try {
+      // Verify required props and data
+      if (!drinks.length) {
+        throw new Error('Drinks data not loaded');
+      }
+      
+      if (typeof onAddToCart !== 'function') {
+        throw new Error('Add to cart function not provided');
+      }
+
       if (!googleVoiceService.isSupported()) {
         console.warn('Speech recognition not supported');
         toast({

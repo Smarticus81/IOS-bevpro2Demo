@@ -17,8 +17,18 @@ export function VoiceControlButton({
   onPlaceOrder: () => void;
   cart?: Array<{ drink: any; quantity: number }>;
 }) {
-  const { data: drinks = [] } = useQuery<any[]>({
+  const { data: drinks = [], isLoading: isDrinksLoading } = useQuery<any[]>({
     queryKey: ["/api/drinks"],
+  });
+
+  // Ensure we have the drinks data before enabling voice commands
+  const isReady = !isDrinksLoading && drinks.length > 0;
+  
+  console.log('VoiceControlButton state:', {
+    isDrinksLoading,
+    drinksCount: drinks.length,
+    hasAddToCart: !!onAddToCart,
+    cartItems: cart.length
   });
   
   const { isListening, startListening, stopListening, isSupported } = useVoiceCommands({
