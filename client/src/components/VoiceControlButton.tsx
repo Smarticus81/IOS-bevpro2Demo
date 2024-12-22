@@ -35,10 +35,10 @@ export function VoiceControlButton({
   
   const { isListening, startListening, stopListening, isSupported } = useVoiceCommands({
     drinks,
-    cart,
-    onAddToCart,
-    onRemoveItem,
-    onPlaceOrder
+    cart: cart || [],
+    onAddToCart: onAddToCart || (() => {}),
+    onRemoveItem: onRemoveItem || (() => {}),
+    onPlaceOrder: onPlaceOrder || (() => {})
   });
   
   const { toast } = useToast();

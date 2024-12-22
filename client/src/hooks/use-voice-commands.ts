@@ -383,6 +383,9 @@ export function useVoiceCommands({
     console.log('Attempting to start voice recognition...', {
       drinksAvailable: drinks.length,
       hasAddToCart: !!onAddToCart,
+      hasRemoveItem: !!onRemoveItem,
+      hasPlaceOrder: !!onPlaceOrder,
+      cartItems: cart.length,
       isVoiceSupported: googleVoiceService.isSupported()
     });
     

@@ -14,6 +14,7 @@ interface OrderSummaryDrawerProps {
   onPlaceOrder: () => void;
   isLoading: boolean;
   drinks: Drink[];
+  onAddToCart: (action: { type: 'ADD_ITEM'; drink: Drink; quantity: number }) => void;
 }
 
 export default function OrderSummaryDrawer(props: OrderSummaryDrawerProps) {

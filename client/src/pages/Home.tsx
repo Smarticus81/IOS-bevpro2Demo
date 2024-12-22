@@ -150,7 +150,7 @@ export function Home() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-50 via-pearl-light to-pearl-dark">
-      <NavBar drinks={drinks} onAddToCart={addToCart} />
+      <NavBar drinks={drinks} />
       <VoiceControlButton 
         onAddToCart={addToCart}
         onRemoveItem={removeFromCart}
