@@ -13,6 +13,7 @@ interface DrinkMenuProps {
 export function DrinkMenu({ drinks, onAddToCart }: DrinkMenuProps) {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedDrinkId, setSelectedDrinkId] = useState<number>();
 
   const categories = useMemo(() => {
     const cats = new Set(drinks.map(d => d.category));
@@ -27,9 +28,13 @@ export function DrinkMenu({ drinks, onAddToCart }: DrinkMenuProps) {
     });
   }, [drinks, search, selectedCategory]);
 
+  const handleSelectDrink = (drink: Drink) => {
+    setSelectedDrinkId(drink.id);
+    onAddToCart({ type: 'ADD_ITEM', drink, quantity: 1 });
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Search and Categories */}
+    <div className="space-y-6 p-4">
       <div className="space-y-4">
         <Input
           placeholder="Search drinks..."
@@ -57,16 +62,17 @@ export function DrinkMenu({ drinks, onAddToCart }: DrinkMenuProps) {
         </Tabs>
       </div>
 
-      {/* Drink Carousel */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
         transition={{ duration: 0.3 }}
+        className="w-full overflow-hidden"
       >
         <DrinkCarousel
           drinks={filteredDrinks}
-          onSelectDrink={(drink) => onAddToCart({ type: 'ADD_ITEM', drink, quantity: 1 })}
+          selectedDrinkId={selectedDrinkId}
+          onSelectDrink={handleSelectDrink}
         />
       </motion.div>
     </div>
