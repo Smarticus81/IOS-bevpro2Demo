@@ -40,7 +40,7 @@ class VoiceSynthesis {
       return;
     }
     
-    console.log('Starting speech synthesis for text:', text);
+    console.log('Starting speech synthesis for text:', text, 'with voice:', voice);
     
     // Clean up any existing audio before starting new synthesis
     this.stop();

@@ -1,3 +1,25 @@
+interface PaymentMethod {
+  id: string;
+  type: string;
+  provider: string;
+  display_name: string;
+  enabled: boolean;
+}
+
+interface CreatePaymentParams {
+  amount: number;
+  orderId?: string;
+  customerEmail?: string;
+  paymentMethod?: string;
+  currency?: string;
+}
+
+interface PaymentIntent {
+  clientSecret: string;
+  id: string;
+  status: string;
+}
+
 interface SimulatedPaymentMethod {
   id: string;
   type: string;
@@ -13,23 +35,31 @@ interface CreatePaymentParams {
   paymentMethod?: string;
 }
 
-// Simulated payment service
 export const paymentService = {
-  // Simulate payment processing
-  async processPayment({ amount, orderId, paymentMethod = 'credit_card' }: CreatePaymentParams): Promise<{ success: boolean; message: string }> {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Simulate 90% success rate
-    const success = Math.random() > 0.1;
-    
-    if (success) {
-      return {
-        success: true,
-        message: `Payment of $${(amount / 100).toFixed(2)} processed successfully`
-      };
-    } else {
-      throw new Error('Payment simulation failed. Please try again.');
+  async createPaymentIntent({ amount, orderId, customerEmail, currency = 'usd' }: CreatePaymentParams): Promise<PaymentIntent> {
+    try {
+      const response = await fetch('/api/payments/create-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount,
+          currency,
+          orderId,
+          customerEmail,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error creating payment intent:', error);
+      throw new Error('Failed to initialize payment. Please try again.');
     }
   },
 
