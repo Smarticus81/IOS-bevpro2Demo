@@ -17,9 +17,14 @@ export function DrinkCarousel({ drinks, selectedDrinkId, onSelectDrink }: DrinkC
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleScroll = () => {
-    if (!containerRef.current) return;
+    if (!containerRef.current) {
+      console.log('DrinkCarousel: containerRef is not available');
+      return;
+    }
     
     const { scrollLeft, scrollWidth, clientWidth } = containerRef.current;
+    console.log('DrinkCarousel: Scroll metrics', { scrollLeft, scrollWidth, clientWidth });
+    
     setShowLeftArrow(scrollLeft > 0);
     setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 10);
   };

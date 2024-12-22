@@ -21,11 +21,24 @@ export function DrinkMenu({ drinks, onAddToCart }: DrinkMenuProps) {
   }, [drinks]);
 
   const filteredDrinks = useMemo(() => {
-    return drinks.filter(drink => {
+    console.log('DrinkMenu: Filtering drinks', { 
+      totalDrinks: drinks.length,
+      search,
+      selectedCategory 
+    });
+    
+    const filtered = drinks.filter(drink => {
       const matchesSearch = drink.name.toLowerCase().includes(search.toLowerCase());
       const matchesCategory = selectedCategory === "all" || drink.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
+    
+    console.log('DrinkMenu: Filtered results', { 
+      filteredCount: filtered.length,
+      categories: [...new Set(filtered.map(d => d.category))]
+    });
+    
+    return filtered;
   }, [drinks, search, selectedCategory]);
 
   const handleSelectDrink = (drink: Drink) => {
