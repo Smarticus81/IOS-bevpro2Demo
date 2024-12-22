@@ -26,7 +26,7 @@ export function useVoiceCommands() {
       title: "Voice Command Received",
       description: text,
     });
-  }, [navigate, toast]);
+  }, [setLocation, toast]);
 
   const startListening = useCallback(async () => {
     try {
