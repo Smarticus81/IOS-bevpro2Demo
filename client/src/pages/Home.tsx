@@ -61,34 +61,16 @@ export function Home() {
     }
   });
 
-  const addToCart = (action: CartAction) => {
-    if (action.type === 'ADD_ITEM') {
-      const { drink, quantity } = action;
-      setCart(prev => {
-        const existing = prev.find(item => item.drink.id === drink.id);
-        if (existing) {
-          return prev.map(item => 
-            item.drink.id === drink.id 
-              ? { ...item, quantity: item.quantity + quantity }
-              : item
-          );
-        }
-        return [...prev, { drink, quantity }];
-      });
-    } else if (action.type === 'COMPLETE_TRANSACTION') {
-      placeOrder();
-    }
-  };
-
-  const removeFromCart = (drinkId: number) => {
-    setCart(prev => prev.filter(item => item.drink.id !== drinkId));
-  };
-
-  const placeOrder = async () => {
+  const placeOrder = useCallback(async () => {
     if (cart.length === 0) {
       console.log('Attempted to place empty order');
       return;
     }
+
+    console.log('Initiating order placement:', {
+      cartItems: cart.length,
+      timestamp: new Date().toISOString()
+    });
 
     const total = cart.reduce((sum, item) => {
       const itemPrice = Number(item.drink.price);
@@ -138,10 +120,33 @@ export function Home() {
         description: "There was an error processing your order. Please try again.",
         variant: "destructive"
       });
-      
-      throw new Error('Order placement failed');
     }
-  };
+  }, [cart, orderMutation, setCart, toast]);
+
+  const removeFromCart = useCallback((drinkId: number) => {
+    console.log('Removing from cart:', drinkId);
+    setCart(prev => prev.filter(item => item.drink.id !== drinkId));
+  }, [setCart]);
+
+  const addToCart = useCallback((action: CartAction) => {
+    console.log('Adding to cart:', action);
+    if (action.type === 'ADD_ITEM') {
+      const { drink, quantity } = action;
+      setCart(prev => {
+        const existing = prev.find(item => item.drink.id === drink.id);
+        if (existing) {
+          return prev.map(item => 
+            item.drink.id === drink.id 
+              ? { ...item, quantity: item.quantity + quantity }
+              : item
+          );
+        }
+        return [...prev, { drink, quantity }];
+      });
+    } else if (action.type === 'COMPLETE_TRANSACTION') {
+      placeOrder();
+    }
+  }, [placeOrder, setCart]);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-50 via-pearl-light to-pearl-dark">

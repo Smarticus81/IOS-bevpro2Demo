@@ -6,17 +6,19 @@ import { useToast } from "@/hooks/use-toast";
 import { voiceSynthesis } from "@/lib/voice-synthesis";
 import { useQuery } from "@tanstack/react-query";
 
+interface VoiceControlButtonProps {
+  onAddToCart: (action: { type: 'ADD_ITEM'; drink: any; quantity: number }) => void;
+  onRemoveItem: (drinkId: number) => void;
+  onPlaceOrder: () => void;
+  cart?: Array<{ drink: any; quantity: number }>;
+}
+
 export function VoiceControlButton({ 
   onAddToCart,
   onRemoveItem,
   onPlaceOrder,
   cart = []
-}: {
-  onAddToCart: (action: { type: 'ADD_ITEM'; drink: any; quantity: number }) => void;
-  onRemoveItem: (drinkId: number) => void;
-  onPlaceOrder: () => void;
-  cart?: Array<{ drink: any; quantity: number }>;
-}) {
+}: VoiceControlButtonProps) {
   const { data: drinks = [], isLoading: isDrinksLoading } = useQuery<any[]>({
     queryKey: ["/api/drinks"],
   });

@@ -103,6 +103,13 @@ export function useVoiceCommands({
   const handleVoiceCommand = useCallback(async (text: string) => {
     if (!text) return;
 
+    console.log('Voice command received:', {
+      text,
+      cartSize: cart.length,
+      drinksAvailable: drinks.length,
+      hasAddToCart: typeof onAddToCart === 'function'
+    });
+
     const command = text.toLowerCase().trim();
     const now = Date.now();
     
