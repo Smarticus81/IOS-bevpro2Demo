@@ -9,6 +9,9 @@ export function useVoiceCommands() {
   const [, setLocation] = useLocation();
 
   const handleVoiceCommand = useCallback((text: string) => {
+    // Skip empty callbacks (used for error handling)
+    if (!text) return;
+
     const command = text.toLowerCase().trim();
     console.log('Processing voice command:', command);
 
@@ -30,17 +33,28 @@ export function useVoiceCommands() {
 
   const startListening = useCallback(async () => {
     try {
+      // Check if speech recognition is supported
+      if (!googleVoiceService.isSupported()) {
+        toast({
+          title: "Error",
+          description: "Speech recognition is not supported in this browser.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       await googleVoiceService.startListening(handleVoiceCommand);
       setIsListening(true);
       toast({
         title: "Voice Commands Active",
         description: "Listening for your commands...",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to start voice commands:', error);
+      setIsListening(false); // Ensure state is consistent
       toast({
         title: "Error",
-        description: "Failed to start voice recognition. Please check microphone permissions.",
+        description: error.message || "Failed to start voice recognition. Please check microphone permissions.",
         variant: "destructive",
       });
     }
@@ -54,28 +68,39 @@ export function useVoiceCommands() {
         title: "Voice Commands Stopped",
         description: "Voice recognition is now inactive.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to stop voice commands:', error);
+      setIsListening(false); // Ensure state is consistent even on error
       toast({
         title: "Error",
-        description: "Failed to stop voice recognition",
+        description: error.message || "Failed to stop voice recognition",
         variant: "destructive",
       });
     }
   }, [toast]);
 
+  // Cleanup effect
   useEffect(() => {
     return () => {
-      // Cleanup on component unmount
       if (isListening) {
-        googleVoiceService.stopListening().catch(console.error);
+        googleVoiceService.stopListening().catch(error => {
+          console.error('Error during cleanup:', error);
+        });
       }
     };
   }, [isListening]);
 
+  // Initial check for browser support
+  useEffect(() => {
+    if (!googleVoiceService.isSupported()) {
+      console.warn('Speech recognition is not supported in this browser');
+    }
+  }, []);
+
   return {
     isListening,
     startListening,
-    stopListening
+    stopListening,
+    isSupported: googleVoiceService.isSupported()
   };
 }
