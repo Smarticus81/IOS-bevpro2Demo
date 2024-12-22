@@ -107,9 +107,9 @@ export function useVoiceCommands() {
       }
     }
 
-    // Feedback for unrecognized command
-    const response = "I heard you say: " + text + ". This command is not recognized.";
-    voiceSynthesis.speak(response)
+    // Feedback for unrecognized command with apologetic tone
+    const response = "I heard you say: " + text + ". I apologize, but I don't recognize this command. Try saying 'help' to learn what I can do.";
+    voiceSynthesis.speak(response, "shimmer", "apologetic")
       .catch(error => console.error('Error speaking response:', error));
     
     toast({
@@ -140,7 +140,11 @@ export function useVoiceCommands() {
       
       // Attempt to initialize voice synthesis with retry
       try {
-        await voiceSynthesis.speak("Voice commands activated. I'm listening.");
+        await voiceSynthesis.speak(
+          "Voice commands activated. I'm listening and ready to help!",
+          "fable",
+          "excited"
+        );
       } catch (synthError) {
         console.error('Error with voice synthesis, falling back to text only:', synthError);
       }

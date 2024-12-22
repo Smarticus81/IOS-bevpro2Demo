@@ -42,7 +42,7 @@ class VoiceSynthesis {
     return VoiceSynthesis.instance;
   }
 
-  async speak(text: string, voice: VoiceId = "alloy") {
+  async speak(text: string, voice: VoiceId = "alloy", emotion: "neutral" | "excited" | "apologetic" = "neutral") {
     if (!text?.trim()) {
       console.warn('Empty text provided to speak');
       return;
@@ -54,10 +54,27 @@ class VoiceSynthesis {
       return;
     }
     
-    console.log('Starting speech synthesis for text:', text, 'with voice:', voice);
+    console.log('Starting speech synthesis for text:', text, 'with voice:', voice, 'emotion:', emotion);
     
     // Clean up any existing audio before starting new synthesis
     this.stop();
+
+    // Apply emotional variations to speech
+    let speechSpeed = 1.2;
+    let voiceSelection: VoiceId = voice;
+
+    switch (emotion) {
+      case "excited":
+        speechSpeed = 1.3;
+        voiceSelection = "fable"; // More energetic voice
+        break;
+      case "apologetic":
+        speechSpeed = 1.1;
+        voiceSelection = "shimmer"; // Softer voice
+        break;
+      default:
+        voiceSelection = "alloy"; // Neutral voice
+    }
 
     this.lastSpeakTime = now;
 
@@ -73,9 +90,9 @@ class VoiceSynthesis {
       const openai = await getOpenAIClient();
       const response = await openai.audio.speech.create({
         model: "tts-1",
-        voice,
+        voice: voiceSelection,
         input: text,
-        speed: 1.2
+        speed: speechSpeed
       });
 
       const arrayBuffer = await response.arrayBuffer();
