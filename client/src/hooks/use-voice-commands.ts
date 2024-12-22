@@ -15,11 +15,23 @@ export function useVoiceCommands() {
     }
   }, []); // Empty dependency array ensures it only runs once
 
+  const [lastCommand, setLastCommand] = useState<{ text: string; timestamp: number }>({ text: '', timestamp: 0 });
+  const COMMAND_DEBOUNCE_MS = 1000; // Prevent duplicate commands within 1 second
+
   const handleVoiceCommand = useCallback((text: string) => {
     // Skip empty callbacks (used for error handling)
     if (!text) return;
 
     const command = text.toLowerCase().trim();
+    const now = Date.now();
+
+    // Prevent duplicate commands within the debounce window
+    if (command === lastCommand.text && now - lastCommand.timestamp < COMMAND_DEBOUNCE_MS) {
+      console.log('Skipping duplicate command:', command);
+      return;
+    }
+
+    setLastCommand({ text: command, timestamp: now });
     console.log('Processing voice command:', command);
 
     // Voice command patterns
@@ -144,13 +156,6 @@ export function useVoiceCommands() {
       }
     };
   }, [isListening]);
-
-  // Initial check for browser support
-  useEffect(() => {
-    if (!googleVoiceService.isSupported()) {
-      console.warn('Speech recognition is not supported in this browser');
-    }
-  }, []);
 
   // Initial check for browser support
   useEffect(() => {
