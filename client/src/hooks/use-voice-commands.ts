@@ -114,8 +114,25 @@ export function useVoiceCommands({
           "excited"
         );
       } else {
+        // Find similar drinks by category
+        const category = drinkName.toLowerCase().includes('cooler') ? 'Classics' :
+                        drinkName.toLowerCase().includes('beer') ? 'Beer' :
+                        drinkName.toLowerCase().includes('wine') ? 'Wine' : null;
+        
+        let suggestions = '';
+        if (category) {
+          const similarDrinks = drinks
+            .filter(d => d.category === category)
+            .slice(0, 3)
+            .map(d => d.name)
+            .join(', ');
+          if (similarDrinks) {
+            suggestions = ` Some available ${category} options are: ${similarDrinks}.`;
+          }
+        }
+
         await respondWith(
-          `I couldn't find a drink called ${drinkName}. Would you like to hear our available options?`,
+          `I apologize, but I couldn't find a drink called "${drinkName}" in our menu.${suggestions} Would you like to hear more options?`,
           "shimmer",
           "apologetic"
         );
