@@ -46,11 +46,12 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
         transition: { duration: 0.1, ease: "easeIn" }
       }}
       onClick={onAdd}
-      className="group relative cursor-pointer select-none"
+      className="group relative cursor-pointer select-none transform transition-all duration-200 hover:scale-[1.02]"
     >
-      <div className="relative overflow-hidden rounded-xl bg-white 
-                    shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)]
-                    transition-all duration-300 border border-primary/10">
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-b from-white to-gray-50
+                    shadow-[0_8px_16px_rgba(0,0,0,0.1)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.15)]
+                    transition-all duration-300 border border-white/20
+                    backdrop-blur-sm hover:backdrop-blur-md">
         <div className="aspect-[4/3]">
           {/* Loading Skeleton with Category Icon */}
           <motion.div 

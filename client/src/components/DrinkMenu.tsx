@@ -41,12 +41,16 @@ export function DrinkMenu({ drinks, onAddToCart }: DrinkMenuProps) {
       </div>
 
       <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-        <TabsList className="mb-4 bg-black/40 border border-white/10">
+        <TabsList className="mb-4 p-1 bg-gradient-to-b from-white/10 to-black/20 backdrop-blur-lg 
+                           border border-white/20 rounded-xl shadow-lg">
           {categories.map(category => (
             <TabsTrigger
               key={category}
               value={category}
-              className="capitalize text-white/70 data-[state=active]:bg-white/10 data-[state=active]:text-white"
+              className="capitalize text-white/70 data-[state=active]:bg-gradient-to-b 
+                        data-[state=active]:from-white/20 data-[state=active]:to-white/10 
+                        data-[state=active]:shadow-inner data-[state=active]:text-white
+                        transition-all duration-200 hover:text-white/90"
             >
               {category}
             </TabsTrigger>
