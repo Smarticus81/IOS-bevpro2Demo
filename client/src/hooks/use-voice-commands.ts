@@ -6,7 +6,9 @@ import { useLocation } from 'wouter';
 export function useVoiceCommands() {
   const [isListening, setIsListening] = useState(false);
   const { toast } = useToast();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  
+  console.log('Voice commands hook initialized:', { location, navigate });
 
   const handleVoiceCommand = useCallback((text: string) => {
     // Skip empty callbacks (used for error handling)
