@@ -8,10 +8,12 @@ export function useVoiceCommands() {
   const { toast } = useToast();
   const [location, navigate] = useLocation();
   
-  // Logging initialization only in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Voice commands hook initialized:', { location });
-  }
+  // Only log initialization once during development
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Voice commands hook initialized:', { location });
+    }
+  }, []); // Empty dependency array ensures it only runs once
 
   const handleVoiceCommand = useCallback((text: string) => {
     // Skip empty callbacks (used for error handling)
@@ -126,16 +128,29 @@ export function useVoiceCommands() {
     }
   }, [toast]);
 
-  // Cleanup effect
+  // Enhanced cleanup effect
   useEffect(() => {
+    let mounted = true;
+
+    // Cleanup function
     return () => {
+      mounted = false;
       if (isListening) {
         googleVoiceService.stopListening().catch(error => {
-          console.error('Error during cleanup:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Error during voice command cleanup:', error);
+          }
         });
       }
     };
   }, [isListening]);
+
+  // Initial check for browser support
+  useEffect(() => {
+    if (!googleVoiceService.isSupported()) {
+      console.warn('Speech recognition is not supported in this browser');
+    }
+  }, []);
 
   // Initial check for browser support
   useEffect(() => {
