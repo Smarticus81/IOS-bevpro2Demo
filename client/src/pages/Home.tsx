@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { DrinkCard } from "@/components/DrinkCard";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { VoiceControlButton } from "@/components/VoiceControlButton";
 import { VoiceControl } from "@/components/VoiceControl";
 import { OrderSummary } from "@/components/OrderSummary";
 import OrderSummaryDrawer from "@/components/OrderSummaryDrawer";
@@ -145,6 +146,12 @@ export function Home() {
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-50 via-pearl-light to-pearl-dark">
       <NavBar drinks={drinks} onAddToCart={addToCart} />
+      <VoiceControlButton 
+        onAddToCart={addToCart}
+        onRemoveItem={removeFromCart}
+        onPlaceOrder={placeOrder}
+        cart={cart}
+      />
       <main className="px-4 pt-4 pb-8 sm:px-6 lg:px-8">
         {/* Category Selector */}
         <div className="flex overflow-x-auto gap-2 py-2 mb-4 -mx-4 px-4 scrollbar-hide">
