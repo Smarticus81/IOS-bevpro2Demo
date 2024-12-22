@@ -50,13 +50,37 @@ export function useVoiceCommands({
     }
   }, []);
 
-  // Find matching drink by name
+  // Find matching drink by name with improved matching
   const findDrink = useCallback((name: string) => {
-    const normalizedName = name.toLowerCase().trim();
-    return drinks.find(d => 
-      d.name.toLowerCase().includes(normalizedName) ||
-      normalizedName.includes(d.name.toLowerCase())
+    const normalizedInput = name.toLowerCase().trim();
+    console.log('Searching for drink:', {
+      input: normalizedInput,
+      availableDrinks: drinks.map(d => d.name.toLowerCase())
+    });
+    
+    // First try exact match
+    const exactMatch = drinks.find(d => 
+      d.name.toLowerCase() === normalizedInput
     );
+    
+    if (exactMatch) {
+      console.log('Found exact match:', exactMatch.name);
+      return exactMatch;
+    }
+    
+    // Then try partial matches
+    const partialMatch = drinks.find(d => 
+      d.name.toLowerCase().includes(normalizedInput) ||
+      normalizedInput.includes(d.name.toLowerCase())
+    );
+    
+    if (partialMatch) {
+      console.log('Found partial match:', partialMatch.name);
+      return partialMatch;
+    }
+    
+    console.log('No drink match found for:', normalizedInput);
+    return null;
   }, [drinks]);
 
   const handleVoiceCommand = useCallback(async (text: string) => {
@@ -64,6 +88,15 @@ export function useVoiceCommands({
 
     const command = text.toLowerCase().trim();
     const now = Date.now();
+    
+    console.log('Processing voice command:', {
+      command,
+      timestamp: now,
+      lastCommand,
+      hasAddToCart: !!onAddToCart,
+      cartSize: cart.length,
+      availableDrinks: drinks.length
+    });
 
     // Prevent duplicate commands within the debounce window
     if (command === lastCommand.text && now - lastCommand.timestamp < COMMAND_DEBOUNCE_MS) {
@@ -107,12 +140,37 @@ export function useVoiceCommands({
       const drink = findDrink(drinkName);
       
       if (drink) {
-        onAddToCart({ type: 'ADD_ITEM', drink, quantity: 1 });
-        await respondWith(
-          `Added one ${drink.name} to your order. The price is $${drink.price}. Would you like anything else?`,
-          "fable",
-          "excited"
-        );
+        try {
+          console.log('Adding drink to cart:', {
+            drinkName: drink.name,
+            drinkId: drink.id,
+            price: drink.price
+          });
+          
+          if (typeof onAddToCart !== 'function') {
+            throw new Error('onAddToCart is not properly initialized');
+          }
+          
+          onAddToCart({ type: 'ADD_ITEM', drink, quantity: 1 });
+          
+          await respondWith(
+            `Added one ${drink.name} to your order. The price is $${drink.price}. Would you like anything else?`,
+            "fable",
+            "excited"
+          );
+          
+          toast({
+            title: "Added to Cart",
+            description: `Added ${drink.name} to your order`,
+          });
+        } catch (error) {
+          console.error('Error adding drink to cart:', error);
+          await respondWith(
+            `I'm sorry, I encountered an error adding ${drink.name} to your cart. Please try again.`,
+            "shimmer",
+            "apologetic"
+          );
+        }
       } else {
         // Find similar drinks by category
         const category = drinkName.toLowerCase().includes('cooler') ? 'Classics' :
