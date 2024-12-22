@@ -14,11 +14,25 @@ class VoiceSynthesis {
   private readonly SYNTHESIS_TIMEOUT = 8000; // Maximum time to wait for synthesis
 
   private constructor() {
-    document.addEventListener('click', () => {
-      if (!this.audioContext) {
-        this.audioContext = new AudioContext();
+    // Initialize context but keep it suspended until user interaction
+    this.audioContext = new AudioContext();
+    this.audioContext.suspend();
+
+    // Resume audio context on any user interaction
+    const resumeAudioContext = () => {
+      if (this.audioContext?.state === 'suspended') {
+        this.audioContext.resume().then(() => {
+          console.log('AudioContext resumed successfully');
+        }).catch(error => {
+          console.error('Failed to resume AudioContext:', error);
+        });
       }
-    }, { once: true });
+    };
+
+    // Listen for various user interactions
+    ['click', 'touchstart', 'keydown'].forEach(eventType => {
+      document.addEventListener(eventType, resumeAudioContext, { once: true });
+    });
   }
 
   static getInstance(): VoiceSynthesis {

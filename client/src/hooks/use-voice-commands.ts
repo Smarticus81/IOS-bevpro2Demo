@@ -8,7 +8,10 @@ export function useVoiceCommands() {
   const { toast } = useToast();
   const [location, navigate] = useLocation();
   
-  console.log('Voice commands hook initialized:', { location, navigate });
+  // Logging initialization only in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Voice commands hook initialized:', { location });
+  }
 
   const handleVoiceCommand = useCallback((text: string) => {
     // Skip empty callbacks (used for error handling)
@@ -17,15 +20,45 @@ export function useVoiceCommands() {
     const command = text.toLowerCase().trim();
     console.log('Processing voice command:', command);
 
-    // Simple navigation commands
-    if (command.includes('go to') || command.includes('open')) {
-      if (command.includes('home')) navigate('/');
-      else if (command.includes('dashboard')) navigate('/dashboard');
-      else if (command.includes('inventory')) navigate('/inventory');
-      else if (command.includes('events')) navigate('/events');
-      else if (command.includes('settings')) navigate('/settings');
+    // Voice command patterns
+    const patterns = {
+      navigation: /(?:go to|open|navigate to|show) (home|dashboard|inventory|events|settings)/i,
+      addDrink: /(?:add|order) (?:a |an )?([a-zA-Z\s]+)/i,
+      removeDrink: /(?:remove|delete|cancel) (?:a |an )?([a-zA-Z\s]+)/i,
+      help: /(?:help|what can I say|commands|menu)/i
+    };
+
+    // Navigation commands
+    const navMatch = command.match(patterns.navigation);
+    if (navMatch) {
+      const page = navMatch[1].toLowerCase();
+      const routes = {
+        home: '/',
+        dashboard: '/dashboard',
+        inventory: '/inventory',
+        events: '/events',
+        settings: '/settings'
+      };
       
-      console.log('Navigation command processed:', command);
+      if (routes[page]) {
+        navigate(routes[page]);
+        console.log('Navigation command processed:', { page, route: routes[page] });
+        toast({
+          title: "Navigation",
+          description: `Navigating to ${page}`,
+        });
+        return;
+      }
+    }
+
+    // Help command
+    if (patterns.help.test(command)) {
+      toast({
+        title: "Voice Commands Help",
+        description: "Available commands: 'go to [page]', 'add [drink]', 'remove [drink]', 'help'",
+        duration: 5000,
+      });
+      return;
     }
 
     // Feedback toast for received command
