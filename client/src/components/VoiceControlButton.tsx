@@ -4,21 +4,29 @@ import { Button } from "@/components/ui/button";
 import { useVoiceCommands } from "@/hooks/use-voice-commands";
 import { useToast } from "@/hooks/use-toast";
 import { voiceSynthesis } from "@/lib/voice-synthesis";
+import { useQuery } from "@tanstack/react-query";
 
-export function VoiceControlButton() {
-  // Initialize with empty arrays for drinks and cart
+export function VoiceControlButton({ 
+  onAddToCart,
+  onRemoveItem,
+  onPlaceOrder,
+  cart = []
+}: {
+  onAddToCart: (action: { type: 'ADD_ITEM'; drink: any; quantity: number }) => void;
+  onRemoveItem: (drinkId: number) => void;
+  onPlaceOrder: () => void;
+  cart?: Array<{ drink: any; quantity: number }>;
+}) {
+  const { data: drinks = [] } = useQuery<any[]>({
+    queryKey: ["/api/drinks"],
+  });
+  
   const { isListening, startListening, stopListening, isSupported } = useVoiceCommands({
-    drinks: [],
-    cart: [],
-    onAddToCart: () => {
-      console.log('Add to cart not implemented in VoiceControlButton');
-    },
-    onRemoveItem: () => {
-      console.log('Remove item not implemented in VoiceControlButton');
-    },
-    onPlaceOrder: () => {
-      console.log('Place order not implemented in VoiceControlButton');
-    }
+    drinks,
+    cart,
+    onAddToCart,
+    onRemoveItem,
+    onPlaceOrder
   });
   
   const { toast } = useToast();
