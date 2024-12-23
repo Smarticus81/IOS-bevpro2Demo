@@ -141,9 +141,21 @@ async function processTranscription(text: string): Promise<VoiceOrderResult['ord
 
   console.log('Processing transcription:', text);
   
-  // Try efficient local parsing first
+  // Get available drinks from the inventory
   try {
-    const parsedCommand = parseVoiceCommand(text);
+    const drinksResponse = await fetch('/api/drinks', {
+      credentials: 'include'
+    });
+    
+    if (!drinksResponse.ok) {
+      throw new Error('Failed to fetch drinks inventory');
+    }
+    
+    const availableDrinks = await drinksResponse.json();
+    console.log('Available drinks:', availableDrinks.length);
+    
+    // Try efficient local parsing with inventory data
+    const parsedCommand = parseVoiceCommand(text, availableDrinks);
     console.log('Parser result:', parsedCommand);
     
     if (parsedCommand?.items?.length > 0) {
@@ -154,14 +166,17 @@ async function processTranscription(text: string): Promise<VoiceOrderResult['ord
           customizations: item.modifiers
         }))
       };
-      console.log('Successfully parsed command:', result);
+      console.log('Successfully parsed command with inventory:', result);
       return result;
     } else {
-      console.log('No items found in parsed command');
+      console.log('No valid items found in command');
     }
   } catch (error) {
     const err = error instanceof Error ? error : new Error('Unknown error in command parsing');
-    console.error('Local parsing failed:', err);
+    console.error('Local parsing failed:', {
+      error: err.message,
+      timestamp: new Date().toISOString()
+    });
   }
 
   // Fallback to OpenAI for complex queries
