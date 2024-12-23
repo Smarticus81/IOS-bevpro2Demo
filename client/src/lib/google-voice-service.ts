@@ -37,23 +37,28 @@ class GoogleVoiceService {
       this.recognition.interimResults = true;
       this.recognition.lang = 'en-US';
 
-      // Configure event handlers
-      this.recognition.onresult = (event) => {
+      // Configure event handlers with proper TypeScript types
+      this.recognition.onresult = (event: SpeechRecognitionEvent) => {
         try {
-          if (event.results && event.results[0] && event.results[0][0]) {
-            const text = event.results[0][0].transcript;
-            console.log('Voice command recognized:', text);
-            if (this.callback) {
-              this.callback(text);
+          const results = event.results;
+          if (results && results.length > 0) {
+            const result = results[results.length - 1];
+            if (result.isFinal) {
+              const text = result[0].transcript;
+              console.log('Voice command recognized:', text);
+              if (this.callback) {
+                this.callback(text);
+              }
             }
           }
         } catch (error) {
-          console.error('Error processing speech result:', error);
-          this.handleError(error);
+          const err = error instanceof Error ? error : new Error('Unknown error processing speech result');
+          console.error('Error processing speech result:', err);
+          this.handleError(err);
         }
       };
 
-      this.recognition.onerror = (event) => {
+      this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.error('Speech recognition error:', event.error);
         this.handleError(new Error(`Speech recognition error: ${event.error}`));
       };
@@ -61,10 +66,25 @@ class GoogleVoiceService {
       this.recognition.onend = () => {
         console.log('Speech recognition ended');
         this.isListening = false;
-        // Notify callback of end if needed
         if (this.callback) {
           this.callback('');
         }
+      };
+
+      // Add event listeners for better error handling
+      this.recognition.onnomatch = () => {
+        console.log('No speech was recognized');
+        if (this.callback) {
+          this.callback('');
+        }
+      };
+
+      this.recognition.onaudiostart = () => {
+        console.log('Audio capturing started');
+      };
+
+      this.recognition.onaudioend = () => {
+        console.log('Audio capturing ended');
       };
 
       this.isInitialized = true;

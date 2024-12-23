@@ -9,63 +9,52 @@ type ParsedCommand = {
 };
 
 // Efficient command parser that doesn't rely on external APIs
-export function parseVoiceCommand(text: string): ParsedCommand {
-  const normalizedText = text.toLowerCase().trim();
-  
-  // Common drink quantity words to numbers
-  const quantityWords: Record<string, number> = {
-    'a': 1, 'an': 1, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
-    'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10
-  };
-  
-  // Extract quantities and items
-  const items: ParsedCommand['items'] = [];
-  let remainingText = normalizedText;
-  
-  // Match patterns like "3 diet cokes" or "a vodka and coke"
-  const itemPattern = /(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten)\s+([a-z\s]+?)(?=\s+and|\s*$)/g;
-  let match;
-  
-  while ((match = itemPattern.exec(normalizedText)) !== null) {
-    const [_, quantityStr, itemName] = match;
-    const quantity = quantityWords[quantityStr] || parseInt(quantityStr);
-    
-    if (!isNaN(quantity)) {
-      items.push({
-        name: itemName.trim(),
-        quantity,
-        modifiers: extractModifiers(itemName)
-      });
+function parseVoiceCommand(text: string): { items: Array<{ name: string; quantity: number; modifiers: string[] }> } | null {
+  if (!text) {
+    console.log('Empty text received in parseVoiceCommand');
+    return null;
+  }
+
+  const textLower = text.toLowerCase().trim();
+  console.log('Parsing voice command:', textLower);
+
+  // Remove filler words and normalize input
+  const cleanedText = textLower
+    .replace(/can i get|i want|i would like|give me|please|and/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  console.log('Cleaned text:', cleanedText);
+
+  // Extract quantities and drink names
+  const items: Array<{ name: string; quantity: number; modifiers: string[] }> = [];
+
+  // Match patterns like "3 diet coke" or "a vodka and coke"
+  const matches = cleanedText.match(/(\d+|a|one|two|three|four|five)\s+([a-z\s]+?)(?=\s+\d+|$)/g);
+
+  if (matches) {
+    console.log('Found matches:', matches);
+
+    for (const match of matches) {
+      const [quantityStr, ...nameParts] = match.split(/\s+/);
+      const quantity = parseInt(quantityStr) || 
+                      { 'a': 1, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5 }[quantityStr] || 
+                      1;
+      const name = nameParts.join(' ');
+
+      if (name) {
+        items.push({
+          name: name.charAt(0).toUpperCase() + name.slice(1),
+          quantity,
+          modifiers: []
+        });
+      }
     }
   }
-  
-  // If no structured items found, try to extract from free text
-  if (items.length === 0) {
-    const words = normalizedText.split(/\s+/);
-    let currentQuantity = 1;
-    let currentItem = '';
-    
-    words.forEach((word, index) => {
-      if (quantityWords[word] || !isNaN(parseInt(word))) {
-        if (currentItem) {
-          items.push({ name: currentItem.trim(), quantity: currentQuantity });
-        }
-        currentQuantity = quantityWords[word] || parseInt(word);
-        currentItem = '';
-      } else {
-        currentItem += ' ' + word;
-      }
-      
-      if (index === words.length - 1 && currentItem) {
-        items.push({ name: currentItem.trim(), quantity: currentQuantity });
-      }
-    });
-  }
-  
-  // Determine command type
-  const type = determineCommandType(normalizedText);
-  
-  return { type, items };
+
+  console.log('Parsed items:', items);
+
+  return items.length > 0 ? { items } : null;
 }
 
 function extractModifiers(itemName: string): string[] {
@@ -74,14 +63,14 @@ function extractModifiers(itemName: string): string[] {
     'diet', 'light', 'sugar[- ]free', 'double', 'triple',
     'with ice', 'no ice', 'neat', 'on the rocks'
   ];
-  
+
   modifierPatterns.forEach(pattern => {
     const regex = new RegExp(pattern, 'i');
     if (regex.test(itemName)) {
       modifiers.push(pattern);
     }
   });
-  
+
   return modifiers;
 }
 

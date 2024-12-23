@@ -139,20 +139,29 @@ async function processTranscription(text: string): Promise<VoiceOrderResult['ord
     };
   }
 
+  console.log('Processing transcription:', text);
+  
   // Try efficient local parsing first
   try {
     const parsedCommand = parseVoiceCommand(text);
-    if (parsedCommand.items && parsedCommand.items.length > 0) {
-      return {
+    console.log('Parser result:', parsedCommand);
+    
+    if (parsedCommand?.items?.length > 0) {
+      const result = {
         items: parsedCommand.items.map(item => ({
           name: item.name,
           quantity: item.quantity,
           customizations: item.modifiers
         }))
       };
+      console.log('Successfully parsed command:', result);
+      return result;
+    } else {
+      console.log('No items found in parsed command');
     }
   } catch (error) {
-    console.log('Local parsing failed, falling back to OpenAI:', error);
+    const err = error instanceof Error ? error : new Error('Unknown error in command parsing');
+    console.error('Local parsing failed:', err);
   }
 
   // Fallback to OpenAI for complex queries
