@@ -1,3 +1,22 @@
+// Common interfaces for voice interactions
+export interface DrinkItem {
+  id: number;
+  name: string;
+  price: number;
+  category: string;
+}
+
+export interface CartItem {
+  drink: DrinkItem;
+  quantity: number;
+}
+
+export interface AddToCartAction {
+  type: 'ADD_ITEM';
+  drink: DrinkItem;
+  quantity: number;
+}
+
 export interface VoiceRecognitionCallback {
   (text: string): void;
 }

@@ -1,5 +1,5 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { Mic, MicOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useVoiceCommands } from "@/hooks/use-voice-commands";
 import { useToast } from "@/hooks/use-toast";
@@ -12,12 +12,13 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useState } from "react";
+import type { DrinkItem, CartItem, AddToCartAction } from "@/types/speech";
 
 interface VoiceControlButtonProps {
-  onAddToCart?: (action: { type: 'ADD_ITEM'; drink: any; quantity: number }) => void;
+  onAddToCart?: (action: AddToCartAction) => void;
   onRemoveItem?: (drinkId: number) => void;
   onPlaceOrder?: () => Promise<void>;
-  cart?: Array<{ drink: any; quantity: number }>;
+  cart?: CartItem[];
 }
 
 export function VoiceControlButton({ 
@@ -30,7 +31,7 @@ export function VoiceControlButton({
   const [showDialog, setShowDialog] = useState(false);
 
   // Fetch drinks data
-  const { data: drinks = [] } = useQuery<any[]>({
+  const { data: drinks = [] } = useQuery<DrinkItem[]>({
     queryKey: ["/api/drinks"],
     retry: 1,
     staleTime: 30000,
@@ -50,7 +51,7 @@ export function VoiceControlButton({
     onPlaceOrder
   });
 
-  // Simple click handler without complex state management
+  // Handle button click with proper error handling
   const handleClick = () => {
     try {
       if (!isSupported) {
@@ -112,10 +113,10 @@ export function VoiceControlButton({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Voice Commands Not Supported</DialogTitle>
+            <DialogDescription>
+              Voice commands are not supported in your browser. Please try using a modern browser like Chrome, Edge, or Safari.
+            </DialogDescription>
           </DialogHeader>
-          <DialogDescription>
-            Voice commands are not supported in your browser. Please try using a modern browser like Chrome, Edge, or Safari.
-          </DialogDescription>
         </DialogContent>
       </Dialog>
     </>

@@ -1,4 +1,4 @@
-// Declare the global types for the Web Speech API
+// Speech recognition types for Web Speech API
 declare global {
   interface Window {
     SpeechRecognition: typeof SpeechRecognition;
@@ -50,34 +50,4 @@ declare global {
   }
 }
 
-// Export types for the voice service
-export interface VoiceRecognitionCallback {
-  (text: string): void;
-}
-
-export interface VoiceError extends Error {
-  code?: string;
-}
-
-export type VoiceId = "alloy" | "echo" | "fable" | "onyx" | "shimmer";
-
-export interface VoiceEmotions {
-  neutral: {
-    speed: number;
-    voice: VoiceId;
-  };
-  excited: {
-    speed: number;
-    voice: VoiceId;
-  };
-  apologetic: {
-    speed: number;
-    voice: VoiceId;
-  };
-}
-
-export interface VoiceSynthesisOptions {
-  voice?: VoiceId;
-  emotion?: keyof VoiceEmotions;
-  speed?: number;
-}
+export {};

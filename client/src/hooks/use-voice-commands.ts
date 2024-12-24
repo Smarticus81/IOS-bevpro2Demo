@@ -2,19 +2,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { googleVoiceService } from '@/lib/google-voice-service';
 import { useToast } from '@/hooks/use-toast';
 import { voiceSynthesis } from '@/lib/voice-synthesis';
+import type { DrinkItem, CartItem, AddToCartAction } from '@/types/speech';
 
 interface VoiceCommandsProps {
-  drinks: Array<{
-    id: number;
-    name: string;
-    price: number;
-    category: string;
-  }>;
-  cart: Array<{ 
-    drink: { id: number; name: string; price: number; }; 
-    quantity: number; 
-  }>;
-  onAddToCart?: (action: { type: 'ADD_ITEM'; drink: any; quantity: number }) => void;
+  drinks: DrinkItem[];
+  cart: CartItem[];
+  onAddToCart?: (action: AddToCartAction) => void;
   onRemoveItem?: (drinkId: number) => void;
   onPlaceOrder?: () => Promise<void>;
 }
@@ -32,7 +25,12 @@ export function useVoiceCommands({
   const COMMAND_DEBOUNCE_MS = 1000;
 
   // Helper function to validate dependencies
-  const validateDependencies = useCallback(() => {
+  const validateDependencies = useCallback((): boolean => {
+    const isValid = drinks.length > 0 && 
+                   typeof onAddToCart === 'function' &&
+                   typeof onRemoveItem === 'function' &&
+                   typeof onPlaceOrder === 'function';
+
     console.log('Validating voice command dependencies:', {
       drinks: drinks.length > 0,
       handlers: {
@@ -42,8 +40,7 @@ export function useVoiceCommands({
       }
     });
 
-    // Always return true since we have default handlers
-    return null;
+    return isValid;
   }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder]);
 
   // Define stopListening before it's used in any callbacks
@@ -98,7 +95,7 @@ export function useVoiceCommands({
     }
 
     const total = cart.reduce((sum, item) => 
-      sum + (Number(item.drink.price) * item.quantity), 0
+      sum + (item.drink.price * item.quantity), 0
     );
 
     try {
@@ -160,7 +157,7 @@ export function useVoiceCommands({
     }
   }, [cart, onPlaceOrder, respondWith, toast]);
 
-  // Handle voice commands
+  // Handle voice commands with improved regex patterns
   const handleVoiceCommand = useCallback(async (text: string) => {
     if (!text) return;
 
@@ -183,27 +180,40 @@ export function useVoiceCommands({
         return;
       }
 
-      // Order matching
-      const orderMatch = command.match(/(?:get|order|give|i want|i'll have|i would like)\s+(?:a |an |some )?(.+)/i);
+      // Enhanced order matching with multiple patterns
+      const orderPatterns = [
+        /(?:get|order|give|i want|i'll have|i would like|i'll take)\s+(?:a |an |some )?(.+)/i,
+        /(?:bring|fetch|grab)\s+(?:me )?(?:a |an |some )?(.+)/i
+      ];
+
+      let orderMatch = null;
+      for (const pattern of orderPatterns) {
+        orderMatch = command.match(pattern);
+        if (orderMatch) break;
+      }
+
       if (orderMatch) {
         const orderText = orderMatch[1];
-        const items = orderText.split(/\s+and\s+|\s*,\s*/);
+        // Split on common conjunctions and punctuation
+        const items = orderText.split(/\s+and\s+|\s*,\s*|\s+with\s+|\s+plus\s+/);
         let addedItems = [];
 
         for (const item of items) {
-          const quantityMatch = item.match(/(\d+|a|one|two|three|four|five)\s+(.+)/i);
+          // Enhanced quantity matching
+          const quantityMatch = item.match(/(\d+|a|one|two|three|four|five|six|seven|eight|nine|ten)\s+(.+)/i);
           let quantity = 1;
           let drinkName = item;
 
           if (quantityMatch) {
             const [_, qStr, dName] = quantityMatch;
-            quantity = parseInt(qStr) || 
-                      { 'a': 1, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5 }[qStr.toLowerCase()] || 
-                      1;
+            const numberWords: { [key: string]: number } = {
+              'a': 1, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
+              'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10
+            };
+            quantity = parseInt(qStr) || numberWords[qStr.toLowerCase()] || 1;
             drinkName = dName;
           }
 
-          // Improved drink matching logic with logging
           console.log('Searching for drink:', drinkName);
           const matchedDrink = drinks.find(d => {
             const isMatch = d.name.toLowerCase().includes(drinkName.toLowerCase()) ||
@@ -214,7 +224,6 @@ export function useVoiceCommands({
 
           if (matchedDrink) {
             console.log('Adding to cart:', { drink: matchedDrink, quantity });
-            // Ensure onAddToCart is called with the correct structure
             onAddToCart({ 
               type: 'ADD_ITEM', 
               drink: { 
@@ -231,8 +240,10 @@ export function useVoiceCommands({
 
         if (addedItems.length > 0) {
           const itemsList = addedItems.join(' and ');
+          const currentTotal = cart.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
+
           await respondWith(
-            `I've added ${itemsList} to your order. Your total is $${calculateTotal(cart)}. Say 'complete order' when you're ready to finish.`,
+            `I've added ${itemsList} to your order. Your total is $${currentTotal.toFixed(2)}. Say 'complete order' when you're ready to finish.`,
             "excited"
           );
 
@@ -251,8 +262,9 @@ export function useVoiceCommands({
 
       // Help command
       if (/help|what can i say|commands/.test(command)) {
+        const currentTotal = cart.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
         await respondWith(
-          "You can order drinks by saying things like 'I want a Moscow Mule' or 'get me two beers'. Say 'complete order' or 'process order' to finalize your purchase. Your current total is $" + calculateTotal(cart),
+          "You can order drinks by saying things like 'I want a Moscow Mule' or 'get me two beers'. Say 'complete order' or 'process order' to finalize your purchase. Your current total is $" + currentTotal.toFixed(2),
           "excited"
         );
         return;
@@ -278,12 +290,6 @@ export function useVoiceCommands({
       );
     }
   }, [drinks, onAddToCart, respondWith, stopListening, toast, processOrder, cart]);
-
-  // Helper function to calculate total
-  const calculateTotal = (cartItems: Array<{ drink: { price: number }; quantity: number }>) => {
-    const total = cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
-    return total.toFixed(2);
-  };
 
   // Start listening function
   const startListening = useCallback(async () => {
