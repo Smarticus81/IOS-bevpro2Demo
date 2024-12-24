@@ -22,12 +22,13 @@ interface VoiceCommandsProps {
 }
 
 const RESPONSES = {
-  orderComplete: (total: number) => `Perfect. Your order total comes to $${total.toFixed(2)}. I'll process that right away for you.`,
+  orderComplete: (total: number) => `Perfect. Your order total comes to $${(total / 100).toFixed(2)}. I'll process that right away for you.`,
   processingPayment: "I'm processing your payment now. Please wait a moment.",
   paymentSuccess: "Great news! Your payment has been processed successfully. Your drinks will be prepared shortly.",
   paymentError: "I apologize, but there was an issue processing your payment. Please try again or ask for assistance.",
   orderConfirmation: (items: string) => `I've added ${items} to your order. Would you like anything else?`,
-  help: "You can order drinks by saying phrases like 'I'd like a Moscow Mule' or 'three beers please'. When you're ready to complete your order, just say 'process order' or 'complete order'."
+  help: "You can order drinks by saying phrases like 'I'd like a Moscow Mule' or 'three beers please'. When you're ready to complete your order, just say 'process order' or 'complete order'.",
+  emptyCart: "Your cart is currently empty. Would you like to order some drinks?"
 };
 
 export function useVoiceCommands({
@@ -46,27 +47,29 @@ export function useVoiceCommands({
   // Keep cartRef current
   useEffect(() => {
     cartRef.current = cart;
+    console.log('Cart updated:', {
+      items: cart.map(item => ({ name: item.drink.name, quantity: item.quantity })),
+      timestamp: new Date().toISOString()
+    });
   }, [cart]);
 
-  const stopListening = useCallback(async () => {
-    try {
-      await googleVoiceService.stopListening();
-      setIsListening(false);
-      await voiceSynthesis.speak("Voice commands deactivated.", "professional");
-      toast({
-        title: "Voice Commands Stopped",
-        description: "Voice recognition is now inactive.",
-      });
-    } catch (error: any) {
-      console.error('Failed to stop voice commands:', error);
-      setIsListening(false);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to stop voice recognition",
-        variant: "destructive",
-      });
-    }
-  }, [toast]);
+  const calculateTotal = useCallback((items: typeof cart) => {
+    const total = items.reduce((sum, item) => 
+      sum + (item.drink.price * item.quantity * 100), 0
+    );
+    console.log('Calculated order total:', {
+      total,
+      itemCount: items.length,
+      breakdown: items.map(item => ({
+        name: item.drink.name,
+        price: item.drink.price,
+        quantity: item.quantity,
+        subtotal: item.drink.price * item.quantity * 100
+      })),
+      timestamp: new Date().toISOString()
+    });
+    return total;
+  }, []);
 
   const processPayment = useCallback(async () => {
     try {
@@ -74,7 +77,11 @@ export function useVoiceCommands({
       const currentCart = cartRef.current;
 
       console.log('Processing payment for cart:', {
-        cartItems: currentCart,
+        cartItems: currentCart.map(item => ({
+          name: item.drink.name,
+          quantity: item.quantity,
+          price: item.drink.price
+        })),
         itemCount: currentCart.length,
         timestamp: new Date().toISOString()
       });
@@ -83,9 +90,11 @@ export function useVoiceCommands({
         throw new Error('Cart is empty');
       }
 
-      const total = currentCart.reduce((sum, item) => 
-        sum + (item.drink.price * item.quantity), 0
-      );
+      const total = calculateTotal(currentCart);
+
+      if (total <= 0) {
+        throw new Error('Invalid order total');
+      }
 
       await voiceSynthesis.speak(RESPONSES.processingPayment, "professional");
 
@@ -100,14 +109,18 @@ export function useVoiceCommands({
         throw new Error(result.message || 'Payment failed');
       }
     } catch (error) {
-      console.error('Payment processing error:', error);
+      console.error('Payment processing error:', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        cartState: cartRef.current,
+        timestamp: new Date().toISOString()
+      });
       await voiceSynthesis.speak(RESPONSES.paymentError, "apologetic");
       navigate('/payment-confirmation?status=error');
       return false;
     } finally {
       setIsProcessingPayment(false);
     }
-  }, [navigate, onPlaceOrder]);
+  }, [navigate, onPlaceOrder, calculateTotal]);
 
   const handleVoiceCommand = useCallback(async (text: string) => {
     if (!text || isProcessingPayment) return;
@@ -117,7 +130,10 @@ export function useVoiceCommands({
 
     console.log('Processing voice command:', {
       command,
-      cartItems: currentCart,
+      cartItems: currentCart.map(item => ({
+        name: item.drink.name,
+        quantity: item.quantity
+      })),
       cartSize: currentCart.length,
       timestamp: new Date().toISOString()
     });
@@ -125,16 +141,11 @@ export function useVoiceCommands({
     // Handle order completion and payment
     if (/(complete|finish|process|submit|confirm|checkout|pay for|finalize)\s+(?:the\s+)?order/.test(command)) {
       if (!currentCart.length) {
-        await voiceSynthesis.speak(
-          "Your cart is currently empty. Would you like to order some drinks?",
-          "friendly"
-        );
+        await voiceSynthesis.speak(RESPONSES.emptyCart, "friendly");
         return;
       }
 
-      const total = currentCart.reduce((sum, item) => 
-        sum + (item.drink.price * item.quantity), 0
-      );
+      const total = calculateTotal(currentCart);
 
       try {
         await voiceSynthesis.speak(RESPONSES.orderComplete(total), "confirmative");
@@ -143,7 +154,7 @@ export function useVoiceCommands({
         if (success) {
           toast({
             title: "Order Complete",
-            description: `Successfully processed order for $${total.toFixed(2)}`,
+            description: `Successfully processed order for $${(total / 100).toFixed(2)}`,
           });
         }
       } catch (error) {
@@ -187,6 +198,13 @@ export function useVoiceCommands({
         if (matchedDrink) {
           onAddToCart({ type: 'ADD_ITEM', drink: matchedDrink, quantity });
           successfulOrders.push(`${quantity} ${matchedDrink.name}`);
+
+          console.log('Added drink to cart:', {
+            drinkName: matchedDrink.name,
+            quantity,
+            price: matchedDrink.price,
+            timestamp: new Date().toISOString()
+          });
         }
       }
 
@@ -214,7 +232,27 @@ export function useVoiceCommands({
       `I heard "${text}". If you'd like to order drinks, you can say something like "I'd like a Moscow Mule" or "three beers please". How can I assist you?`,
       "friendly"
     );
-  }, [drinks, onAddToCart, processPayment, stopListening, toast, isProcessingPayment]);
+  }, [drinks, onAddToCart, processPayment, calculateTotal, stopListening, toast, isProcessingPayment]);
+
+  const stopListening = useCallback(async () => {
+    try {
+      await googleVoiceService.stopListening();
+      setIsListening(false);
+      await voiceSynthesis.speak("Voice commands deactivated.", "professional");
+      toast({
+        title: "Voice Commands Stopped",
+        description: "Voice recognition is now inactive.",
+      });
+    } catch (error: any) {
+      console.error('Failed to stop voice commands:', error);
+      setIsListening(false);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to stop voice recognition",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
 
   const startListening = useCallback(async () => {
     try {
