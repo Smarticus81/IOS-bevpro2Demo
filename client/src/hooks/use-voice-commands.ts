@@ -21,15 +21,8 @@ interface VoiceCommandsProps {
   onPlaceOrder: () => void;
 }
 
-// Enhanced response templates for different scenarios
 const RESPONSES = {
-  welcome: "I'm here to assist with your order. You can ask for drinks like 'I'd like a Moscow Mule' or 'three beers please'. How may I help you today?",
-  orderConfirmation: (items: string) => `I've added ${items} to your order. Would you like anything else?`,
   orderComplete: (total: number) => `Perfect. Your order total comes to $${total.toFixed(2)}. I'll process that right away for you.`,
-  orderSuccess: "Your order has been successfully processed. Is there anything else I can help you with?",
-  notFound: (drink: string) => `I apologize, but I couldn't find ${drink} in our menu. Would you like me to suggest some alternatives?`,
-  help: "Let me assist you. You can order drinks by saying phrases like 'I'd like a Moscow Mule' or 'three beers please'. When you're ready to complete your order, just say 'process order' or 'complete order'. How can I help you today?",
-  error: "I apologize for the inconvenience. There seems to be an error. Please try again or let me know if you need assistance.",
   processingPayment: "I'm processing your payment now. Please wait a moment.",
   paymentSuccess: "Great news! Your payment has been processed successfully. Your drinks will be prepared shortly.",
   paymentError: "I apologize, but there was an issue processing your payment. Please try again or ask for assistance.",
@@ -49,7 +42,157 @@ export function useVoiceCommands({
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const COMMAND_DEBOUNCE_MS = 1000;
 
-  // Define stopListening before it's used
+  const processPayment = useCallback(async (cartItems: typeof cart) => {
+    try {
+      setIsProcessingPayment(true);
+
+      // Calculate total from current cart items
+      const total = cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
+
+      console.log('Processing payment for cart:', {
+        cartItems,
+        total,
+        timestamp: new Date().toISOString()
+      });
+
+      await voiceSynthesis.speak(RESPONSES.processingPayment, "professional");
+
+      const result = await paymentService.processPayment({ amount: total });
+
+      if (result.success) {
+        await voiceSynthesis.speak(RESPONSES.paymentSuccess, "excited");
+        onPlaceOrder(); // Clear cart and update order status
+        navigate('/payment-confirmation?status=success');
+        return true;
+      } else {
+        throw new Error(result.message || 'Payment failed');
+      }
+    } catch (error) {
+      console.error('Payment processing error:', error);
+      await voiceSynthesis.speak(RESPONSES.paymentError, "apologetic");
+      navigate('/payment-confirmation?status=error');
+      return false;
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  }, [navigate, onPlaceOrder]);
+
+  const handleVoiceCommand = useCallback(async (text: string) => {
+    if (!text || isProcessingPayment) return;
+
+    const command = text.toLowerCase().trim();
+    const now = Date.now();
+
+    console.log('Processing voice command:', {
+      command,
+      timestamp: now,
+      lastCommand,
+      cartItems: cart,
+      cartSize: cart.length
+    });
+
+    // Handle order completion and payment
+    if (/(complete|finish|process|submit|confirm|checkout|pay for|finalize)\s+(?:the\s+)?order/.test(command)) {
+      console.log('Attempting to process order with cart:', cart);
+
+      if (!cart || cart.length === 0) {
+        await voiceSynthesis.speak(
+          "Your cart is currently empty. Would you like to order some drinks?",
+          "friendly"
+        );
+        return;
+      }
+
+      const total = cart.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
+      console.log('Calculated order total:', total);
+
+      try {
+        await voiceSynthesis.speak(RESPONSES.orderComplete(total), "confirmative");
+        const paymentSuccess = await processPayment(cart);
+
+        if (paymentSuccess) {
+          toast({
+            title: "Order Complete",
+            description: `Successfully processed order for $${total.toFixed(2)}`,
+          });
+        }
+      } catch (error) {
+        console.error('Error processing order:', error);
+        await voiceSynthesis.speak(RESPONSES.paymentError, "apologetic");
+      }
+      return;
+    }
+
+    const patterns = {
+      stop: /(?:stop|end|quit|exit|turn off|disable)\s+(?:listening|voice|commands?)/i,
+      help: /(?:help|what can (?:I|you) (?:say|do)|how does this work|what are my options)/i,
+      order: /(?:(?:can|could|may) (?:I|you)|(?:I|I'd) (?:like|want|would like)|(?:give|get|bring) me|order|add)\s+(?:a |an |some )?(.+)/i,
+      complete: /(?:complete|finish|process|submit|confirm|checkout|pay for|finalize)\s+(?:the\s+)?order/i,
+    };
+
+    // Handle system commands
+    if (patterns.stop.test(command)) {
+      await voiceSynthesis.speak("Voice commands deactivated. Have a great day!", "professional");
+      await stopListening();
+      return;
+    }
+
+    if (patterns.help.test(command)) {
+      await voiceSynthesis.speak(RESPONSES.help, "friendly");
+      return;
+    }
+
+
+    // Handle drink orders
+    const orderMatch = command.match(patterns.order);
+    if (orderMatch) {
+      const orderText = orderMatch[1];
+      const items = orderText.split(/\s+and\s+|\s*,\s*/);
+      const successfulOrders: string[] = [];
+
+      for (const item of items) {
+        const quantityMatch = item.match(/(\d+|a|one|two|three|four|five)\s+(.+)/i);
+        let quantity = 1;
+        let drinkName = item;
+
+        if (quantityMatch) {
+          const [_, qStr, dName] = quantityMatch;
+          quantity = parseInt(qStr) || 
+                    { 'a': 1, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5 }[qStr.toLowerCase()] || 
+                    1;
+          drinkName = dName;
+        }
+
+        const matchedDrink = drinks.find(d => 
+          d.name.toLowerCase().includes(drinkName.toLowerCase()) ||
+          drinkName.toLowerCase().includes(d.name.toLowerCase())
+        );
+
+        if (matchedDrink) {
+          onAddToCart({ type: 'ADD_ITEM', drink: matchedDrink, quantity });
+          successfulOrders.push(`${quantity} ${matchedDrink.name}`);
+        }
+      }
+
+      if (successfulOrders.length > 0) {
+        const itemsList = successfulOrders.join(' and ');
+        await voiceSynthesis.speak(RESPONSES.orderConfirmation(itemsList), "friendly");
+      } else {
+        await voiceSynthesis.speak(
+          "I'm sorry, I couldn't find the drinks you mentioned. Would you like me to list our available options?",
+          "apologetic"
+        );
+      }
+      return;
+    }
+
+    // Fallback for unrecognized commands
+    await voiceSynthesis.speak(
+      `I heard "${text}". If you'd like to order drinks, you can say something like "I'd like a Moscow Mule" or "three beers please". How can I assist you?`,
+      "friendly"
+    );
+  }, [drinks, cart, lastCommand, onAddToCart, processPayment, stopListening, toast, isProcessingPayment]);
+
   const stopListening = useCallback(async () => {
     try {
       await googleVoiceService.stopListening();
@@ -86,153 +229,6 @@ export function useVoiceCommands({
     }
   }, [toast]);
 
-  const processPayment = useCallback(async (amount: number) => {
-    try {
-      setIsProcessingPayment(true);
-      await respondWith(RESPONSES.processingPayment, "professional");
-
-      const result = await paymentService.processPayment({ amount });
-
-      if (result.success) {
-        await respondWith(RESPONSES.paymentSuccess, "excited");
-        onPlaceOrder(); // Clear cart and update order status
-        navigate('/payment-confirmation?status=success');
-        return true;
-      } else {
-        throw new Error(result.message || 'Payment failed');
-      }
-    } catch (error) {
-      console.error('Payment processing error:', error);
-      await respondWith(RESPONSES.paymentError, "apologetic");
-      navigate('/payment-confirmation?status=error');
-      return false;
-    } finally {
-      setIsProcessingPayment(false);
-    }
-  }, [respondWith, onPlaceOrder, navigate]);
-
-  const handleVoiceCommand = useCallback(async (text: string) => {
-    if (!text || isProcessingPayment) return;
-
-    const command = text.toLowerCase().trim();
-    const now = Date.now();
-
-    console.log('Processing voice command:', {
-      command,
-      timestamp: now,
-      lastCommand,
-      hasAddToCart: !!onAddToCart,
-      cartSize: cart.length,
-      currentCart: cart
-    });
-
-    if (command === lastCommand.text && now - lastCommand.timestamp < COMMAND_DEBOUNCE_MS) {
-      return;
-    }
-
-    setLastCommand({ text: command, timestamp: now });
-
-    // Enhanced command patterns
-    const patterns = {
-      stop: /(?:stop|end|quit|exit|turn off|disable)\s+(?:listening|voice|commands?)/i,
-      help: /(?:help|what can (?:I|you) (?:say|do)|how does this work|what are my options)/i,
-      order: /(?:(?:can|could|may) (?:I|you)|(?:I|I'd) (?:like|want|would like)|(?:give|get|bring) me|order|add)\s+(?:a |an |some )?(.+)/i,
-      complete: /(?:complete|finish|process|submit|confirm|checkout|pay for|finalize)\s+(?:the\s+)?order/i,
-    };
-
-    // Handle system commands
-    if (patterns.stop.test(command)) {
-      await respondWith("Voice commands deactivated. Have a great day!", "professional");
-      await stopListening();
-      return;
-    }
-
-    if (patterns.help.test(command)) {
-      await respondWith(RESPONSES.help, "friendly");
-      return;
-    }
-
-    // Handle order completion and payment
-    if (patterns.complete.test(command)) {
-      console.log('Attempting to process order with cart:', cart);
-
-      if (!cart || cart.length === 0) {
-        await respondWith(
-          "Your cart is currently empty. Would you like to order some drinks?",
-          "friendly"
-        );
-        return;
-      }
-
-      const total = cart.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
-      console.log('Calculated order total:', total);
-
-      try {
-        await respondWith(RESPONSES.orderComplete(total), "confirmative");
-        const paymentSuccess = await processPayment(total);
-
-        if (paymentSuccess) {
-          toast({
-            title: "Order Complete",
-            description: `Successfully processed order for $${total.toFixed(2)}`,
-          });
-        }
-      } catch (error) {
-        console.error('Error processing order:', error);
-        await respondWith(RESPONSES.error, "apologetic");
-      }
-      return;
-    }
-
-    // Handle drink orders
-    const orderMatch = command.match(patterns.order);
-    if (orderMatch) {
-      const orderText = orderMatch[1];
-      const items = orderText.split(/\s+and\s+|\s*,\s*/);
-      const successfulOrders: string[] = [];
-
-      for (const item of items) {
-        const quantityMatch = item.match(/(\d+|a|one|two|three|four|five)\s+(.+)/i);
-        let quantity = 1;
-        let drinkName = item;
-
-        if (quantityMatch) {
-          const [_, qStr, dName] = quantityMatch;
-          quantity = parseInt(qStr) || 
-                    { 'a': 1, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5 }[qStr.toLowerCase()] || 
-                    1;
-          drinkName = dName;
-        }
-
-        const matchedDrink = drinks.find(d => 
-          d.name.toLowerCase().includes(drinkName.toLowerCase()) ||
-          drinkName.toLowerCase().includes(d.name.toLowerCase())
-        );
-
-        if (matchedDrink) {
-          onAddToCart({ type: 'ADD_ITEM', drink: matchedDrink, quantity });
-          successfulOrders.push(`${quantity} ${matchedDrink.name}`);
-        }
-      }
-
-      if (successfulOrders.length > 0) {
-        const itemsList = successfulOrders.join(' and ');
-        await respondWith(RESPONSES.orderConfirmation(itemsList), "friendly");
-      } else {
-        await respondWith(
-          "I'm sorry, I couldn't find the drinks you mentioned. Would you like me to list our available options?",
-          "apologetic"
-        );
-      }
-      return;
-    }
-
-    // Fallback for unrecognized commands
-    await respondWith(
-      `I heard "${text}". If you'd like to order drinks, you can say something like "I'd like a Moscow Mule" or "three beers please". How can I assist you?`,
-      "friendly"
-    );
-  }, [drinks, cart, lastCommand, onAddToCart, processPayment, respondWith, stopListening, toast, isProcessingPayment]);
 
   const startListening = useCallback(async () => {
     console.log('Attempting to start voice recognition...', {
