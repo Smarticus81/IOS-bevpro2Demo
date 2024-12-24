@@ -4,6 +4,13 @@ import { Button } from "@/components/ui/button";
 import { useVoiceCommands } from "@/hooks/use-voice-commands";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useState } from "react";
 
 interface VoiceControlButtonProps {
   onAddToCart?: (action: { type: 'ADD_ITEM'; drink: any; quantity: number }) => void;
@@ -19,6 +26,7 @@ export function VoiceControlButton({
   cart = []
 }: VoiceControlButtonProps) {
   const { toast } = useToast();
+  const [showDialog, setShowDialog] = useState(false);
 
   // Fetch drinks data
   const { data: drinks = [], isLoading: isDrinksLoading } = useQuery<any[]>({
@@ -42,7 +50,9 @@ export function VoiceControlButton({
     onPlaceOrder: drinks.length > 0 && onPlaceOrder ? onPlaceOrder : undefined
   });
 
-  const handleClick = async () => {
+  const handleClick = async (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent any default button behavior
+
     try {
       console.log('Voice button clicked:', {
         isSupported,
@@ -55,11 +65,7 @@ export function VoiceControlButton({
       });
 
       if (!isSupported) {
-        toast({
-          title: "Voice Control",
-          description: "Voice commands are not supported in this browser.",
-          variant: "destructive",
-        });
+        setShowDialog(true);
         return;
       }
 
@@ -114,49 +120,63 @@ export function VoiceControlButton({
   };
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        className="fixed bottom-6 right-6 z-50"
-      >
-        <Button
-          onClick={handleClick}
-          size="lg"
-          className={`rounded-full p-6 shadow-lg transition-all duration-300
-            ${isListening 
-              ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
-              : 'bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black'
-            }`}
-          disabled={!isSupported || isDrinksLoading || !onAddToCart || !onRemoveItem || !onPlaceOrder}
-          title={isListening ? "Stop voice commands" : "Start voice commands"}
+    <>
+      <AnimatePresence mode="wait">
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          className="fixed bottom-6 right-6 z-50"
         >
-          <AnimatePresence mode="wait">
-            {isListening ? (
-              <motion.div
-                key="mic-off"
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <MicOff className="h-6 w-6" />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="mic-on"
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Mic className="h-6 w-6" />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </Button>
-      </motion.div>
-    </AnimatePresence>
+          <Button
+            onClick={handleClick}
+            size="lg"
+            className={`rounded-full p-6 shadow-lg transition-all duration-300
+              ${isListening 
+                ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+                : 'bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black'
+              }`}
+            disabled={isDrinksLoading || !onAddToCart || !onRemoveItem || !onPlaceOrder}
+            aria-label={isListening ? "Stop voice commands" : "Start voice commands"}
+            title={isListening ? "Stop voice commands" : "Start voice commands"}
+          >
+            <AnimatePresence mode="wait">
+              {isListening ? (
+                <motion.div
+                  key="mic-off"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <MicOff className="h-6 w-6" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="mic-on"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Mic className="h-6 w-6" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Button>
+        </motion.div>
+      </AnimatePresence>
+
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Voice Commands Not Supported</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Voice commands are not supported in your browser. Please try using a modern browser like Chrome, Edge, or Safari.
+          </p>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
