@@ -71,6 +71,26 @@ export function useVoiceCommands({
     return total;
   }, []);
 
+  const stopListening = useCallback(async () => {
+    try {
+      await googleVoiceService.stopListening();
+      setIsListening(false);
+      await voiceSynthesis.speak("Voice commands deactivated.", "professional");
+      toast({
+        title: "Voice Commands Stopped",
+        description: "Voice recognition is now inactive.",
+      });
+    } catch (error: any) {
+      console.error('Failed to stop voice commands:', error);
+      setIsListening(false);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to stop voice recognition",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
   const processPayment = useCallback(async () => {
     try {
       setIsProcessingPayment(true);
@@ -233,26 +253,6 @@ export function useVoiceCommands({
       "friendly"
     );
   }, [drinks, onAddToCart, processPayment, calculateTotal, stopListening, toast, isProcessingPayment]);
-
-  const stopListening = useCallback(async () => {
-    try {
-      await googleVoiceService.stopListening();
-      setIsListening(false);
-      await voiceSynthesis.speak("Voice commands deactivated.", "professional");
-      toast({
-        title: "Voice Commands Stopped",
-        description: "Voice recognition is now inactive.",
-      });
-    } catch (error: any) {
-      console.error('Failed to stop voice commands:', error);
-      setIsListening(false);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to stop voice recognition",
-        variant: "destructive",
-      });
-    }
-  }, [toast]);
 
   const startListening = useCallback(async () => {
     try {

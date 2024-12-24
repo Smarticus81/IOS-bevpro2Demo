@@ -1,5 +1,5 @@
 import { db } from "@db";
-import { orders } from "@db/schema";
+import { orders, transactions } from "@db/schema";
 import { eq } from "drizzle-orm";
 
 export class PaymentService {
@@ -15,6 +15,19 @@ export class PaymentService {
       // Input validation
       if (!amount || amount <= 0) {
         throw new Error('Invalid payment amount');
+      }
+
+      // Validate order if orderId is provided
+      if (orderId) {
+        const order = await db
+          .select()
+          .from(orders)
+          .where(eq(orders.id, orderId))
+          .limit(1);
+
+        if (!order.length) {
+          throw new Error('Order not found');
+        }
       }
 
       // Simulate payment processing delay
@@ -34,7 +47,10 @@ export class PaymentService {
 
           await db
             .update(orders)
-            .set({ status: 'paid' })
+            .set({ 
+              status: 'paid',
+              payment_status: 'completed'
+            })
             .where(eq(orders.id, orderId));
         }
 
@@ -80,14 +96,5 @@ export class PaymentService {
       });
       return false;
     }
-  }
-
-  // Validate payment method details
-  static validatePaymentDetails(cardNumber: string, expiryDate: string, cvv: string): boolean {
-    const cardNumberValid = /^\d{16}$/.test(cardNumber.replace(/\s/g, ''));
-    const expiryValid = /^(0[1-9]|1[0-2])\/([0-9]{2})$/.test(expiryDate);
-    const cvvValid = /^\d{3}$/.test(cvv);
-
-    return cardNumberValid && expiryValid && cvvValid;
   }
 }

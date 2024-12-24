@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { drinks, orders, orderItems } from "@db/schema";
+import { drinks, orders, orderItems, transactions } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
 import { PaymentService } from "./services/payments";
@@ -14,18 +14,25 @@ export function registerRoutes(app: Express): Server {
   // Payment Processing
   app.post("/api/payments/process", async (req, res) => {
     try {
-      const { amount, orderId } = req.body;
+      const { amount, orderId, items } = req.body;
 
       console.log('Processing payment:', {
         amount,
         orderId,
+        items,
         timestamp: new Date().toISOString()
       });
 
+      // Validate payment data
       if (!amount || amount <= 0) {
         throw new Error('Invalid payment amount');
       }
 
+      if (items && items.length === 0) {
+        throw new Error('Cart is empty');
+      }
+
+      // Process payment
       const result = await PaymentService.processPayment(amount, orderId);
 
       if (result.success) {
@@ -35,10 +42,21 @@ export function registerRoutes(app: Express): Server {
           timestamp: new Date().toISOString()
         });
 
+        // Create transaction record
+        const [transaction] = await db.insert(transactions)
+          .values({
+            order_id: orderId,
+            amount,
+            status: 'completed',
+            provider_transaction_id: `txn_${Date.now()}`,
+            metadata: { items }
+          })
+          .returning();
+
         res.json({ 
           success: true,
           message: result.message,
-          transactionId: `txn_${Date.now()}`
+          transactionId: transaction.id
         });
       } else {
         throw new Error(result.message);
