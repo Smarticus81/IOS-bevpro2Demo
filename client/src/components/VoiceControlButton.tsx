@@ -23,17 +23,18 @@ export function VoiceControlButton({
     queryKey: ["/api/drinks"],
   });
 
-  // Ensure we have the drinks data before enabling voice commands
-  const isReady = !isDrinksLoading && drinks.length > 0;
-
+  // Enhanced logging for component state
   console.log('VoiceControlButton state:', {
     isDrinksLoading,
     drinksCount: drinks.length,
     hasAddToCart: !!onAddToCart,
-    cartItems: cart.length
+    hasRemoveItem: !!onRemoveItem,
+    hasPlaceOrder: !!onPlaceOrder,
+    cartItems: cart.length,
+    timestamp: new Date().toISOString()
   });
 
-  // Validate required props
+  // Validate required props early
   if (!onAddToCart || !onRemoveItem || !onPlaceOrder) {
     console.error('Missing required props:', { 
       hasAddToCart: !!onAddToCart,
@@ -42,6 +43,9 @@ export function VoiceControlButton({
     });
     return null;
   }
+
+  // Ensure we have the drinks data before enabling voice commands
+  const isReady = !isDrinksLoading && drinks.length > 0;
 
   const { isListening, startListening, stopListening, isSupported } = useVoiceCommands({
     drinks,
@@ -58,7 +62,9 @@ export function VoiceControlButton({
       console.log('Voice control button clicked:', { 
         isSupported, 
         isListening,
-        hookState: 'initialized'
+        drinksLoaded: isReady,
+        cartSize: cart.length,
+        timestamp: new Date().toISOString()
       });
 
       if (!isSupported) {
@@ -72,7 +78,7 @@ export function VoiceControlButton({
       }
 
       // Ensure voice synthesis is stopped before toggling listening state
-      voiceSynthesis.stop();
+      await voiceSynthesis.stop();
 
       if (isListening) {
         console.log('Stopping voice recognition...');
@@ -91,16 +97,19 @@ export function VoiceControlButton({
     }
   };
 
-  // Don't render if speech recognition is not supported
+  // Don't render if speech recognition is not supported or drinks aren't loaded
   if (!isSupported || !isReady) {
     return null;
   }
 
   const handleTestVoice = async () => {
     try {
-      // Stop any ongoing synthesis
-      voiceSynthesis.stop();
+      // Ensure any ongoing synthesis is stopped
+      await voiceSynthesis.stop();
+
+      console.log('Testing voice synthesis...');
       await voiceSynthesis.speak("Hello! Voice synthesis is working correctly.", "professional");
+
       toast({
         title: "Voice Test",
         description: "Testing voice synthesis...",
