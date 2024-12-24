@@ -29,6 +29,23 @@ export function useVoiceCommands({
   onRemoveItem,
   onPlaceOrder
 }: VoiceCommandsProps) {
+  // Validate required props immediately
+  if (!drinks || !Array.isArray(drinks)) {
+    throw new Error('Drinks array is required');
+  }
+
+  if (!onAddToCart || typeof onAddToCart !== 'function') {
+    throw new Error('onAddToCart function is required');
+  }
+
+  if (!onRemoveItem || typeof onRemoveItem !== 'function') {
+    throw new Error('onRemoveItem function is required');
+  }
+
+  if (!onPlaceOrder || typeof onPlaceOrder !== 'function') {
+    throw new Error('onPlaceOrder function is required');
+  }
+
   const [isListening, setIsListening] = useState(false);
   const { toast } = useToast();
   const [location, navigate] = useLocation();
@@ -178,6 +195,8 @@ export function useVoiceCommands({
       // Split multiple items
       const items = orderText.split(/\s+and\s+|\s*,\s*/);
 
+      let addedItems = [];
+
       for (const item of items) {
         const quantityMatch = item.match(/(\d+|a|one|two|three|four|five)\s+(.+)/i);
         let quantity = 1;
@@ -198,14 +217,29 @@ export function useVoiceCommands({
 
         if (matchedDrink) {
           onAddToCart({ type: 'ADD_ITEM', drink: matchedDrink, quantity });
+          addedItems.push(`${quantity} ${matchedDrink.name}`);
         }
       }
 
-      await respondWith(
-        `I've added your drinks to the order. Say 'complete order' when you're ready to finish, or continue ordering.`,
-        "fable",
-        "excited"
-      );
+      if (addedItems.length > 0) {
+        const itemsList = addedItems.join(' and ');
+        await respondWith(
+          `I've added ${itemsList} to your order. Say 'complete order' when you're ready to finish, or continue ordering.`,
+          "fable",
+          "excited"
+        );
+
+        toast({
+          title: "Added to Order",
+          description: `Added ${itemsList}`,
+        });
+      } else {
+        await respondWith(
+          "I couldn't find any matching drinks. Please try again or say 'help' for assistance.",
+          "shimmer",
+          "apologetic"
+        );
+      }
       return;
     }
 
@@ -226,23 +260,8 @@ export function useVoiceCommands({
     });
 
     try {
-      // Verify required props and data
-      if (!drinks.length) {
-        throw new Error('Drinks data not loaded');
-      }
-
-      if (typeof onAddToCart !== 'function') {
-        throw new Error('Add to cart function not provided');
-      }
-
       if (!googleVoiceService.isSupported()) {
-        console.warn('Speech recognition not supported');
-        toast({
-          title: "Error",
-          description: "Speech recognition is not supported in this browser.",
-          variant: "destructive",
-        });
-        return;
+        throw new Error('Speech recognition is not supported in this browser');
       }
 
       console.log('Speech recognition supported, initializing...');

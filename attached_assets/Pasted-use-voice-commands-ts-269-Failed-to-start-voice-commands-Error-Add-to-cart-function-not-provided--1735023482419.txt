@@ -1,0 +1,47 @@
+use-voice-commands.ts:269 Failed to start voice commands: Error: Add to cart function not provided
+    at use-voice-commands.ts:235:15
+    at handleClick (VoiceControlButton.tsx:69:15)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=d6ffdfe1:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=d6ffdfe1:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=d6ffdfe1:3733:39)
+    at invokeGuardedCallbackAndCatchFirstError (chunk-RPCDYKBN.js?v=d6ffdfe1:3736:33)
+    at executeDispatch (chunk-RPCDYKBN.js?v=d6ffdfe1:7014:11)
+    at processDispatchQueueItemsInOrder (chunk-RPCDYKBN.js?v=d6ffdfe1:7034:15)
+    at processDispatchQueue (chunk-RPCDYKBN.js?v=d6ffdfe1:7043:13)
+    at dispatchEventsForPlugins (chunk-RPCDYKBN.js?v=d6ffdfe1:7051:11)
+(anonymous) @ use-voice-commands.ts:269
+handleClick @ VoiceControlButton.tsx:69
+callCallback2 @ chunk-RPCDYKBN.js?v=d6ffdfe1:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=d6ffdfe1:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=d6ffdfe1:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=d6ffdfe1:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=d6ffdfe1:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=d6ffdfe1:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=d6ffdfe1:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=d6ffdfe1:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=d6ffdfe1:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=d6ffdfe1:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=d6ffdfe1:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=d6ffdfe1:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=d6ffdfe1:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=d6ffdfe1:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=d6ffdfe1:5449Understand this errorAI
+use-voice-commands.ts:273 Voice command error details: Add to cart function not provided
+(anonymous) @ use-voice-commands.ts:273
+handleClick @ VoiceControlButton.tsx:69
+callCallback2 @ chunk-RPCDYKBN.js?v=d6ffdfe1:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=d6ffdfe1:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=d6ffdfe1:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=d6ffdfe1:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=d6ffdfe1:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=d6ffdfe1:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=d6ffdfe1:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=d6ffdfe1:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=d6ffdfe1:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=d6ffdfe1:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=d6ffdfe1:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=d6ffdfe1:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=d6ffdfe1:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=d6ffdfe1:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=d6ffdfe1:5449Understand this errorAI
+VoiceControlButton.tsx:29 VoiceControlButton state: {isDrinksLoading: false, drinksCount: 65, hasAddToCart: true, cartItems: 0}
