@@ -9,8 +9,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
-import { useState, useCallback } from "react";
+import { useState } from "react";
 
 interface VoiceControlButtonProps {
   onAddToCart?: (action: { type: 'ADD_ITEM'; drink: any; quantity: number }) => void;
@@ -27,10 +28,9 @@ export function VoiceControlButton({
 }: VoiceControlButtonProps) {
   const { toast } = useToast();
   const [showDialog, setShowDialog] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(false);
 
   // Fetch drinks data
-  const { data: drinks = [], isLoading: isDrinksLoading } = useQuery<any[]>({
+  const { data: drinks = [] } = useQuery<any[]>({
     queryKey: ["/api/drinks"],
     retry: 1,
     staleTime: 30000,
@@ -50,49 +50,25 @@ export function VoiceControlButton({
     onPlaceOrder
   });
 
-  const handleClick = useCallback(async () => {
-    if (isInitializing) return;
-
+  // Simple click handler without complex state management
+  const handleClick = () => {
     try {
-      setIsInitializing(true);
-      console.log('Voice button clicked:', {
-        isSupported,
-        isDrinksLoading,
-        isListening,
-        hasHandlers: {
-          addToCart: !!onAddToCart,
-          removeItem: !!onRemoveItem,
-          placeOrder: !!onPlaceOrder
-        }
-      });
-
       if (!isSupported) {
         setShowDialog(true);
         return;
       }
 
-      // Stop if already listening
       if (isListening) {
-        await stopListening();
+        stopListening();
         toast({
           title: "Voice Control",
           description: "Voice commands stopped",
         });
-        return;
-      }
-
-      // Start listening if all requirements are met
-      if (drinks.length > 0 && onAddToCart && onRemoveItem && onPlaceOrder) {
-        await startListening();
+      } else {
+        startListening();
         toast({
           title: "Voice Control",
           description: "Listening for commands... Try saying 'help' to learn what I can do",
-        });
-      } else {
-        toast({
-          title: "Setup Error",
-          description: "Voice control requires cart management functions to be configured.",
-          variant: "destructive",
         });
       }
     } catch (error) {
@@ -102,80 +78,44 @@ export function VoiceControlButton({
         description: error instanceof Error ? error.message : "Failed to process voice command",
         variant: "destructive",
       });
-    } finally {
-      setIsInitializing(false);
     }
-  }, [isSupported, isListening, drinks, onAddToCart, onRemoveItem, onPlaceOrder, startListening, stopListening, toast, isInitializing]);
-
-  // Determine if button should be disabled
-  const isButtonDisabled = !drinks.length || !onAddToCart || !onRemoveItem || !onPlaceOrder || isInitializing;
+  };
 
   return (
     <>
-      <AnimatePresence mode="wait">
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="fixed bottom-6 right-6 z-50"
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="fixed bottom-6 right-6 z-50"
+      >
+        <Button
+          onClick={handleClick}
+          size="lg"
+          className={`rounded-full p-6 shadow-lg transition-all duration-300
+            ${isListening 
+              ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+              : 'bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black'
+            }`}
+          disabled={!isSupported}
+          aria-label={isListening ? "Stop voice commands" : "Start voice commands"}
         >
-          <Button
-            onClick={handleClick}
-            size="lg"
-            className={`rounded-full p-6 shadow-lg transition-all duration-300
-              ${isListening 
-                ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
-                : 'bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black'
-              }`}
-            disabled={isButtonDisabled}
-            aria-label={isListening ? "Stop voice commands" : "Start voice commands"}
-            title={isListening ? "Stop voice commands" : "Start voice commands"}
-          >
-            <AnimatePresence mode="wait">
-              {isInitializing ? (
-                <motion.div
-                  key="loading"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  exit={{ scale: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                </motion.div>
-              ) : isListening ? (
-                <motion.div
-                  key="mic-off"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  exit={{ scale: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <MicOff className="h-6 w-6" />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="mic-on"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  exit={{ scale: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Mic className="h-6 w-6" />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </Button>
-        </motion.div>
-      </AnimatePresence>
+          {isListening ? (
+            <MicOff className="h-6 w-6" />
+          ) : (
+            <Mic className="h-6 w-6" />
+          )}
+        </Button>
+      </motion.div>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Voice Commands Not Supported</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
+          <DialogDescription>
             Voice commands are not supported in your browser. Please try using a modern browser like Chrome, Edge, or Safari.
-          </p>
+          </DialogDescription>
         </DialogContent>
       </Dialog>
     </>
