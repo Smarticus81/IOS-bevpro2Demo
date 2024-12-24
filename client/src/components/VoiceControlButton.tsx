@@ -13,45 +13,35 @@ interface VoiceControlButtonProps {
   cart?: Array<{ drink: any; quantity: number }>;
 }
 
-// Default no-op functions for required props
-const defaultProps = {
-  onAddToCart: () => {
-    console.warn('onAddToCart handler not provided');
-  },
-  onRemoveItem: () => {
-    console.warn('onRemoveItem handler not provided');
-  },
-  onPlaceOrder: () => {
-    console.warn('onPlaceOrder handler not provided');
-  },
-  cart: []
-};
-
-export function VoiceControlButton({
-  onAddToCart = defaultProps.onAddToCart,
-  onRemoveItem = defaultProps.onRemoveItem,
-  onPlaceOrder = defaultProps.onPlaceOrder,
-  cart = defaultProps.cart
+export function VoiceControlButton({ 
+  onAddToCart,
+  onRemoveItem,
+  onPlaceOrder,
+  cart = []
 }: VoiceControlButtonProps) {
   const { data: drinks = [], isLoading: isDrinksLoading } = useQuery<any[]>({
     queryKey: ["/api/drinks"],
   });
 
-  // Enhanced logging for component state and debug info
+  // Ensure we have the drinks data before enabling voice commands
+  const isReady = !isDrinksLoading && drinks.length > 0;
+  
   console.log('VoiceControlButton state:', {
     isDrinksLoading,
     drinksCount: drinks.length,
-    hasAddToCart: typeof onAddToCart === 'function',
-    hasRemoveItem: typeof onRemoveItem === 'function',
-    hasPlaceOrder: typeof onPlaceOrder === 'function',
-    cartItems: cart.length,
-    timestamp: new Date().toISOString()
+    hasAddToCart: !!onAddToCart,
+    cartItems: cart.length
   });
-
-  const { toast } = useToast();
-
-  // Ensure we have the drinks data before enabling voice commands
-  const isReady = !isDrinksLoading && drinks.length > 0;
+  
+  // Validate required props
+  if (!onAddToCart || !onRemoveItem || !onPlaceOrder) {
+    console.error('Missing required props:', { 
+      hasAddToCart: !!onAddToCart,
+      hasRemoveItem: !!onRemoveItem,
+      hasPlaceOrder: !!onPlaceOrder
+    });
+    return null;
+  }
 
   const { isListening, startListening, stopListening, isSupported } = useVoiceCommands({
     drinks,
@@ -60,17 +50,17 @@ export function VoiceControlButton({
     onRemoveItem,
     onPlaceOrder
   });
+  
+  const { toast } = useToast();
 
   const handleClick = async () => {
     try {
-      console.log('Voice control button clicked:', {
-        isSupported,
+      console.log('Voice control button clicked:', { 
+        isSupported, 
         isListening,
-        drinksLoaded: isReady,
-        cartSize: cart.length,
-        timestamp: new Date().toISOString()
+        hookState: 'initialized'
       });
-
+      
       if (!isSupported) {
         console.warn('Voice commands not supported in this browser');
         toast({
@@ -80,9 +70,6 @@ export function VoiceControlButton({
         });
         return;
       }
-
-      // Ensure voice synthesis is stopped before toggling listening state
-      await voiceSynthesis.stop();
 
       if (isListening) {
         console.log('Stopping voice recognition...');
@@ -101,20 +88,14 @@ export function VoiceControlButton({
     }
   };
 
-  // Don't render if speech recognition is not supported or drinks aren't loaded
-  if (!isSupported || !isReady) {
+  // Don't render if speech recognition is not supported
+  if (!isSupported) {
     return null;
   }
 
-  // Enhanced voice synthesis test with better error handling
   const handleTestVoice = async () => {
     try {
-      // Ensure any ongoing synthesis is stopped
-      await voiceSynthesis.stop();
-
-      console.log('Testing voice synthesis...');
-      await voiceSynthesis.speak("Hello! Voice synthesis is working correctly.", "professional");
-
+      await voiceSynthesis.speak("Hello! Voice synthesis is working correctly.");
       toast({
         title: "Voice Test",
         description: "Testing voice synthesis...",
@@ -145,7 +126,7 @@ export function VoiceControlButton({
               ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
               : 'bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black'
             }`}
-          disabled={!isSupported || !isReady}
+          disabled={!isSupported}
           title={isListening ? "Stop voice commands" : "Start voice commands"}
         >
           <AnimatePresence mode="wait">
@@ -172,7 +153,7 @@ export function VoiceControlButton({
             )}
           </AnimatePresence>
         </Button>
-
+        
         <Button
           onClick={handleTestVoice}
           size="lg"

@@ -18,59 +18,26 @@ export function TabManager({ orderId, total, onSuccess }: TabManagerProps) {
   const [preAuthAmount, setPreAuthAmount] = useState(total);
   const { toast } = useToast();
 
-  // Enhanced error handling and validation for tab creation
   const createTab = useMutation({
     mutationFn: async () => {
-      try {
-        console.log('Creating new tab:', {
+      const response = await fetch('/api/tabs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           name: tabName,
-          preAuthAmount,
-          total,
-          timestamp: new Date().toISOString()
-        });
-
-        if (!tabName?.trim()) {
-          throw new Error('Tab name is required');
-        }
-
-        if (preAuthAmount < total) {
-          throw new Error('Pre-authorization amount must be at least the order total');
-        }
-
-        const response = await fetch('/api/tabs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: tabName.trim(),
-            pre_auth_amount: Math.round(preAuthAmount),
-            current_amount: Math.round(total),
-          }),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.message || 'Failed to create tab');
-        }
-
-        return response.json();
-      } catch (error) {
-        console.error('Tab creation error:', {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          tabName,
-          preAuthAmount,
-          total,
-          timestamp: new Date().toISOString()
-        });
-        throw error;
-      }
-    },
-    onSuccess: (data) => {
-      console.log('Tab created successfully:', {
-        tabId: data.id,
-        name: data.name,
-        timestamp: new Date().toISOString()
+          pre_auth_amount: preAuthAmount,
+          current_amount: total,
+        }),
       });
 
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create tab');
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
       toast({
         title: 'Tab Created',
         description: `Tab "${data.name}" has been created successfully.`,
@@ -78,11 +45,6 @@ export function TabManager({ orderId, total, onSuccess }: TabManagerProps) {
       onSuccess?.();
     },
     onError: (error: Error) => {
-      console.error('Tab creation failed:', {
-        error: error.message,
-        timestamp: new Date().toISOString()
-      });
-
       toast({
         title: 'Error',
         description: error.message,
@@ -124,7 +86,7 @@ export function TabManager({ orderId, total, onSuccess }: TabManagerProps) {
         <div className="space-y-4">
           <Button
             onClick={() => createTab.mutate()}
-            disabled={!tabName?.trim() || createTab.isPending || preAuthAmount < total}
+            disabled={!tabName || createTab.isPending || preAuthAmount < total}
             className="w-full bg-gradient-to-b from-zinc-800 to-black text-white shadow-sm hover:shadow-lg hover:from-zinc-700 hover:to-black transition-all duration-200"
           >
             {createTab.isPending ? (

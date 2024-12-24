@@ -1,4 +1,10 @@
-import { useToast } from "@/hooks/use-toast";
+interface PaymentMethod {
+  id: string;
+  type: string;
+  provider: string;
+  display_name: string;
+  enabled: boolean;
+}
 
 interface CreatePaymentParams {
   amount: number;
@@ -8,95 +14,138 @@ interface CreatePaymentParams {
   currency?: string;
 }
 
-interface PaymentResult {
-  success: boolean;
-  message: string;
-  transactionId?: string;
+interface PaymentIntent {
+  clientSecret: string;
+  id: string;
+  status: string;
 }
 
-class PaymentService {
-  async processPayment({ amount, orderId }: CreatePaymentParams): Promise<PaymentResult> {
+interface SimulatedPaymentMethod {
+  id: string;
+  type: string;
+  provider: string;
+  display_name: string;
+  enabled: boolean;
+}
+
+interface CreatePaymentParams {
+  amount: number;
+  orderId?: string;
+  customerEmail?: string;
+  paymentMethod?: string;
+}
+
+export const paymentService = {
+  async createPaymentIntent({ amount, orderId, customerEmail, currency = 'usd' }: CreatePaymentParams): Promise<PaymentIntent> {
     try {
-      console.log('Processing payment request:', {
-        amount,
-        orderId,
-        timestamp: new Date().toISOString()
-      });
-
-      // Basic validation
-      if (!amount || amount <= 0) {
-        throw new Error('Invalid payment amount');
-      }
-
-      const response = await fetch('/api/payments/process', {
+      const response = await fetch('/api/payments/create-intent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount: Math.round(amount), // Ensure whole number
+          amount,
+          currency,
           orderId,
-          currency: 'usd'
+          customerEmail,
         }),
-        credentials: 'include'
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Payment API error:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText,
-          timestamp: new Date().toISOString()
-        });
-        throw new Error(errorText || 'Payment processing failed');
+        const error = await response.text();
+        throw new Error(error);
       }
 
-      const result = await response.json();
-      console.log('Payment processed successfully:', {
-        result,
-        timestamp: new Date().toISOString()
-      });
-
-      return {
-        success: true,
-        message: result.message || 'Payment processed successfully',
-        transactionId: result.transactionId
-      };
+      return response.json();
     } catch (error) {
-      console.error('Payment processing error:', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
-      });
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'Payment processing failed'
-      };
+      console.error('Error creating payment intent:', error);
+      throw new Error('Failed to initialize payment. Please try again.');
     }
-  }
+  },
 
-  // Validate payment details before processing
-  async validatePaymentDetails(details: {
-    amount: number;
-    orderId?: string;
-  }): Promise<boolean> {
+  // Get available payment methods
+  async getPaymentMethods(): Promise<SimulatedPaymentMethod[]> {
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Return simulated payment methods
+    return [
+      {
+        id: 'credit_card',
+        type: 'credit_card',
+        provider: 'stripe',
+        display_name: 'Credit Card',
+        enabled: true
+      },
+      {
+        id: 'apple_pay',
+        type: 'digital_wallet',
+        provider: 'apple',
+        display_name: 'Apple Pay',
+        enabled: true
+      },
+      {
+        id: 'google_pay',
+        type: 'digital_wallet',
+        provider: 'google',
+        display_name: 'Google Pay',
+        enabled: true
+      },
+      {
+        id: 'qr_code',
+        type: 'qr_code',
+        provider: 'custom',
+        display_name: 'QR Code Payment',
+        enabled: true
+      }
+    ];
+  },
+
+  // Validate Stripe API key
+  async validateStripeKey(key: string): Promise<boolean> {
     try {
-      if (!details.amount || details.amount <= 0) {
-        console.warn('Invalid payment amount:', details.amount);
-        return false;
+      if (process.env.NODE_ENV === 'development') {
+        console.info('Running in development mode - simulating Stripe key validation');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return key.startsWith('sk_') && key.length > 20;
+      }
+
+      const response = await fetch('/api/settings/stripe-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error);
       }
 
       return true;
     } catch (error) {
-      console.error('Payment validation error:', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        details,
-        timestamp: new Date().toISOString()
-      });
+      console.error('Error validating Stripe key:', error);
       return false;
     }
-  }
-}
+  },
 
-// Export singleton instance
-export const paymentService = new PaymentService();
+  // Simulate payment validation
+  async validatePayment(paymentDetails: any): Promise<boolean> {
+    // Simulate validation delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Basic validation rules
+    if (paymentDetails.type === 'credit_card') {
+      return (
+        paymentDetails.cardNumber?.length === 16 &&
+        paymentDetails.cvv?.length === 3
+      );
+    }
+    
+    return true;
+  },
+
+  // Simulate checking if payment features are available
+  async isPaymentEnabled(): Promise<boolean> {
+    return true;
+  }
+};
