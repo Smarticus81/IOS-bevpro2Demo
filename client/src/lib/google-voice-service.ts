@@ -1,4 +1,12 @@
-import { type VoiceRecognitionCallback } from "@/types/speech";
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message: string;
+}
+
+interface SpeechRecognitionEvent extends Event {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
 
 // Extend Window interface with WebKit prefixed types
 declare global {
@@ -7,6 +15,8 @@ declare global {
     webkitSpeechRecognition: typeof SpeechRecognition;
   }
 }
+
+import { type VoiceRecognitionCallback, type VoiceError } from "@/types/speech";
 
 class GoogleVoiceService {
   private recognition: SpeechRecognition | null = null;
@@ -53,27 +63,8 @@ class GoogleVoiceService {
       }
 
       this.recognition = new SpeechRecognition();
-      this.recognition.continuous = true;
-      this.recognition.interimResults = true;
-      this.recognition.lang = 'en-US';
-
-      // Configure event handlers with proper TypeScript types
-      this.recognition.onresult = this.handleRecognitionResult.bind(this);
-      this.recognition.onerror = this.handleRecognitionError.bind(this);
-      this.recognition.onend = () => {
-        console.log('Speech recognition ended');
-        this.isListening = false;
-      };
-      this.recognition.onstart = () => {
-        console.log('Speech recognition started');
-        this.isListening = true;
-      };
-      this.recognition.onaudiostart = () => {
-        console.log('Audio capturing started');
-      };
-      this.recognition.onaudioend = () => {
-        console.log('Audio capturing ended');
-      };
+      this.setupRecognitionConfig();
+      this.setupEventHandlers();
 
       this.isInitialized = true;
       console.log('Speech recognition initialized successfully');
@@ -82,6 +73,47 @@ class GoogleVoiceService {
       const err = error instanceof Error ? error : new Error('Failed to initialize speech recognition');
       this.handleError(err);
     }
+  }
+
+  private setupRecognitionConfig() {
+    if (!this.recognition) return;
+
+    this.recognition.continuous = true;
+    this.recognition.interimResults = true;
+    this.recognition.lang = 'en-US';
+    this.recognition.maxAlternatives = 1;
+  }
+
+  private setupEventHandlers() {
+    if (!this.recognition) return;
+
+    this.recognition.onstart = () => {
+      console.log('Speech recognition started');
+      this.isListening = true;
+    };
+
+    this.recognition.onend = () => {
+      console.log('Speech recognition ended');
+
+      // Only set isListening to false if we're intentionally stopping
+      if (this.callback && this.isListening) {
+        console.log('Restarting speech recognition...');
+        try {
+          this.recognition?.start();
+        } catch (error) {
+          console.error('Failed to restart speech recognition:', error);
+          this.isListening = false;
+        }
+      } else {
+        this.isListening = false;
+      }
+    };
+
+    this.recognition.onerror = this.handleRecognitionError.bind(this);
+    this.recognition.onresult = this.handleRecognitionResult.bind(this);
+
+    this.recognition.onaudiostart = () => console.log('Audio capturing started');
+    this.recognition.onaudioend = () => console.log('Audio capturing ended');
   }
 
   private handleRecognitionResult(event: SpeechRecognitionEvent) {
@@ -110,10 +142,18 @@ class GoogleVoiceService {
       message: event.message,
       timestamp: new Date().toISOString()
     });
+
+    // Don't treat 'no-speech' as a fatal error
+    if (event.error === 'no-speech') {
+      console.log('No speech detected, continuing to listen...');
+      return;
+    }
+
     this.handleError(new Error(`Speech recognition error: ${event.error}`));
   }
 
   private handleError(error: Error) {
+    console.error('Voice service error:', error);
     this.isListening = false;
     if (this.callback) {
       this.callback('');
@@ -153,17 +193,30 @@ class GoogleVoiceService {
 
         const onStart = () => {
           clearTimeout(startTimeout);
+          if (this.recognition) {
+            this.recognition.onstart = null;
+          }
           resolve();
         };
 
         const onError = (event: SpeechRecognitionErrorEvent) => {
           clearTimeout(startTimeout);
+          if (this.recognition) {
+            this.recognition.onstart = null;
+          }
           reject(new Error(`Failed to start speech recognition: ${event.error}`));
         };
 
         this.recognition.onstart = onStart;
         this.recognition.onerror = onError;
-        this.recognition.start();
+
+        // Attempt to start recognition
+        try {
+          this.recognition.start();
+        } catch (error) {
+          clearTimeout(startTimeout);
+          reject(error);
+        }
       });
 
       console.log('Started listening for voice commands');
@@ -193,17 +246,29 @@ class GoogleVoiceService {
 
         const onEnd = () => {
           clearTimeout(stopTimeout);
+          if (this.recognition) {
+            this.recognition.onend = null;
+          }
           resolve();
         };
 
         const onError = (event: SpeechRecognitionErrorEvent) => {
           clearTimeout(stopTimeout);
+          if (this.recognition) {
+            this.recognition.onend = null;
+          }
           reject(new Error(`Failed to stop speech recognition: ${event.error}`));
         };
 
         this.recognition.onend = onEnd;
         this.recognition.onerror = onError;
-        this.recognition.stop();
+
+        try {
+          this.recognition.stop();
+        } catch (error) {
+          clearTimeout(stopTimeout);
+          reject(error);
+        }
       });
 
       this.isListening = false;
@@ -223,6 +288,9 @@ class GoogleVoiceService {
   }
 
   isSupported(): boolean {
+    if (!this.isInitialized) {
+      this.initializeSpeechRecognition();
+    }
     return this.isInitialized && this.recognition !== null;
   }
 }

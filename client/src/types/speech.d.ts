@@ -5,16 +5,20 @@ declare global {
     webkitSpeechRecognition: typeof SpeechRecognition;
   }
 
-  class SpeechRecognition {
+  class SpeechRecognition extends EventTarget {
     continuous: boolean;
     interimResults: boolean;
     lang: string;
+    maxAlternatives: number;
     start(): void;
     stop(): void;
     abort(): void;
     onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any) | null;
     onend: ((this: SpeechRecognition, ev: Event) => any) | null;
+    onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
     onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
+    onaudiostart: ((this: SpeechRecognition, ev: Event) => any) | null;
+    onaudioend: ((this: SpeechRecognition, ev: Event) => any) | null;
   }
 
   interface SpeechRecognitionErrorEvent extends Event {
@@ -37,22 +41,43 @@ declare global {
     readonly length: number;
     item(index: number): SpeechRecognitionAlternative;
     [index: number]: SpeechRecognitionAlternative;
-    isFinal: boolean;
+    readonly isFinal: boolean;
   }
 
   interface SpeechRecognitionAlternative {
-    transcript: string;
-    confidence: number;
+    readonly transcript: string;
+    readonly confidence: number;
   }
 }
 
-export type ErrorType = 'recognition' | 'synthesis' | 'network' | 'processing';
-
-export interface VoiceError {
-  type: ErrorType;
-  message: string;
+// Export types for the voice service
+export interface VoiceRecognitionCallback {
+  (text: string): void;
 }
 
-export interface WakeWordEvent {
-  mode: 'order' | 'inquiry';
+export interface VoiceError extends Error {
+  code?: string;
+}
+
+export type VoiceId = "alloy" | "echo" | "fable" | "onyx" | "shimmer";
+
+export interface VoiceEmotions {
+  neutral: {
+    speed: number;
+    voice: VoiceId;
+  };
+  excited: {
+    speed: number;
+    voice: VoiceId;
+  };
+  apologetic: {
+    speed: number;
+    voice: VoiceId;
+  };
+}
+
+export interface VoiceSynthesisOptions {
+  voice?: VoiceId;
+  emotion?: keyof VoiceEmotions;
+  speed?: number;
 }

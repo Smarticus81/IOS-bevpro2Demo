@@ -3,8 +3,6 @@ import { googleVoiceService } from '@/lib/google-voice-service';
 import { useToast } from '@/hooks/use-toast';
 import { voiceSynthesis } from '@/lib/voice-synthesis';
 
-type VoiceId = "alloy" | "echo" | "fable" | "onyx" | "shimmer";
-
 interface VoiceCommandsProps {
   drinks: Array<{
     id: number;
@@ -65,6 +63,8 @@ export function useVoiceCommands({
     try {
       await googleVoiceService.stopListening();
       setIsListening(false);
+
+      console.log('Voice commands stopped successfully');
     } catch (error) {
       console.error('Failed to stop voice commands:', error);
       setIsListening(false);
@@ -74,7 +74,6 @@ export function useVoiceCommands({
   // Helper function to speak responses
   const respondWith = useCallback(async (
     message: string, 
-    voice: VoiceId = "alloy", 
     emotion: "neutral" | "excited" | "apologetic" = "neutral"
   ) => {
     if (!voiceSynthesis.isReady()) {
@@ -88,7 +87,7 @@ export function useVoiceCommands({
     }
 
     try {
-      await voiceSynthesis.speak(message, voice, emotion);
+      await voiceSynthesis.speak(message, undefined, emotion);
     } catch (error) {
       console.error('Error speaking response:', error);
       toast({
@@ -104,7 +103,6 @@ export function useVoiceCommands({
     if (!cart.length || !onPlaceOrder) {
       await respondWith(
         "Your cart is empty. Would you like to order some drinks first?",
-        "shimmer",
         "apologetic"
       );
       return false;
@@ -117,7 +115,6 @@ export function useVoiceCommands({
     try {
       await respondWith(
         `Processing your order for ${cart.length} items, total $${total.toFixed(2)}...`,
-        "fable",
         "excited"
       );
 
@@ -125,7 +122,6 @@ export function useVoiceCommands({
 
       await respondWith(
         "Order processed successfully! Your drinks will be ready shortly. Would you like to order anything else?",
-        "fable",
         "excited"
       );
 
@@ -139,7 +135,6 @@ export function useVoiceCommands({
       console.error('Error processing order:', error);
       await respondWith(
         "I'm sorry, there was an error processing your order. Please try again.",
-        "shimmer",
         "apologetic"
       );
 
@@ -161,100 +156,107 @@ export function useVoiceCommands({
     }
 
     lastCommandRef.current = { text: command, timestamp: now };
+    console.log('Processing voice command:', command);
 
-    // Check for order completion commands first
-    if (/(?:complete|finish|process|submit|confirm|checkout|pay for|place)\s+(?:the\s+)?order/.test(command) ||
-        /(?:i(?:\'m|\s+am)\s+(?:done|finished|ready))|(?:that(?:\'s|\s+is)\s+all)/.test(command)) {
-      await processOrder();
-      return;
-    }
-
-    // Order matching
-    const orderMatch = command.match(/(?:get|order|give|i want|i'll have|i would like)\s+(?:a |an |some )?(.+)/i);
-    if (orderMatch && onAddToCart) {
-      const orderText = orderMatch[1];
-      const items = orderText.split(/\s+and\s+|\s*,\s*/);
-      let addedItems = [];
-
-      for (const item of items) {
-        const quantityMatch = item.match(/(\d+|a|one|two|three|four|five)\s+(.+)/i);
-        let quantity = 1;
-        let drinkName = item;
-
-        if (quantityMatch) {
-          const [_, qStr, dName] = quantityMatch;
-          quantity = parseInt(qStr) || 
-                    { 'a': 1, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5 }[qStr.toLowerCase()] || 
-                    1;
-          drinkName = dName;
-        }
-
-        const matchedDrink = drinks.find(d => 
-          d.name.toLowerCase().includes(drinkName.toLowerCase()) ||
-          drinkName.toLowerCase().includes(d.name.toLowerCase())
-        );
-
-        if (matchedDrink) {
-          onAddToCart({ type: 'ADD_ITEM', drink: matchedDrink, quantity });
-          addedItems.push(`${quantity} ${matchedDrink.name}`);
-        }
+    try {
+      // Check for order completion commands first
+      if (/(?:complete|finish|process|submit|confirm|checkout|pay for|place)\s+(?:the\s+)?order/.test(command) ||
+          /(?:i(?:\'m|\s+am)\s+(?:done|finished|ready))|(?:that(?:\'s|\s+is)\s+all)/.test(command)) {
+        await processOrder();
+        return;
       }
 
-      if (addedItems.length > 0) {
-        const itemsList = addedItems.join(' and ');
+      // Order matching
+      const orderMatch = command.match(/(?:get|order|give|i want|i'll have|i would like)\s+(?:a |an |some )?(.+)/i);
+      if (orderMatch && onAddToCart) {
+        const orderText = orderMatch[1];
+        const items = orderText.split(/\s+and\s+|\s*,\s*/);
+        let addedItems = [];
+
+        for (const item of items) {
+          const quantityMatch = item.match(/(\d+|a|one|two|three|four|five)\s+(.+)/i);
+          let quantity = 1;
+          let drinkName = item;
+
+          if (quantityMatch) {
+            const [_, qStr, dName] = quantityMatch;
+            quantity = parseInt(qStr) || 
+                      { 'a': 1, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5 }[qStr.toLowerCase()] || 
+                      1;
+            drinkName = dName;
+          }
+
+          const matchedDrink = drinks.find(d => 
+            d.name.toLowerCase().includes(drinkName.toLowerCase()) ||
+            drinkName.toLowerCase().includes(d.name.toLowerCase())
+          );
+
+          if (matchedDrink) {
+            onAddToCart({ type: 'ADD_ITEM', drink: matchedDrink, quantity });
+            addedItems.push(`${quantity} ${matchedDrink.name}`);
+          }
+        }
+
+        if (addedItems.length > 0) {
+          const itemsList = addedItems.join(' and ');
+          await respondWith(
+            `I've added ${itemsList} to your order. Say 'complete order' when you're ready to finish.`,
+            "excited"
+          );
+
+          toast({
+            title: "Added to Order",
+            description: `Added ${itemsList}`,
+          });
+        } else {
+          await respondWith(
+            "I couldn't find any matching drinks. Please try again or say 'help' for assistance.",
+            "apologetic"
+          );
+        }
+        return;
+      }
+
+      // Help command
+      if (/help|what can i say|commands/.test(command)) {
         await respondWith(
-          `I've added ${itemsList} to your order. Say 'complete order' when you're ready to finish.`,
-          "fable",
+          "You can order drinks by saying things like 'I want a Moscow Mule' or 'get me two beers'. Say 'complete order' or 'process order' to finalize your purchase.",
           "excited"
         );
-
-        toast({
-          title: "Added to Order",
-          description: `Added ${itemsList}`,
-        });
-      } else {
-        await respondWith(
-          "I couldn't find any matching drinks. Please try again or say 'help' for assistance.",
-          "shimmer",
-          "apologetic"
-        );
+        return;
       }
-      return;
-    }
 
-    // Help command
-    if (/help|what can i say|commands/.test(command)) {
+      // Stop command
+      if (/stop|end|quit|exit/.test(command)) {
+        await respondWith("Voice commands deactivated.", "neutral");
+        await stopListening();
+        return;
+      }
+
+      // Fallback for unrecognized commands
       await respondWith(
-        "You can order drinks by saying things like 'I want a Moscow Mule' or 'get me two beers'. Say 'complete order' or 'process order' to finalize your purchase.",
-        "fable",
-        "excited"
+        `I heard you say: ${text}. I didn't quite understand that. Try saying 'help' to learn what I can do.`,
+        "apologetic"
       );
-      return;
+    } catch (error) {
+      console.error('Error processing voice command:', error);
+      await respondWith(
+        "I'm sorry, I had trouble processing that command. Please try again.",
+        "apologetic"
+      );
     }
-
-    // Stop command
-    if (/stop|end|quit|exit/.test(command)) {
-      await respondWith("Voice commands deactivated.", "alloy", "neutral");
-      await stopListening();
-      return;
-    }
-
-    // Fallback for unrecognized commands
-    await respondWith(
-      `I heard you say: ${text}. I didn't quite understand that. Try saying 'help' to learn what I can do.`,
-      "shimmer",
-      "apologetic"
-    );
   }, [drinks, onAddToCart, respondWith, stopListening, toast, processOrder]);
 
   // Start listening function
   const startListening = useCallback(async () => {
     const validationError = validateDependencies();
     if (validationError) {
+      console.error('Validation error:', validationError);
       throw new Error(validationError);
     }
 
     try {
+      console.log('Starting voice recognition...');
       if (!googleVoiceService.isSupported()) {
         throw new Error('Speech recognition is not supported in this browser');
       }
@@ -264,7 +266,6 @@ export function useVoiceCommands({
 
       await respondWith(
         "Voice commands activated. I'm listening and ready to help! Say 'help' to learn what I can do.",
-        "fable",
         "excited"
       );
 
