@@ -23,6 +23,18 @@ export function VoiceControlButton({
     queryKey: ["/api/drinks"],
   });
 
+  const { toast } = useToast();
+
+  // Early validation of required props
+  if (!onAddToCart || !onRemoveItem || !onPlaceOrder) {
+    console.error('Missing required props:', { 
+      hasAddToCart: !!onAddToCart,
+      hasRemoveItem: !!onRemoveItem,
+      hasPlaceOrder: !!onPlaceOrder
+    });
+    return null;
+  }
+
   // Ensure we have the drinks data before enabling voice commands
   const isReady = !isDrinksLoading && drinks.length > 0;
 
@@ -40,8 +52,6 @@ export function VoiceControlButton({
     onRemoveItem,
     onPlaceOrder
   });
-
-  const { toast } = useToast();
 
   const handleClick = async () => {
     try {
@@ -78,7 +88,7 @@ export function VoiceControlButton({
     }
   };
 
-  // Don't render if not ready
+  // Don't render if not ready or missing required props
   if (!isReady) {
     return null;
   }

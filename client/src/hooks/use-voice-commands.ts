@@ -29,9 +29,9 @@ export function useVoiceCommands({
   onRemoveItem,
   onPlaceOrder
 }: VoiceCommandsProps) {
-  // Validate required props immediately
-  if (!drinks || !Array.isArray(drinks)) {
-    throw new Error('Drinks array is required');
+  // Validate required props and data immediately
+  if (!drinks || !Array.isArray(drinks) || drinks.length === 0) {
+    throw new Error('Valid drinks array is required');
   }
 
   if (!onAddToCart || typeof onAddToCart !== 'function') {
