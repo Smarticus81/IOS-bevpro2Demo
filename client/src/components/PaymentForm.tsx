@@ -25,6 +25,11 @@ export function PaymentForm({ amount, onSuccess, onError }: PaymentFormProps) {
     setIsProcessing(true);
 
     try {
+      // Basic validation
+      if (!cardNumber || !expiryDate || !cvv) {
+        throw new Error("Please fill in all payment details");
+      }
+
       const result = await paymentService.processPayment({
         amount,
         paymentMethod: 'credit_card',

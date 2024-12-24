@@ -5,7 +5,6 @@ import {
   drinks, 
   orders, 
   orderItems,
-  paymentMethods,
   tabs,
   splitPayments,
   eventPackages 
@@ -13,24 +12,48 @@ import {
 import { eq, sql } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
 
-// OpenAI Realtime API imports and types
-import OpenAI from "openai";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-interface RealtimeSession {
-  client_secret: {
-    value: string;
-    expires_at: number;
-  };
-}
-
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
   console.log('Setting up routes and realtime proxy...');
   setupRealtimeProxy(httpServer);
+
+  // Payment Processing
+  app.post("/api/payments/process", async (req, res) => {
+    try {
+      const { amount, orderId } = req.body;
+
+      // Simulate payment processing delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Simulate 90% success rate
+      const success = Math.random() > 0.1;
+
+      if (success) {
+        // If we have an order ID, update its status
+        if (orderId) {
+          await db
+            .update(orders)
+            .set({ status: 'paid' })
+            .where(eq(orders.id, orderId));
+        }
+
+        res.json({ 
+          success: true,
+          message: `Payment of $${(amount / 100).toFixed(2)} processed successfully`,
+          transactionId: `sim_${Date.now()}`
+        });
+      } else {
+        throw new Error('Payment simulation failed');
+      }
+    } catch (error) {
+      console.error("Error processing payment:", error);
+      res.status(500).json({ 
+        success: false,
+        message: error instanceof Error ? error.message : "Payment processing failed" 
+      });
+    }
+  });
+
 
   // Get all drinks
   app.get("/api/drinks", async (_req, res) => {
@@ -64,17 +87,6 @@ export function registerRoutes(app: Express): Server {
 
       await db.insert(orderItems).values(orderItemsData);
 
-      // Update inventory and sales
-      for (const item of items) {
-        await db
-          .update(drinks)
-          .set({ 
-            inventory: sql`${drinks.inventory} - ${item.quantity}`,
-            sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
-          })
-          .where(eq(drinks.id, item.id));
-      }
-
       res.json(order);
     } catch (error) {
       console.error("Error creating order:", error);
@@ -103,57 +115,13 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Simple payment processing endpoint
-  app.post("/api/payment/process", async (req, res) => {
-    try {
-      const { amount, orderId } = req.body;
-
-      // Simulate payment processing
-      const success = Math.random() > 0.1; // 90% success rate
-
-      if (success) {
-        // If we have an order ID, update its status
-        if (orderId) {
-          await db
-            .update(orders)
-            .set({ status: 'paid' })
-            .where(eq(orders.id, orderId));
-        }
-
-        res.json({ 
-          success: true,
-          message: `Payment of $${(amount / 100).toFixed(2)} processed successfully` 
-        });
-      } else {
-        throw new Error('Payment simulation failed');
-      }
-    } catch (error) {
-      console.error("Error processing payment:", error);
-      res.status(500).json({ 
-        success: false,
-        error: error instanceof Error ? error.message : "Payment processing failed" 
-      });
-    }
-  });
-
   // Get OpenAI API configuration
   app.get("/api/config", (_req, res) => {
     try {
       const openaiKey = process.env.OPENAI_API_KEY;
 
-      // Detailed logging for debugging
-      console.log({
-        hasKey: !!openaiKey,
-        keyLength: openaiKey?.length || 0,
-        timestamp: new Date().toISOString()
-      });
-
       if (!openaiKey) {
         throw new Error("OpenAI API key not found in environment");
-      }
-
-      if (!openaiKey.startsWith('sk-')) {
-        throw new Error("Invalid OpenAI API key format");
       }
 
       res.json({ openaiKey });
@@ -170,28 +138,6 @@ export function registerRoutes(app: Express): Server {
         message: err.message,
         timestamp: new Date().toISOString()
       });
-    }
-  });
-
-
-  // Payment Methods endpoints
-  app.get("/api/payment-methods", async (_req, res) => {
-    try {
-      const methods = await db.select().from(paymentMethods);
-      res.json(methods);
-    } catch (error) {
-      console.error("Error fetching payment methods:", error);
-      res.status(500).json({ error: "Failed to fetch payment methods" });
-    }
-  });
-
-  app.post("/api/payment-methods", async (req, res) => {
-    try {
-      const method = await db.insert(paymentMethods).values(req.body).returning();
-      res.json(method[0]);
-    } catch (error) {
-      console.error("Error creating payment method:", error);
-      res.status(500).json({ error: "Failed to create payment method" });
     }
   });
 

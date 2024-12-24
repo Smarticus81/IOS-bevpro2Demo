@@ -3,6 +3,7 @@ import { googleVoiceService } from '@/lib/google-voice-service';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 import { voiceSynthesis } from '@/lib/voice-synthesis';
+import { paymentService } from '@/lib/paymentService';
 
 interface VoiceCommandsProps {
   drinks: Array<{
@@ -29,6 +30,9 @@ const RESPONSES = {
   notFound: (drink: string) => `I apologize, but I couldn't find ${drink} in our menu. Would you like me to suggest some alternatives?`,
   help: "Let me assist you. You can order drinks by saying phrases like 'I'd like a Moscow Mule' or 'three beers please'. When you're ready to complete your order, just say 'process order' or 'complete order'. How can I help you today?",
   error: "I apologize for the inconvenience. There seems to be an error. Please try again or let me know if you need assistance.",
+  processingPayment: "I'm processing your payment now. Please wait a moment.",
+  paymentSuccess: "Great news! Your payment has been processed successfully. Your drinks will be prepared shortly.",
+  paymentError: "I apologize, but there was an issue processing your payment. Please try again or ask for assistance.",
 };
 
 export function useVoiceCommands({
@@ -42,6 +46,7 @@ export function useVoiceCommands({
   const { toast } = useToast();
   const [location, navigate] = useLocation();
   const [lastCommand, setLastCommand] = useState<{ text: string; timestamp: number }>({ text: '', timestamp: 0 });
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const COMMAND_DEBOUNCE_MS = 1000;
 
   const respondWith = useCallback(async (
@@ -60,28 +65,37 @@ export function useVoiceCommands({
     }
   }, [toast]);
 
-  const stopListening = useCallback(async () => {
+  const processPayment = useCallback(async (amount: number) => {
     try {
-      await googleVoiceService.stopListening();
-      setIsListening(false);
-      await respondWith("Voice commands deactivated.", "professional");
-      toast({
-        title: "Voice Commands Stopped",
-        description: "Voice recognition is now inactive.",
+      setIsProcessingPayment(true);
+      await respondWith(RESPONSES.processingPayment, "professional");
+
+      // Create payment intent and process payment
+      const result = await paymentService.processPayment({
+        amount,
+        paymentMethod: 'credit_card',
       });
-    } catch (error: any) {
-      console.error('Failed to stop voice commands:', error);
-      setIsListening(false);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to stop voice recognition",
-        variant: "destructive",
-      });
+
+      if (result.success) {
+        await respondWith(RESPONSES.paymentSuccess, "excited");
+        onPlaceOrder(); // Clear cart and update order status
+        navigate('/payment-confirmation?status=success');
+        return true;
+      } else {
+        throw new Error(result.message || 'Payment failed');
+      }
+    } catch (error) {
+      console.error('Payment processing error:', error);
+      await respondWith(RESPONSES.paymentError, "apologetic");
+      navigate('/payment-confirmation?status=error');
+      return false;
+    } finally {
+      setIsProcessingPayment(false);
     }
-  }, [respondWith, toast]);
+  }, [respondWith, onPlaceOrder, navigate]);
 
   const handleVoiceCommand = useCallback(async (text: string) => {
-    if (!text) return;
+    if (!text || isProcessingPayment) return;
 
     const command = text.toLowerCase().trim();
     const now = Date.now();
@@ -92,8 +106,7 @@ export function useVoiceCommands({
       lastCommand,
       hasAddToCart: !!onAddToCart,
       cartSize: cart.length,
-      availableDrinks: drinks.length,
-      currentCart: cart // Add this for debugging
+      currentCart: cart
     });
 
     if (command === lastCommand.text && now - lastCommand.timestamp < COMMAND_DEBOUNCE_MS) {
@@ -122,7 +135,7 @@ export function useVoiceCommands({
       return;
     }
 
-    // Handle order completion
+    // Handle order completion and payment
     if (patterns.complete.test(command)) {
       console.log('Attempting to process order with cart:', cart);
 
@@ -140,16 +153,15 @@ export function useVoiceCommands({
       try {
         await respondWith(RESPONSES.orderComplete(total), "confirmative");
 
-        // Call the order processing function
-        await onPlaceOrder();
-        console.log('Order processed successfully');
+        // Process payment
+        const paymentSuccess = await processPayment(total);
 
-        await respondWith(RESPONSES.orderSuccess, "professional");
-
-        toast({
-          title: "Order Complete",
-          description: `Successfully processed order for $${total.toFixed(2)}`,
-        });
+        if (paymentSuccess) {
+          toast({
+            title: "Order Complete",
+            description: `Successfully processed order for $${total.toFixed(2)}`,
+          });
+        }
       } catch (error) {
         console.error('Error processing order:', error);
         await respondWith(RESPONSES.error, "apologetic");
@@ -205,7 +217,27 @@ export function useVoiceCommands({
       `I heard "${text}". If you'd like to order drinks, you can say something like "I'd like a Moscow Mule" or "three beers please". How can I assist you?`,
       "friendly"
     );
-  }, [drinks, cart, lastCommand, onAddToCart, onPlaceOrder, respondWith, stopListening, toast]);
+  }, [drinks, cart, lastCommand, onAddToCart, processPayment, respondWith, stopListening, toast, isProcessingPayment]);
+
+  const stopListening = useCallback(async () => {
+    try {
+      await googleVoiceService.stopListening();
+      setIsListening(false);
+      await respondWith("Voice commands deactivated.", "professional");
+      toast({
+        title: "Voice Commands Stopped",
+        description: "Voice recognition is now inactive.",
+      });
+    } catch (error: any) {
+      console.error('Failed to stop voice commands:', error);
+      setIsListening(false);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to stop voice recognition",
+        variant: "destructive",
+      });
+    }
+  }, [respondWith, toast]);
 
   const startListening = useCallback(async () => {
     console.log('Attempting to start voice recognition...', {
