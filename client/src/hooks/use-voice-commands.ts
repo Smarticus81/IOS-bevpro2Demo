@@ -55,7 +55,6 @@ export function useVoiceCommands({
         window.speechSynthesis.speak(utterance);
       } catch (fallbackError) {
         console.error('Fallback speech synthesis failed:', fallbackError);
-        // Show visual feedback when speech fails
         toast({
           title: "Voice Response",
           description: message,
@@ -122,10 +121,53 @@ export function useVoiceCommands({
     // Help command
     if (/help|what can i say|commands/.test(command)) {
       await respondWith(
-        "You can order drinks by saying things like 'I want a Moscow Mule' or 'get me two beers'. You can also say 'stop' to turn off voice commands.",
+        "You can order drinks by saying things like 'I want a Moscow Mule' or 'get me two beers'. Say 'complete order' or 'process order' to finalize your purchase. You can also say 'stop' to turn off voice commands.",
         "fable",
         "excited"
       );
+      return;
+    }
+
+    // Complete order command
+    if (/(?:complete|finish|process|submit|confirm|checkout)\s+(?:the\s+)?order/.test(command)) {
+      if (cart.length === 0) {
+        await respondWith(
+          "Your cart is empty. Would you like to order some drinks first?",
+          "shimmer",
+          "apologetic"
+        );
+        return;
+      }
+
+      const total = cart.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
+
+      try {
+        await respondWith(
+          `Processing your order for ${cart.length} items, total $${total.toFixed(2)}...`,
+          "fable",
+          "excited"
+        );
+
+        await onPlaceOrder();
+
+        await respondWith(
+          "Your order has been processed successfully! Would you like to order anything else?",
+          "fable",
+          "excited"
+        );
+
+        toast({
+          title: "Order Complete",
+          description: `Successfully processed order for $${total.toFixed(2)}`,
+        });
+      } catch (error) {
+        console.error('Error processing order:', error);
+        await respondWith(
+          "I'm sorry, there was an error processing your order. Please try again.",
+          "shimmer",
+          "apologetic"
+        );
+      }
       return;
     }
 
@@ -160,7 +202,7 @@ export function useVoiceCommands({
       }
 
       await respondWith(
-        `I've added your drinks to the order. Would you like anything else?`,
+        `I've added your drinks to the order. Say 'complete order' when you're ready to finish, or continue ordering.`,
         "fable",
         "excited"
       );
@@ -173,7 +215,7 @@ export function useVoiceCommands({
       "shimmer",
       "apologetic"
     );
-  }, [drinks, cart, lastCommand, onAddToCart, respondWith, stopListening]);
+  }, [drinks, cart, lastCommand, onAddToCart, onPlaceOrder, respondWith, stopListening]);
 
   const startListening = useCallback(async () => {
     console.log('Attempting to start voice recognition...', {
