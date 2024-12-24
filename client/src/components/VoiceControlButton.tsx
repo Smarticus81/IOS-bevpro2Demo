@@ -1,15 +1,14 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Volume2 } from "lucide-react";
+import { Mic, MicOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useVoiceCommands } from "@/hooks/use-voice-commands";
 import { useToast } from "@/hooks/use-toast";
-import { voiceSynthesis } from "@/lib/voice-synthesis";
 import { useQuery } from "@tanstack/react-query";
 
 interface VoiceControlButtonProps {
   onAddToCart: (action: { type: 'ADD_ITEM'; drink: any; quantity: number }) => void;
   onRemoveItem: (drinkId: number) => void;
-  onPlaceOrder: () => void;
+  onPlaceOrder: () => Promise<void>;
   cart?: Array<{ drink: any; quantity: number }>;
 }
 
@@ -19,33 +18,24 @@ export function VoiceControlButton({
   onPlaceOrder,
   cart = []
 }: VoiceControlButtonProps) {
+  const { toast } = useToast();
+
+  // Fetch drinks data
   const { data: drinks = [], isLoading: isDrinksLoading } = useQuery<any[]>({
     queryKey: ["/api/drinks"],
   });
 
-  const { toast } = useToast();
-
-  // Early validation of required props
-  if (!onAddToCart || !onRemoveItem || !onPlaceOrder) {
-    console.error('Missing required props:', { 
-      hasAddToCart: !!onAddToCart,
-      hasRemoveItem: !!onRemoveItem,
-      hasPlaceOrder: !!onPlaceOrder
-    });
-    return null;
-  }
-
-  // Ensure we have the drinks data before enabling voice commands
+  // Validate required props and data
+  const hasRequiredProps = onAddToCart && onRemoveItem && onPlaceOrder;
   const isReady = !isDrinksLoading && Array.isArray(drinks) && drinks.length > 0;
 
-  console.log('VoiceControlButton state:', {
-    isDrinksLoading,
-    drinksCount: drinks.length,
-    hasAddToCart: !!onAddToCart,
-    cartItems: cart.length
-  });
-
-  const { isListening, startListening, stopListening, isSupported } = useVoiceCommands({
+  // Initialize voice commands with validated dependencies
+  const { 
+    isListening, 
+    startListening, 
+    stopListening, 
+    isSupported 
+  } = useVoiceCommands({
     drinks,
     cart,
     onAddToCart,
@@ -55,14 +45,16 @@ export function VoiceControlButton({
 
   const handleClick = async () => {
     try {
-      console.log('Voice control button clicked:', { 
-        isSupported, 
-        isListening,
-        hookState: 'initialized'
-      });
+      if (!hasRequiredProps) {
+        toast({
+          title: "Not Ready",
+          description: "Required functions are not available.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       if (!isSupported) {
-        console.warn('Voice commands not supported in this browser');
         toast({
           title: "Not Supported",
           description: "Voice commands are not supported in this browser.",
@@ -72,20 +64,16 @@ export function VoiceControlButton({
       }
 
       if (!isReady) {
-        console.warn('Voice commands not ready - waiting for drinks data');
         toast({
-          title: "Not Ready",
+          title: "Loading",
           description: "Please wait while we load the menu data.",
-          variant: "destructive",
         });
         return;
       }
 
       if (isListening) {
-        console.log('Stopping voice recognition...');
         await stopListening();
       } else {
-        console.log('Starting voice recognition...');
         await startListening();
       }
     } catch (error) {
@@ -98,27 +86,10 @@ export function VoiceControlButton({
     }
   };
 
-  // Don't render if not ready
-  if (!isReady) {
+  // Don't render if dependencies aren't ready
+  if (!hasRequiredProps || !isReady) {
     return null;
   }
-
-  const handleTestVoice = async () => {
-    try {
-      await voiceSynthesis.speak("Hello! Voice synthesis is working correctly.");
-      toast({
-        title: "Voice Test",
-        description: "Testing voice synthesis...",
-      });
-    } catch (error) {
-      console.error('Voice synthesis test error:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to test voice synthesis",
-        variant: "destructive",
-      });
-    }
-  };
 
   return (
     <AnimatePresence mode="wait">
@@ -162,15 +133,6 @@ export function VoiceControlButton({
               </motion.div>
             )}
           </AnimatePresence>
-        </Button>
-
-        <Button
-          onClick={handleTestVoice}
-          size="lg"
-          className="rounded-full p-6 shadow-lg transition-all duration-300 bg-gradient-to-b from-indigo-500 to-indigo-700 hover:from-indigo-400 hover:to-indigo-600"
-          title="Test voice synthesis"
-        >
-          <Volume2 className="h-6 w-6" />
         </Button>
       </motion.div>
     </AnimatePresence>
