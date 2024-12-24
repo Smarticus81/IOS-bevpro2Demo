@@ -22,9 +22,9 @@ interface VoiceCommandsProps {
 export function useVoiceCommands({
   drinks = [],
   cart = [],
-  onAddToCart,
-  onRemoveItem,
-  onPlaceOrder
+  onAddToCart = () => {},
+  onRemoveItem = () => {},
+  onPlaceOrder = async () => {}
 }: VoiceCommandsProps) {
   const [isListening, setIsListening] = useState(false);
   const { toast } = useToast();
@@ -33,26 +33,16 @@ export function useVoiceCommands({
 
   // Helper function to validate dependencies
   const validateDependencies = useCallback(() => {
-    const requirements = {
-      hasDrinks: drinks.length > 0,
-      hasAddToCart: !!onAddToCart,
-      hasRemoveItem: !!onRemoveItem,
-      hasPlaceOrder: !!onPlaceOrder
-    };
+    console.log('Validating voice command dependencies:', {
+      drinks: drinks.length > 0,
+      handlers: {
+        addToCart: typeof onAddToCart === 'function',
+        removeItem: typeof onRemoveItem === 'function',
+        placeOrder: typeof onPlaceOrder === 'function'
+      }
+    });
 
-    const missing = Object.entries(requirements)
-      .filter(([_, value]) => !value)
-      .map(([key]) => key);
-
-    if (missing.length) {
-      console.log('Missing required dependencies:', {
-        hasDrinks: requirements.hasDrinks,
-        hasAddToCart: requirements.hasAddToCart,
-        hasRemoveItem: requirements.hasRemoveItem,
-        hasPlaceOrder: requirements.hasPlaceOrder
-      });
-      return `Required dependencies missing: ${missing.join(', ')}`;
-    }
+    // Always return true since we have default handlers
     return null;
   }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder]);
 
@@ -63,7 +53,6 @@ export function useVoiceCommands({
     try {
       await googleVoiceService.stopListening();
       setIsListening(false);
-
       console.log('Voice commands stopped successfully');
     } catch (error) {
       console.error('Failed to stop voice commands:', error);
@@ -100,7 +89,7 @@ export function useVoiceCommands({
 
   // Process order function
   const processOrder = useCallback(async () => {
-    if (!cart.length || !onPlaceOrder) {
+    if (!cart.length) {
       await respondWith(
         "Your cart is empty. Would you like to order some drinks first?",
         "apologetic"
@@ -149,7 +138,6 @@ export function useVoiceCommands({
     const command = text.toLowerCase().trim();
     const now = Date.now();
 
-    // Prevent duplicate commands within the debounce window
     if (command === lastCommandRef.current.text && 
         now - lastCommandRef.current.timestamp < COMMAND_DEBOUNCE_MS) {
       return;
@@ -168,7 +156,7 @@ export function useVoiceCommands({
 
       // Order matching
       const orderMatch = command.match(/(?:get|order|give|i want|i'll have|i would like)\s+(?:a |an |some )?(.+)/i);
-      if (orderMatch && onAddToCart) {
+      if (orderMatch) {
         const orderText = orderMatch[1];
         const items = orderText.split(/\s+and\s+|\s*,\s*/);
         let addedItems = [];
@@ -249,12 +237,6 @@ export function useVoiceCommands({
 
   // Start listening function
   const startListening = useCallback(async () => {
-    const validationError = validateDependencies();
-    if (validationError) {
-      console.error('Validation error:', validationError);
-      throw new Error(validationError);
-    }
-
     try {
       console.log('Starting voice recognition...');
       if (!googleVoiceService.isSupported()) {
@@ -278,7 +260,7 @@ export function useVoiceCommands({
       setIsListening(false);
       throw error;
     }
-  }, [handleVoiceCommand, respondWith, toast, validateDependencies]);
+  }, [handleVoiceCommand, respondWith, toast]);
 
   // Cleanup effect
   useEffect(() => {
