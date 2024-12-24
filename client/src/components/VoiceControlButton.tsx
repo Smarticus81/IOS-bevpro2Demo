@@ -44,19 +44,17 @@ export function VoiceControlButton({
   } = useVoiceCommands({
     drinks: isDrinksLoading ? [] : drinks,
     cart,
-    // Only pass the handlers if they exist and drinks are loaded
-    onAddToCart: drinks.length > 0 && onAddToCart ? onAddToCart : undefined,
-    onRemoveItem: drinks.length > 0 && onRemoveItem ? onRemoveItem : undefined,
-    onPlaceOrder: drinks.length > 0 && onPlaceOrder ? onPlaceOrder : undefined
+    onAddToCart,
+    onRemoveItem,
+    onPlaceOrder
   });
 
-  const handleClick = async (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent any default button behavior
-
+  const handleClick = async () => {
     try {
       console.log('Voice button clicked:', {
         isSupported,
         isDrinksLoading,
+        isListening,
         hasHandlers: {
           addToCart: !!onAddToCart,
           removeItem: !!onRemoveItem,
@@ -69,44 +67,28 @@ export function VoiceControlButton({
         return;
       }
 
-      // Verify required handlers are available
-      if (!onAddToCart || !onRemoveItem || !onPlaceOrder) {
-        toast({
-          title: "Setup Error",
-          description: "Voice control requires cart management functions to be configured.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (isDrinksLoading) {
-        toast({
-          title: "Loading",
-          description: "Please wait while we load the menu...",
-        });
-        return;
-      }
-
-      if (!drinks.length) {
-        toast({
-          title: "Error",
-          description: "Menu data is not available. Please try again later.",
-          variant: "destructive",
-        });
-        return;
-      }
-
+      // Stop if already listening
       if (isListening) {
         await stopListening();
         toast({
           title: "Voice Control",
           description: "Voice commands stopped",
         });
-      } else {
+        return;
+      }
+
+      // Start listening if all requirements are met
+      if (drinks.length > 0 && onAddToCart && onRemoveItem && onPlaceOrder) {
         await startListening();
         toast({
           title: "Voice Control",
           description: "Listening for commands... Try saying 'help' to learn what I can do",
+        });
+      } else {
+        toast({
+          title: "Setup Error",
+          description: "Voice control requires cart management functions to be configured.",
+          variant: "destructive",
         });
       }
     } catch (error) {
@@ -118,6 +100,9 @@ export function VoiceControlButton({
       });
     }
   };
+
+  // Determine if button should be disabled
+  const isButtonDisabled = !drinks.length || !onAddToCart || !onRemoveItem || !onPlaceOrder;
 
   return (
     <>
@@ -136,7 +121,7 @@ export function VoiceControlButton({
                 ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
                 : 'bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black'
               }`}
-            disabled={isDrinksLoading || !onAddToCart || !onRemoveItem || !onPlaceOrder}
+            disabled={isButtonDisabled}
             aria-label={isListening ? "Stop voice commands" : "Start voice commands"}
             title={isListening ? "Stop voice commands" : "Start voice commands"}
           >
