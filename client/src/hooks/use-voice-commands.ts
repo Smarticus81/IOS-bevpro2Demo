@@ -29,23 +29,6 @@ export function useVoiceCommands({
   onRemoveItem,
   onPlaceOrder
 }: VoiceCommandsProps) {
-  // Validate required props and data immediately
-  if (!drinks || !Array.isArray(drinks) || drinks.length === 0) {
-    throw new Error('Valid drinks array is required');
-  }
-
-  if (!onAddToCart || typeof onAddToCart !== 'function') {
-    throw new Error('onAddToCart function is required');
-  }
-
-  if (!onRemoveItem || typeof onRemoveItem !== 'function') {
-    throw new Error('onRemoveItem function is required');
-  }
-
-  if (!onPlaceOrder || typeof onPlaceOrder !== 'function') {
-    throw new Error('onPlaceOrder function is required');
-  }
-
   const [isListening, setIsListening] = useState(false);
   const { toast } = useToast();
   const [location, navigate] = useLocation();
@@ -81,14 +64,15 @@ export function useVoiceCommands({
     }
   }, [toast]);
 
-  // Define stopListening before handleVoiceCommand
+  // Define stopListening before using it in handleVoiceCommand
   const stopListening = useCallback(async () => {
+    if (!isListening) return;
+
     try {
       await googleVoiceService.stopListening();
       setIsListening(false);
 
-      voiceSynthesis.speak("Voice commands deactivated.")
-        .catch(error => console.error('Error speaking deactivation message:', error));
+      await voiceSynthesis.speak("Voice commands deactivated.");
 
       toast({
         title: "Voice Commands Stopped",
@@ -103,10 +87,17 @@ export function useVoiceCommands({
         variant: "destructive",
       });
     }
-  }, [toast]);
+  }, [isListening, toast]);
 
   const handleVoiceCommand = useCallback(async (text: string) => {
-    if (!text) return;
+    // Validate required dependencies before processing commands
+    if (!text || !Array.isArray(drinks) || drinks.length === 0) {
+      console.warn('Missing required dependencies:', { 
+        hasText: !!text, 
+        hasDrinks: Array.isArray(drinks) && drinks.length > 0 
+      });
+      return;
+    }
 
     const command = text.toLowerCase().trim();
     const now = Date.now();
@@ -147,6 +138,11 @@ export function useVoiceCommands({
 
     // Complete order command
     if (/(?:complete|finish|process|submit|confirm|checkout)\s+(?:the\s+)?order/.test(command)) {
+      if (!onPlaceOrder) {
+        console.error('Place order function not available');
+        return;
+      }
+
       if (cart.length === 0) {
         await respondWith(
           "Your cart is empty. Would you like to order some drinks first?",
@@ -190,7 +186,7 @@ export function useVoiceCommands({
 
     // Order matching
     const orderMatch = command.match(/(?:get|order|give|i want|i'll have|i would like)\s+(?:a |an |some )?(.+)/i);
-    if (orderMatch) {
+    if (orderMatch && onAddToCart) {
       const orderText = orderMatch[1];
       // Split multiple items
       const items = orderText.split(/\s+and\s+|\s*,\s*/);
@@ -264,6 +260,14 @@ export function useVoiceCommands({
         throw new Error('Speech recognition is not supported in this browser');
       }
 
+      if (!Array.isArray(drinks) || drinks.length === 0) {
+        throw new Error('Drinks data not yet loaded');
+      }
+
+      if (!onAddToCart || typeof onAddToCart !== 'function') {
+        throw new Error('Add to cart function not provided');
+      }
+
       console.log('Speech recognition supported, initializing...');
       await googleVoiceService.startListening(handleVoiceCommand);
 
@@ -296,6 +300,8 @@ export function useVoiceCommands({
         description: errorMessage,
         variant: "destructive",
       });
+
+      throw error; // Re-throw to allow parent components to handle the error
     }
   }, [drinks, onAddToCart, toast, handleVoiceCommand]);
 

@@ -36,7 +36,7 @@ export function VoiceControlButton({
   }
 
   // Ensure we have the drinks data before enabling voice commands
-  const isReady = !isDrinksLoading && drinks.length > 0;
+  const isReady = !isDrinksLoading && Array.isArray(drinks) && drinks.length > 0;
 
   console.log('VoiceControlButton state:', {
     isDrinksLoading,
@@ -71,6 +71,16 @@ export function VoiceControlButton({
         return;
       }
 
+      if (!isReady) {
+        console.warn('Voice commands not ready - waiting for drinks data');
+        toast({
+          title: "Not Ready",
+          description: "Please wait while we load the menu data.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (isListening) {
         console.log('Stopping voice recognition...');
         await stopListening();
@@ -88,7 +98,7 @@ export function VoiceControlButton({
     }
   };
 
-  // Don't render if not ready or missing required props
+  // Don't render if not ready
   if (!isReady) {
     return null;
   }
@@ -126,7 +136,7 @@ export function VoiceControlButton({
               ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
               : 'bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black'
             }`}
-          disabled={!isSupported}
+          disabled={!isSupported || !isReady}
           title={isListening ? "Stop voice commands" : "Start voice commands"}
         >
           <AnimatePresence mode="wait">
