@@ -102,11 +102,34 @@ export function useVoiceCommands({
     );
 
     try {
+      console.log('Processing order:', { cart, total });
+
       await respondWith(
         `Processing your order for ${cart.length} items, total $${total.toFixed(2)}...`,
         "excited"
       );
 
+      // Simple demo payment processing
+      const response = await fetch('/api/payment/process', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: total * 100, // Convert to cents
+          items: cart.map(item => ({
+            id: item.drink.id,
+            quantity: item.quantity,
+            price: item.drink.price
+          }))
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Payment processing failed');
+      }
+
+      // Call the provided onPlaceOrder handler
       await onPlaceOrder();
 
       await respondWith(
@@ -126,6 +149,12 @@ export function useVoiceCommands({
         "I'm sorry, there was an error processing your order. Please try again.",
         "apologetic"
       );
+
+      toast({
+        title: "Order Error",
+        description: "Failed to process order. Please try again.",
+        variant: "destructive",
+      });
 
       return false;
     }
@@ -174,13 +203,28 @@ export function useVoiceCommands({
             drinkName = dName;
           }
 
-          const matchedDrink = drinks.find(d => 
-            d.name.toLowerCase().includes(drinkName.toLowerCase()) ||
-            drinkName.toLowerCase().includes(d.name.toLowerCase())
-          );
+          // Improved drink matching logic with logging
+          console.log('Searching for drink:', drinkName);
+          const matchedDrink = drinks.find(d => {
+            const isMatch = d.name.toLowerCase().includes(drinkName.toLowerCase()) ||
+                          drinkName.toLowerCase().includes(d.name.toLowerCase());
+            console.log('Checking drink:', d.name, 'Match:', isMatch);
+            return isMatch;
+          });
 
           if (matchedDrink) {
-            onAddToCart({ type: 'ADD_ITEM', drink: matchedDrink, quantity });
+            console.log('Adding to cart:', { drink: matchedDrink, quantity });
+            // Ensure onAddToCart is called with the correct structure
+            onAddToCart({ 
+              type: 'ADD_ITEM', 
+              drink: { 
+                id: matchedDrink.id,
+                name: matchedDrink.name,
+                price: matchedDrink.price,
+                category: matchedDrink.category
+              }, 
+              quantity 
+            });
             addedItems.push(`${quantity} ${matchedDrink.name}`);
           }
         }
@@ -188,7 +232,7 @@ export function useVoiceCommands({
         if (addedItems.length > 0) {
           const itemsList = addedItems.join(' and ');
           await respondWith(
-            `I've added ${itemsList} to your order. Say 'complete order' when you're ready to finish.`,
+            `I've added ${itemsList} to your order. Your total is $${calculateTotal(cart)}. Say 'complete order' when you're ready to finish.`,
             "excited"
           );
 
@@ -208,7 +252,7 @@ export function useVoiceCommands({
       // Help command
       if (/help|what can i say|commands/.test(command)) {
         await respondWith(
-          "You can order drinks by saying things like 'I want a Moscow Mule' or 'get me two beers'. Say 'complete order' or 'process order' to finalize your purchase.",
+          "You can order drinks by saying things like 'I want a Moscow Mule' or 'get me two beers'. Say 'complete order' or 'process order' to finalize your purchase. Your current total is $" + calculateTotal(cart),
           "excited"
         );
         return;
@@ -233,7 +277,13 @@ export function useVoiceCommands({
         "apologetic"
       );
     }
-  }, [drinks, onAddToCart, respondWith, stopListening, toast, processOrder]);
+  }, [drinks, onAddToCart, respondWith, stopListening, toast, processOrder, cart]);
+
+  // Helper function to calculate total
+  const calculateTotal = (cartItems: Array<{ drink: { price: number }; quantity: number }>) => {
+    const total = cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
+    return total.toFixed(2);
+  };
 
   // Start listening function
   const startListening = useCallback(async () => {

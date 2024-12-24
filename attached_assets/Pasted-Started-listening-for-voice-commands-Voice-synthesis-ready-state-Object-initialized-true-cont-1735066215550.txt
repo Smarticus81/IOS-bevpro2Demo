@@ -1,0 +1,62 @@
+Started listening for voice commands
+Voice synthesis ready state: 
+Object {initialized: true, contextExists: true, contextState: "running", ready: true}
+Attempting to speak: 
+Object {text: "Voice commands activated. I'm listening and ready ...", voice: "alloy", emotion: "excited"}
+Generating speech with OpenAI... 
+Object {voice: "fable", speed: 1.15}
+Initializing OpenAI client...
+Audio capturing started
+OpenAI client initialized and tested successfully
+Speech generated successfully, preparing for playback
+Setting up audio playback...
+Starting audio playback...
+Audio playback completed successfully
+Voice command recognized: I want a Moscow Mule two white Claws and three Bud Lights
+Processing voice command: i want a moscow mule two white claws and three bud lights
+Voice synthesis ready state: 
+Object {initialized: true, contextExists: true, contextState: "running", ready: true}
+Attempting to speak: 
+Object {text: "I've added 2 White Claw and 3 Bud Light to your or...", voice: "alloy", emotion: "excited"}
+Generating speech with OpenAI... 
+Object {voice: "fable", speed: 1.15}
+Speech generated successfully, preparing for playback
+Setting up audio playback...
+Starting audio playback...
+`DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
+
+If you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.
+
+For more information, see https://radix-ui.com/primitives/docs/components/dialog
+Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+`DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
+
+If you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.
+
+For more information, see https://radix-ui.com/primitives/docs/components/dialog
+Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+`DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
+
+If you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.
+
+For more information, see https://radix-ui.com/primitives/docs/components/dialog
+Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+`DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
+
+If you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.
+
+For more information, see https://radix-ui.com/primitives/docs/components/dialog
+Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+Audio playback completed successfully
+Voice command recognized:  complete order
+Processing voice command: complete order
+Voice synthesis ready state: 
+Object {initialized: true, contextExists: true, contextState: "running", ready: true}
+Attempting to speak: 
+Object {text: "Your cart is empty. Would you like to order some d...", voice: "alloy", emotion: "apologetic"}
+Generating speech with OpenAI... 
+Object {voice: "shimmer", speed: 0.95}
+Speech generated successfully, preparing for playback
+Setting up audio playback...
+Starting audio playback...
+Audio playback completed successfully
