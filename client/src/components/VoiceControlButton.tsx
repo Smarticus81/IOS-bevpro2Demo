@@ -23,73 +23,74 @@ export function VoiceControlButton({
   // Fetch drinks data
   const { data: drinks = [], isLoading: isDrinksLoading } = useQuery<any[]>({
     queryKey: ["/api/drinks"],
+    retry: 1,
+    staleTime: 30000, // Cache drinks data for 30 seconds
   });
 
-  // Validate required props and data
-  const hasRequiredProps = onAddToCart && onRemoveItem && onPlaceOrder;
-  const isReady = !isDrinksLoading && Array.isArray(drinks) && drinks.length > 0;
-
-  // Initialize voice commands with validated dependencies
+  // Initialize voice commands with proper dependency checks
   const { 
     isListening, 
     startListening, 
     stopListening, 
     isSupported 
   } = useVoiceCommands({
-    drinks,
+    drinks: isDrinksLoading ? [] : drinks,
     cart,
-    onAddToCart,
-    onRemoveItem,
-    onPlaceOrder
+    onAddToCart: drinks.length > 0 ? onAddToCart : undefined,
+    onRemoveItem: drinks.length > 0 ? onRemoveItem : undefined,
+    onPlaceOrder: drinks.length > 0 ? onPlaceOrder : undefined
   });
 
   const handleClick = async () => {
     try {
-      if (!hasRequiredProps) {
-        toast({
-          title: "Not Ready",
-          description: "Required functions are not available.",
-          variant: "destructive",
-        });
-        return;
-      }
-
       if (!isSupported) {
         toast({
-          title: "Not Supported",
+          title: "Voice Control",
           description: "Voice commands are not supported in this browser.",
           variant: "destructive",
         });
         return;
       }
 
-      if (!isReady) {
+      if (isDrinksLoading) {
         toast({
           title: "Loading",
-          description: "Please wait while we load the menu data.",
+          description: "Please wait while we load the menu...",
+        });
+        return;
+      }
+
+      if (!drinks.length) {
+        toast({
+          title: "Error",
+          description: "Menu data is not available. Please try again later.",
+          variant: "destructive",
         });
         return;
       }
 
       if (isListening) {
         await stopListening();
+        toast({
+          title: "Voice Control",
+          description: "Voice commands stopped",
+        });
       } else {
         await startListening();
+        toast({
+          title: "Voice Control",
+          description: "Listening for commands... Try saying 'help' to learn what I can do",
+        });
       }
     } catch (error) {
       console.error('Voice control error:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred with voice control",
+        description: error instanceof Error ? error.message : "Failed to process voice command",
         variant: "destructive",
       });
     }
   };
-
-  // Don't render if dependencies aren't ready
-  if (!hasRequiredProps || !isReady) {
-    return null;
-  }
 
   return (
     <AnimatePresence mode="wait">
@@ -97,7 +98,7 @@ export function VoiceControlButton({
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="fixed bottom-6 right-6 z-50 flex gap-2"
+        className="fixed bottom-6 right-6 z-50"
       >
         <Button
           onClick={handleClick}
@@ -107,7 +108,7 @@ export function VoiceControlButton({
               ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
               : 'bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black'
             }`}
-          disabled={!isSupported || !isReady}
+          disabled={!isSupported || isDrinksLoading}
           title={isListening ? "Stop voice commands" : "Start voice commands"}
         >
           <AnimatePresence mode="wait">

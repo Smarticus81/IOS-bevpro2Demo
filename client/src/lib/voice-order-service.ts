@@ -50,38 +50,33 @@ interface VoiceOrderResult {
   isShutdown?: boolean;
 }
 
-async function transcribeAudio(audioFile: File): Promise<string> {
+async function transcribeAudio(audioFile: Blob): Promise<string> {
   if (!openai) throw new Error('Voice processing service is not configured');
 
-  const transcription = await openai.audio.transcriptions.create({
-    file: audioFile,
-    model: "whisper-1",
-    language: "en",
-    response_format: "json",
+  const formData = new FormData();
+  formData.append('file', audioFile, 'voice-order.wav');
+  formData.append('model', 'whisper-1');
+  formData.append('language', 'en');
+  formData.append('response_format', 'json');
+
+  const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+    },
+    body: formData
   });
 
-  if (!transcription.text) {
+  if (!response.ok) {
+    throw new Error('Failed to transcribe audio');
+  }
+
+  const data = await response.json();
+  if (!data.text) {
     throw new Error('No speech detected');
   }
 
-  return transcription.text;
-}
-
-// Placeholder for the efficient local parser.  Implementation details omitted as they were not provided.
-function parseVoiceCommand(text: string): { items: Array<{ name: string; quantity: number; modifiers: string[] }> } | null {
-  //Implementation for local parsing would go here.  This is a placeholder.
-  //A robust implementation would require significant logic to handle variations in speech.
-  //This example only handles a very simple case.
-  const textLower = text.toLowerCase();
-  if (textLower.includes("diet coke") && textLower.includes("vodka and coke")) {
-    return {
-      items: [
-        { name: "Diet Coke", quantity: 3, modifiers: [] },
-        { name: "Vodka and Coke", quantity: 1, modifiers: [] }
-      ]
-    };
-  }
-  return null;
+  return data.text;
 }
 
 async function processTranscription(text: string): Promise<VoiceOrderResult['order']> {
@@ -91,17 +86,10 @@ async function processTranscription(text: string): Promise<VoiceOrderResult['ord
   const completionCommands = ['complete', 'finish', 'done', 'checkout', 'pay', 'confirm', 'process', 'submit'];
   const normalizedText = text.toLowerCase().trim();
   const words = normalizedText.split(/\s+/);
-  
-  console.log('Processing voice input:', {
-    originalText: text,
-    normalizedText,
-    words,
-    timestamp: new Date().toISOString()
-  });
 
   // Check for completion phrases
   const isCompletionCommand = completionCommands.some(cmd => {
-    const isCommand = words.some(word => {
+    return words.some(word => {
       const match = word === cmd || 
                    (word.includes(cmd) && word.length <= cmd.length + 2) ||
                    (cmd === 'complete' && word === 'completing') ||
@@ -110,73 +98,27 @@ async function processTranscription(text: string): Promise<VoiceOrderResult['ord
         console.log('Detected completion command:', {
           command: cmd,
           matchedWord: word,
-          fullText: normalizedText,
-          timestamp: new Date().toISOString()
+          fullText: normalizedText
         });
       }
       return match;
     });
-    return isCommand;
   });
 
   if (isCompletionCommand) {
-    console.log('Processing completion command:', {
-      text: normalizedText,
-      timestamp: new Date().toISOString()
-    });
     return {
       items: [],
       specialInstructions: 'complete_order'
     };
   }
 
-  // Check for shutdown commands next
+  // Check for shutdown commands
   const shutdownCommands = ['stop', 'shutdown', 'quit', 'exit', 'end'];
   if (shutdownCommands.some(cmd => text.toLowerCase().includes(cmd))) {
     return {
       items: [],
       specialInstructions: 'shutdown_requested'
     };
-  }
-
-  console.log('Processing transcription:', text);
-  
-  // Get available drinks from the inventory
-  try {
-    const drinksResponse = await fetch('/api/drinks', {
-      credentials: 'include'
-    });
-    
-    if (!drinksResponse.ok) {
-      throw new Error('Failed to fetch drinks inventory');
-    }
-    
-    const availableDrinks = await drinksResponse.json();
-    console.log('Available drinks:', availableDrinks.length);
-    
-    // Try efficient local parsing with inventory data
-    const parsedCommand = parseVoiceCommand(text, availableDrinks);
-    console.log('Parser result:', parsedCommand);
-    
-    if (parsedCommand?.items?.length > 0) {
-      const result = {
-        items: parsedCommand.items.map(item => ({
-          name: item.name,
-          quantity: item.quantity,
-          customizations: item.modifiers
-        }))
-      };
-      console.log('Successfully parsed command with inventory:', result);
-      return result;
-    } else {
-      console.log('No valid items found in command');
-    }
-  } catch (error) {
-    const err = error instanceof Error ? error : new Error('Unknown error in command parsing');
-    console.error('Local parsing failed:', {
-      error: err.message,
-      timestamp: new Date().toISOString()
-    });
   }
 
   // Fallback to OpenAI for complex queries
@@ -198,20 +140,20 @@ async function processTranscription(text: string): Promise<VoiceOrderResult['ord
             "specialInstructions": "any special instructions"
           }
 
+          For demo purposes, all orders will be considered valid and processed without payment verification.
           If you detect a command to stop or shutdown, return an empty items array with specialInstructions: "shutdown_requested"`
-        },
-        {
-          role: "user",
-          content: text
-        }
-      ],
+      },
+      {
+        role: "user",
+        content: text
+      }
+    ],
     response_format: { type: "json_object" },
     temperature: 0.3,
     max_tokens: 500
   });
 
-  const result = JSON.parse(completion.choices[0].message.content);
-  return result;
+  return JSON.parse(completion.choices[0].message.content);
 }
 
 export async function processVoiceOrder(audioBlob: Blob): Promise<VoiceOrderResult> {
@@ -223,32 +165,20 @@ export async function processVoiceOrder(audioBlob: Blob): Promise<VoiceOrderResu
     };
   }
 
-  const commandId = `voice-${Date.now()}`;
-  console.log('Starting voice order processing:', {
-    commandId,
-    blobType: audioBlob.type,
-    blobSize: audioBlob.size,
-    timestamp: new Date().toISOString()
-  });
-
   try {
-    return await voiceCommandDebouncer(commandId, async () => {
+    return await voiceCommandDebouncer('voice-command', async () => {
       if (!openai) {
         console.warn('OpenAI service not initialized, voice features will be limited');
       }
-      
-      // Convert webm to wav for Whisper API compatibility
-      const audioFile = new File([audioBlob], "voice-order.wav", { 
-        type: "audio/wav" 
-      });
 
-      const transcribedText = await transcribeAudio(audioFile);
-      console.log('Transcribed text:', { commandId, text: transcribedText });
-
-      const orderDetails = await orderProcessingDebouncer(
-        `order-${commandId}`, 
-        () => processTranscription(transcribedText)
+      const transcribedText = await transcribeAudio(audioBlob);
+      const orderDetails = await orderProcessingDebouncer('process-order', () => 
+        processTranscription(transcribedText)
       );
+
+      if (!orderDetails) {
+        throw new Error('Failed to process voice command');
+      }
 
       return {
         success: true,
@@ -257,7 +187,7 @@ export async function processVoiceOrder(audioBlob: Blob): Promise<VoiceOrderResu
       };
     });
   } catch (error) {
-    console.error('Error processing voice order:', { commandId, error });
+    console.error('Error processing voice order:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to process voice order'
@@ -269,7 +199,7 @@ export async function synthesizeOrderConfirmation(order: VoiceOrderResult['order
   if (!order || !openai) return '';
 
   try {
-    return await audioSynthesisDebouncer('synthesis', async () => {
+    return await audioSynthesisDebouncer('synthesize-speech', async () => {
       const response = await openai.audio.speech.create({
         model: "tts-1",
         voice: "nova",
@@ -293,6 +223,10 @@ function generateConfirmationMessage(order: VoiceOrderResult['order']): string {
     return "Voice ordering has been disabled. Tap the microphone icon to enable it again.";
   }
 
+  if (order.specialInstructions === 'complete_order') {
+    return "Processing your order now. Thank you for your business!";
+  }
+
   const itemDescriptions = order.items.map(item => {
     const customizations = item.customizations?.length 
       ? ` with ${item.customizations.join(', ')}`
@@ -301,7 +235,7 @@ function generateConfirmationMessage(order: VoiceOrderResult['order']): string {
   }).join(', ');
 
   let message = `I've got your order: ${itemDescriptions}.`;
-  if (order.specialInstructions && order.specialInstructions !== 'shutdown_requested') {
+  if (order.specialInstructions && order.specialInstructions !== 'complete_order') {
     message += ` Special instructions: ${order.specialInstructions}.`;
   }
   message += " Is this correct?";

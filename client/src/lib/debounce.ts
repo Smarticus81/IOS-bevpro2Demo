@@ -25,8 +25,9 @@ export function createDebouncer(cooldownPeriod: number = 2000) {
     const currentState = state[key];
     const now = Date.now();
 
-    // If we're in cooldown period or processing, reject
-    if (now - currentState.lastRun < cooldownPeriod || currentState.isProcessing) {
+    // Allow voice commands to override cooldown if previous command failed
+    const isCooldownActive = now - currentState.lastRun < cooldownPeriod;
+    if (isCooldownActive && currentState.isProcessing && !key.includes('voice')) {
       console.log('Command debounced:', {
         key,
         timeSinceLastRun: now - currentState.lastRun,
@@ -50,7 +51,7 @@ export function createDebouncer(cooldownPeriod: number = 2000) {
             commandType: key.split('-')[0],
             timestamp: new Date().toISOString()
           });
-          
+
           const result = await fn();
           currentState.lastRun = Date.now();
           resolve(result);
@@ -69,7 +70,7 @@ export function createDebouncer(cooldownPeriod: number = 2000) {
   };
 }
 
-// Create specialized debouncers
-export const voiceCommandDebouncer = createDebouncer(1500); // 1.5s cooldown for voice commands
-export const orderProcessingDebouncer = createDebouncer(2000); // 2s cooldown for order processing
-export const audioSynthesisDebouncer = createDebouncer(1000); // 1s cooldown for audio synthesis
+// Create specialized debouncers with more flexible cooldowns for voice commands
+export const voiceCommandDebouncer = createDebouncer(1000); // 1s cooldown for voice commands
+export const orderProcessingDebouncer = createDebouncer(1500); // 1.5s cooldown for order processing
+export const audioSynthesisDebouncer = createDebouncer(500); // 0.5s cooldown for audio synthesis

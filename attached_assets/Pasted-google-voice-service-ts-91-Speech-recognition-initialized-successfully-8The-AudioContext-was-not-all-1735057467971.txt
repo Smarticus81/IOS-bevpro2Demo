@@ -1,0 +1,162 @@
+google-voice-service.ts:91 Speech recognition initialized successfully
+8The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. <URL>Understand this warningAI
+sound-effects.ts:43 Audio context initialized successfully
+use-voice-commands.ts:40 Missing required dependencies: {hasDrinks: true, hasAddToCart: false, hasRemoveItem: false, hasPlaceOrder: false}
+useVoiceCommands @ use-voice-commands.ts:40
+VoiceControlButton @ VoiceControlButton.tsx:38
+renderWithHooks @ chunk-RPCDYKBN.js?v=d6ffdfe1:11548
+mountIndeterminateComponent @ chunk-RPCDYKBN.js?v=d6ffdfe1:14926
+beginWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:15914
+beginWork$1 @ chunk-RPCDYKBN.js?v=d6ffdfe1:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=d6ffdfe1:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=d6ffdfe1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=d6ffdfe1:18627Understand this errorAI
+use-voice-commands.ts:40 Missing required dependencies: {hasDrinks: true, hasAddToCart: false, hasRemoveItem: false, hasPlaceOrder: false}
+useVoiceCommands @ use-voice-commands.ts:40
+VoiceControlButton @ VoiceControlButton.tsx:38
+renderWithHooks @ chunk-RPCDYKBN.js?v=d6ffdfe1:11548
+mountIndeterminateComponent @ chunk-RPCDYKBN.js?v=d6ffdfe1:14926
+beginWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:15914
+callCallback2 @ chunk-RPCDYKBN.js?v=d6ffdfe1:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=d6ffdfe1:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=d6ffdfe1:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=d6ffdfe1:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=d6ffdfe1:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=d6ffdfe1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=d6ffdfe1:18627Understand this errorAI
+use-voice-commands.ts:46 Uncaught Error: Required dependencies missing
+    at useVoiceCommands (use-voice-commands.ts:46:11)
+    at VoiceControlButton (VoiceControlButton.tsx:38:7)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=d6ffdfe1:11548:26)
+    at mountIndeterminateComponent (chunk-RPCDYKBN.js?v=d6ffdfe1:14926:21)
+    at beginWork (chunk-RPCDYKBN.js?v=d6ffdfe1:15914:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=d6ffdfe1:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=d6ffdfe1:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=d6ffdfe1:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=d6ffdfe1:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=d6ffdfe1:19198:20)
+useVoiceCommands @ use-voice-commands.ts:46
+VoiceControlButton @ VoiceControlButton.tsx:38
+renderWithHooks @ chunk-RPCDYKBN.js?v=d6ffdfe1:11548
+mountIndeterminateComponent @ chunk-RPCDYKBN.js?v=d6ffdfe1:14926
+beginWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:15914
+callCallback2 @ chunk-RPCDYKBN.js?v=d6ffdfe1:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=d6ffdfe1:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=d6ffdfe1:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=d6ffdfe1:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=d6ffdfe1:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=d6ffdfe1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=d6ffdfe1:18627Understand this errorAI
+use-voice-commands.ts:40 Missing required dependencies: {hasDrinks: true, hasAddToCart: false, hasRemoveItem: false, hasPlaceOrder: false}
+useVoiceCommands @ use-voice-commands.ts:40
+VoiceControlButton @ VoiceControlButton.tsx:38
+renderWithHooks @ chunk-RPCDYKBN.js?v=d6ffdfe1:11548
+mountIndeterminateComponent @ chunk-RPCDYKBN.js?v=d6ffdfe1:14926
+beginWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:15914
+beginWork$1 @ chunk-RPCDYKBN.js?v=d6ffdfe1:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19116
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=d6ffdfe1:18736
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=d6ffdfe1:18879
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=d6ffdfe1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=d6ffdfe1:18627Understand this errorAI
+use-voice-commands.ts:40 Missing required dependencies: {hasDrinks: true, hasAddToCart: false, hasRemoveItem: false, hasPlaceOrder: false}
+useVoiceCommands @ use-voice-commands.ts:40
+VoiceControlButton @ VoiceControlButton.tsx:38
+renderWithHooks @ chunk-RPCDYKBN.js?v=d6ffdfe1:11548
+mountIndeterminateComponent @ chunk-RPCDYKBN.js?v=d6ffdfe1:14926
+beginWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:15914
+callCallback2 @ chunk-RPCDYKBN.js?v=d6ffdfe1:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=d6ffdfe1:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=d6ffdfe1:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=d6ffdfe1:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19116
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=d6ffdfe1:18736
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=d6ffdfe1:18879
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=d6ffdfe1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=d6ffdfe1:18627Understand this errorAI
+use-voice-commands.ts:46 Uncaught Error: Required dependencies missing
+    at useVoiceCommands (use-voice-commands.ts:46:11)
+    at VoiceControlButton (VoiceControlButton.tsx:38:7)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=d6ffdfe1:11548:26)
+    at mountIndeterminateComponent (chunk-RPCDYKBN.js?v=d6ffdfe1:14926:21)
+    at beginWork (chunk-RPCDYKBN.js?v=d6ffdfe1:15914:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=d6ffdfe1:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=d6ffdfe1:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=d6ffdfe1:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=d6ffdfe1:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=d6ffdfe1:19198:20)
+useVoiceCommands @ use-voice-commands.ts:46
+VoiceControlButton @ VoiceControlButton.tsx:38
+renderWithHooks @ chunk-RPCDYKBN.js?v=d6ffdfe1:11548
+mountIndeterminateComponent @ chunk-RPCDYKBN.js?v=d6ffdfe1:14926
+beginWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:15914
+callCallback2 @ chunk-RPCDYKBN.js?v=d6ffdfe1:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=d6ffdfe1:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=d6ffdfe1:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=d6ffdfe1:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19116
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=d6ffdfe1:18736
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=d6ffdfe1:18879
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=d6ffdfe1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=d6ffdfe1:18627Understand this errorAI
+chunk-RPCDYKBN.js?v=d6ffdfe1:14032 The above error occurred in the <VoiceControlButton> component:
+
+    at VoiceControlButton (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/src/components/VoiceControlButton.tsx?t=1735056453737:25:3)
+    at App (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/src/App.tsx?t=1735056453737:32:39)
+    at QueryClientProvider (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/@fs/home/runner/IOS-bevpro/node_modules/.vite/deps/@tanstack_react-query.js?v=d6ffdfe1:2805:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-RPCDYKBN.js?v=d6ffdfe1:14032
+update.callback @ chunk-RPCDYKBN.js?v=d6ffdfe1:14052
+callCallback @ chunk-RPCDYKBN.js?v=d6ffdfe1:11248
+commitUpdateQueue @ chunk-RPCDYKBN.js?v=d6ffdfe1:11265
+commitLayoutEffectOnFiber @ chunk-RPCDYKBN.js?v=d6ffdfe1:17093
+commitLayoutMountEffects_complete @ chunk-RPCDYKBN.js?v=d6ffdfe1:17980
+commitLayoutEffects_begin @ chunk-RPCDYKBN.js?v=d6ffdfe1:17969
+commitLayoutEffects @ chunk-RPCDYKBN.js?v=d6ffdfe1:17920
+commitRootImpl @ chunk-RPCDYKBN.js?v=d6ffdfe1:19353
+commitRoot @ chunk-RPCDYKBN.js?v=d6ffdfe1:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=d6ffdfe1:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=d6ffdfe1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=d6ffdfe1:18627Understand this errorAI
+chunk-RPCDYKBN.js?v=d6ffdfe1:9129 Uncaught Error: Required dependencies missing
+    at useVoiceCommands (use-voice-commands.ts:46:11)
+    at VoiceControlButton (VoiceControlButton.tsx:38:7)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=d6ffdfe1:11548:26)
+    at mountIndeterminateComponent (chunk-RPCDYKBN.js?v=d6ffdfe1:14926:21)
+    at beginWork (chunk-RPCDYKBN.js?v=d6ffdfe1:15914:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=d6ffdfe1:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=d6ffdfe1:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=d6ffdfe1:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js?v=d6ffdfe1:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js?v=d6ffdfe1:18736:28)
+useVoiceCommands @ use-voice-commands.ts:46
+VoiceControlButton @ VoiceControlButton.tsx:38
+renderWithHooks @ chunk-RPCDYKBN.js?v=d6ffdfe1:11548
+mountIndeterminateComponent @ chunk-RPCDYKBN.js?v=d6ffdfe1:14926
+beginWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:15914
+beginWork$1 @ chunk-RPCDYKBN.js?v=d6ffdfe1:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19116
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=d6ffdfe1:18736
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=d6ffdfe1:18879
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=d6ffdfe1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=d6ffdfe1:18627Understand this errorAI
+voice-synthesis.ts:25 AudioContext resumed successfully
