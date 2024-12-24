@@ -22,36 +22,6 @@ interface VoiceCommandsProps {
   onPlaceOrder: () => void;
 }
 
-// Helper function to parse voice commands
-const parseVoiceCommand = (command: string, drinks: VoiceCommandsProps['drinks']): { type: 'system' | 'order'; action?: 'stop' | 'help' | 'repeat'; items?: Array<{ name: string; quantity: number }> } | null => {
-  const systemCommands = {
-    stop: /stop listening/i,
-    help: /(?:help|what can I say|commands|menu|what can you do)/i,
-    repeat: /(?:repeat that|say that again|what did you say)/i,
-  };
-
-  for (const [action, pattern] of Object.entries(systemCommands)) {
-    if (pattern.test(command)) {
-      return { type: 'system', action };
-    }
-  }
-
-
-  const orderPattern = /(?:add|order|get me|i want|i would like|i'd like|give me) (?:a |an )?([\w\s]+)(?:\s+(\d+))?/gi;
-  const matches = [];
-  let match;
-  while ((match = orderPattern.exec(command)) !== null) {
-    matches.push({ name: match[1].trim(), quantity: parseInt(match[2] || "1") });
-  }
-
-  if (matches.length > 0) {
-    return { type: 'order', items: matches };
-  }
-
-  return null;
-};
-
-
 export function useVoiceCommands({
   drinks = [],
   cart = [],
@@ -95,6 +65,30 @@ export function useVoiceCommands({
     }
   }, [toast]);
 
+  // Define stopListening before handleVoiceCommand
+  const stopListening = useCallback(async () => {
+    try {
+      await googleVoiceService.stopListening();
+      setIsListening(false);
+
+      voiceSynthesis.speak("Voice commands deactivated.")
+        .catch(error => console.error('Error speaking deactivation message:', error));
+
+      toast({
+        title: "Voice Commands Stopped",
+        description: "Voice recognition is now inactive.",
+      });
+    } catch (error: any) {
+      console.error('Failed to stop voice commands:', error);
+      setIsListening(false);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to stop voice recognition",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
   const handleVoiceCommand = useCallback(async (text: string) => {
     if (!text) return;
 
@@ -118,146 +112,87 @@ export function useVoiceCommands({
 
     setLastCommand({ text: command, timestamp: now });
 
-    // Parse the command using the enhanced parser
-    const parsedCommand = parseVoiceCommand(command, drinks);
+    // Check for system commands first
+    if (/stop|end|quit|exit/.test(command)) {
+      await respondWith("Voice commands deactivated.", "alloy", "neutral");
+      await stopListening();
+      return;
+    }
 
-    if (!parsedCommand) {
+    // Help command
+    if (/help|what can i say|commands/.test(command)) {
       await respondWith(
-        `I heard you say: ${text}. I apologize, but I didn't quite understand that. Try saying 'help' to learn what I can do.`,
-        "shimmer",
-        "apologetic"
+        "You can order drinks by saying things like 'I want a Moscow Mule' or 'get me two beers'. You can also say 'stop' to turn off voice commands.",
+        "fable",
+        "excited"
       );
       return;
     }
 
-    // Handle different command types
-    switch (parsedCommand.type) {
-      case 'system':
-        switch (parsedCommand.action) {
-          case 'stop':
-            await respondWith("Voice commands deactivated.", "alloy", "neutral");
-            stopListening();
-            break;
-          case 'help':
-            await respondWith(
-              "You can order drinks by saying 'I want a [drink name]', modify orders with 'make that 2 [drink name]', ask about drinks with 'tell me about [drink name]', or complete your order by saying 'confirm order'. You can also navigate pages by saying 'go to [page name]'.",
-              "fable",
-              "excited"
-            );
-            break;
-          case 'repeat':
-            if (lastResponse) {
-              await respondWith(lastResponse, "alloy", "neutral");
-            } else {
-              await respondWith(
-                "I don't have anything to repeat yet. How can I help you?",
-                "alloy",
-                "neutral"
-              );
-            }
-            break;
+    // Order matching
+    const orderMatch = command.match(/(?:get|order|give|i want|i'll have|i would like)\s+(?:a |an |some )?(.+)/i);
+    if (orderMatch) {
+      const orderText = orderMatch[1];
+      // Split multiple items
+      const items = orderText.split(/\s+and\s+|\s*,\s*/);
+
+      for (const item of items) {
+        const quantityMatch = item.match(/(\d+|a|one|two|three|four|five)\s+(.+)/i);
+        let quantity = 1;
+        let drinkName = item;
+
+        if (quantityMatch) {
+          const [_, qStr, dName] = quantityMatch;
+          quantity = parseInt(qStr) || 
+                    { 'a': 1, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5 }[qStr.toLowerCase()] || 
+                    1;
+          drinkName = dName;
         }
-        break;
 
-      case 'order':
-        if (parsedCommand.items) {
-          for (const item of parsedCommand.items) {
-            const matchedDrink = drinks.find(d => d.name === item.name);
-            if (matchedDrink) {
-              onAddToCart({ type: 'ADD_ITEM', drink: matchedDrink, quantity: item.quantity });
-            }
-          }
+        const matchedDrink = drinks.find(d => 
+          d.name.toLowerCase().includes(drinkName.toLowerCase()) ||
+          drinkName.toLowerCase().includes(d.name.toLowerCase())
+        );
 
-          const itemDescriptions = parsedCommand.items
-            .map(item => `${item.quantity} ${item.name}`)
-            .join(' and ');
-
-          await respondWith(
-            `Added ${itemDescriptions} to your order. Would you like anything else?`,
-            "fable",
-            "excited"
-          );
-
-          toast({
-            title: "Added to Order",
-            description: `Added ${itemDescriptions}`,
-          });
+        if (matchedDrink) {
+          onAddToCart({ type: 'ADD_ITEM', drink: matchedDrink, quantity });
         }
-        break;
+      }
 
-      // Handle other command types...
+      await respondWith(
+        `I've added your drinks to the order. Would you like anything else?`,
+        "fable",
+        "excited"
+      );
+      return;
     }
-  }, [drinks, cart, lastCommand, lastResponse, onAddToCart, onRemoveItem, onPlaceOrder, respondWith, stopListening]);
 
-  const findDrink = useCallback((name: string) => {
-    // Remove common filler words and normalize input
-    const normalizedInput = name.toLowerCase()
-      .replace(/please|get|me|a|an|some|the/g, '')
-      .trim();
-    
-    console.log('Searching for drink:', {
-      originalInput: name,
-      normalizedInput,
-      availableDrinks: drinks.map(d => d.name.toLowerCase())
-    });
-    
-    // First try exact match
-    const exactMatch = drinks.find(d => 
-      d.name.toLowerCase() === normalizedInput
+    // Fallback for unrecognized commands
+    await respondWith(
+      `I heard you say: ${text}. I apologize, but I didn't quite understand that. Try saying 'help' to learn what I can do.`,
+      "shimmer",
+      "apologetic"
     );
-    
-    if (exactMatch) {
-      console.log('Found exact match:', exactMatch.name);
-      return exactMatch;
-    }
-    
-    // Then try partial matches with word boundaries
-    const partialMatches = drinks.filter(d => {
-      const drinkName = d.name.toLowerCase();
-      return drinkName.includes(normalizedInput) ||
-             normalizedInput.includes(drinkName) ||
-             // Handle special cases like "cooler" variants
-             (drinkName.includes('cooler') && normalizedInput.includes('cooler'));
-    });
-    
-    if (partialMatches.length > 0) {
-      // If multiple matches, prefer the shortest name as it's likely more specific
-      const bestMatch = partialMatches.sort((a, b) => a.name.length - b.name.length)[0];
-      console.log('Found best partial match:', {
-        searchTerm: normalizedInput,
-        matchedDrink: bestMatch.name,
-        allMatches: partialMatches.map(d => d.name)
-      });
-      return bestMatch;
-    }
-    
-    console.log('No drink match found:', {
-      searchTerm: normalizedInput,
-      availableDrinks: drinks.map(d => d.name)
-    });
-    return null;
-  }, [drinks]);
+  }, [drinks, cart, lastCommand, onAddToCart, respondWith, stopListening]);
 
   const startListening = useCallback(async () => {
     console.log('Attempting to start voice recognition...', {
       drinksAvailable: drinks.length,
       hasAddToCart: !!onAddToCart,
-      hasRemoveItem: !!onRemoveItem,
-      hasPlaceOrder: !!onPlaceOrder,
-      cartItems: cart.length,
+      cartSize: cart.length,
       isVoiceSupported: googleVoiceService.isSupported()
     });
-    
+
     try {
       // Verify required props and data
       if (!drinks.length) {
         throw new Error('Drinks data not loaded');
       }
-      
+
       if (typeof onAddToCart !== 'function') {
         throw new Error('Add to cart function not provided');
       }
-      
+
       if (!googleVoiceService.isSupported()) {
         console.warn('Speech recognition not supported');
         toast({
@@ -267,13 +202,13 @@ export function useVoiceCommands({
         });
         return;
       }
-      
+
       console.log('Speech recognition supported, initializing...');
       await googleVoiceService.startListening(handleVoiceCommand);
-      
+
       setIsListening(true);
       console.log('Voice recognition started successfully');
-      
+
       try {
         await voiceSynthesis.speak(
           "Voice commands activated. I'm listening and ready to help!",
@@ -283,7 +218,7 @@ export function useVoiceCommands({
       } catch (synthError) {
         console.error('Error with voice synthesis, falling back to text only:', synthError);
       }
-      
+
       toast({
         title: "Voice Commands Active",
         description: "Listening for your commands...",
@@ -291,44 +226,21 @@ export function useVoiceCommands({
     } catch (error: any) {
       console.error('Failed to start voice commands:', error);
       setIsListening(false);
-      
+
       const errorMessage = error.message || "Failed to start voice recognition. Please check microphone permissions.";
       console.error('Voice command error details:', errorMessage);
-      
+
       toast({
         title: "Error",
         description: errorMessage,
         variant: "destructive",
       });
     }
-  }, [handleVoiceCommand, toast]);
-
-  const stopListening = useCallback(async () => {
-    try {
-      await googleVoiceService.stopListening();
-      setIsListening(false);
-      
-      voiceSynthesis.speak("Voice commands deactivated.")
-        .catch(error => console.error('Error speaking deactivation message:', error));
-      
-      toast({
-        title: "Voice Commands Stopped",
-        description: "Voice recognition is now inactive.",
-      });
-    } catch (error: any) {
-      console.error('Failed to stop voice commands:', error);
-      setIsListening(false);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to stop voice recognition",
-        variant: "destructive",
-      });
-    }
-  }, [toast]);
+  }, [drinks, onAddToCart, toast, handleVoiceCommand]);
 
   useEffect(() => {
     let mounted = true;
-    
+
     return () => {
       mounted = false;
       if (isListening) {
