@@ -25,23 +25,13 @@ export function VoiceControlButton({
 
   // Ensure we have the drinks data before enabling voice commands
   const isReady = !isDrinksLoading && drinks.length > 0;
-  
+
   console.log('VoiceControlButton state:', {
     isDrinksLoading,
     drinksCount: drinks.length,
     hasAddToCart: !!onAddToCart,
     cartItems: cart.length
   });
-  
-  // Validate required props
-  if (!onAddToCart || !onRemoveItem || !onPlaceOrder) {
-    console.error('Missing required props:', { 
-      hasAddToCart: !!onAddToCart,
-      hasRemoveItem: !!onRemoveItem,
-      hasPlaceOrder: !!onPlaceOrder
-    });
-    return null;
-  }
 
   const { isListening, startListening, stopListening, isSupported } = useVoiceCommands({
     drinks,
@@ -50,7 +40,7 @@ export function VoiceControlButton({
     onRemoveItem,
     onPlaceOrder
   });
-  
+
   const { toast } = useToast();
 
   const handleClick = async () => {
@@ -60,7 +50,7 @@ export function VoiceControlButton({
         isListening,
         hookState: 'initialized'
       });
-      
+
       if (!isSupported) {
         console.warn('Voice commands not supported in this browser');
         toast({
@@ -88,8 +78,8 @@ export function VoiceControlButton({
     }
   };
 
-  // Don't render if speech recognition is not supported
-  if (!isSupported) {
+  // Don't render if not ready
+  if (!isReady) {
     return null;
   }
 
@@ -153,7 +143,7 @@ export function VoiceControlButton({
             )}
           </AnimatePresence>
         </Button>
-        
+
         <Button
           onClick={handleTestVoice}
           size="lg"
