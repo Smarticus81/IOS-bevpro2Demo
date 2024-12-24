@@ -44,6 +44,16 @@ export function VoiceControlButton({
 
   const handleClick = async () => {
     try {
+      console.log('Voice button clicked:', {
+        isSupported,
+        isDrinksLoading,
+        hasHandlers: {
+          addToCart: !!onAddToCart,
+          removeItem: !!onRemoveItem,
+          placeOrder: !!onPlaceOrder
+        }
+      });
+
       if (!isSupported) {
         toast({
           title: "Voice Control",
