@@ -1,3 +1,5 @@
+import { useToast } from "@/hooks/use-toast";
+
 interface CreatePaymentParams {
   amount: number;
   orderId?: string;
@@ -12,10 +14,20 @@ interface PaymentResult {
   transactionId?: string;
 }
 
-export const paymentService = {
-  async processPayment({ amount }: CreatePaymentParams): Promise<PaymentResult> {
+class PaymentService {
+  async processPayment({ amount, orderId }: CreatePaymentParams): Promise<PaymentResult> {
     try {
-      // Process the payment
+      console.log('Processing payment request:', {
+        amount,
+        orderId,
+        timestamp: new Date().toISOString()
+      });
+
+      // Basic validation
+      if (!amount || amount <= 0) {
+        throw new Error('Invalid payment amount');
+      }
+
       const response = await fetch('/api/payments/process', {
         method: 'POST',
         headers: {
@@ -23,51 +35,68 @@ export const paymentService = {
         },
         body: JSON.stringify({
           amount,
+          orderId,
           currency: 'usd'
         }),
+        credentials: 'include'
       });
 
       if (!response.ok) {
-        throw new Error(await response.text());
+        const errorText = await response.text();
+        console.error('Payment API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+          timestamp: new Date().toISOString()
+        });
+        throw new Error(errorText || 'Payment processing failed');
       }
 
       const result = await response.json();
+      console.log('Payment processed successfully:', {
+        result,
+        timestamp: new Date().toISOString()
+      });
+
       return {
         success: true,
-        message: 'Payment processed successfully',
+        message: result.message || 'Payment processed successfully',
         transactionId: result.transactionId
       };
     } catch (error) {
-      console.error('Error processing payment:', error);
+      console.error('Payment processing error:', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Payment processing failed'
       };
     }
-  },
+  }
 
-  // Validate payment details
-  async validatePayment(paymentDetails: {
-    cardNumber?: string;
-    expiryDate?: string;
-    cvv?: string;
+  // Validate payment details before processing
+  async validatePaymentDetails(details: {
+    amount: number;
+    orderId?: string;
   }): Promise<boolean> {
     try {
-      const response = await fetch('/api/payments/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(paymentDetails),
-        credentials: 'include'
-      });
-
-      if (!response.ok) {
-        throw new Error(await response.text());
+      if (!details.amount || details.amount <= 0) {
+        console.warn('Invalid payment amount:', details.amount);
+        return false;
       }
 
-      return response.json();
+      return true;
     } catch (error) {
-      console.error('Payment validation error:', error);
+      console.error('Payment validation error:', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        details,
+        timestamp: new Date().toISOString()
+      });
       return false;
     }
   }
-};
+}
+
+// Export singleton instance
+export const paymentService = new PaymentService();
