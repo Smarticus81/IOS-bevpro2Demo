@@ -13,6 +13,7 @@ class VoiceSynthesis {
   private lastSpeakTime: number = 0;
   private readonly MIN_INTERVAL = 300;
   private readonly SYNTHESIS_TIMEOUT = 8000;
+  private isSpeaking: boolean = false;
 
   private constructor() {
     if (typeof window !== 'undefined') {
@@ -20,6 +21,7 @@ class VoiceSynthesis {
       this.audioContext.suspend();
     }
 
+    // Resume AudioContext on user interaction
     const resumeAudioContext = () => {
       if (this.audioContext?.state === 'suspended') {
         this.audioContext.resume()
@@ -61,9 +63,9 @@ class VoiceSynthesis {
   }
 
   // Enhanced speech synthesis with professional variations
-  async speak(text: string, emotion: EmotionType = "professional") {
-    if (!text?.trim()) {
-      console.warn('Empty text provided to speak');
+  async speak(text: string, emotion: EmotionType = "professional"): Promise<void> {
+    if (!text?.trim() || this.isSpeaking) {
+      console.warn('Empty text provided or already speaking');
       return;
     }
 
@@ -81,10 +83,10 @@ class VoiceSynthesis {
 
     this.stop();
     this.lastSpeakTime = now;
-
-    const { voice, speed } = this.getVoiceConfig(emotion);
+    this.isSpeaking = true;
 
     try {
+      const { voice, speed } = this.getVoiceConfig(emotion);
       const openai = await getOpenAIClient();
       const response = await openai.audio.speech.create({
         model: "tts-1",
@@ -100,28 +102,39 @@ class VoiceSynthesis {
       await new Promise<void>((resolve, reject) => {
         this.currentAudio = new Audio(url);
 
-        this.currentAudio.addEventListener('ended', () => {
+        const cleanup = () => {
           URL.revokeObjectURL(url);
           this.currentAudio = null;
+          this.isSpeaking = false;
+        };
+
+        this.currentAudio.addEventListener('ended', () => {
+          cleanup();
           resolve();
         });
 
         this.currentAudio.addEventListener('error', (e) => {
           console.error('Audio playback error:', e);
-          URL.revokeObjectURL(url);
-          this.currentAudio = null;
+          cleanup();
           reject(e);
         });
 
+        // Set timeout to prevent hanging
+        const timeout = setTimeout(() => {
+          cleanup();
+          reject(new Error('Audio playback timed out'));
+        }, this.SYNTHESIS_TIMEOUT);
+
         this.currentAudio.play().catch(error => {
+          clearTimeout(timeout);
           console.error('Failed to play audio:', error);
-          URL.revokeObjectURL(url);
-          this.currentAudio = null;
+          cleanup();
           reject(error);
         });
       });
     } catch (error: any) {
       console.error('Speech synthesis error:', error);
+      this.isSpeaking = false;
       const errorMessage = error.message || 'Unknown speech synthesis error';
       throw new Error(`Speech synthesis failed: ${errorMessage}`);
     }
@@ -149,8 +162,14 @@ class VoiceSynthesis {
   stop() {
     if (this.currentAudio) {
       this.currentAudio.pause();
+      this.currentAudio.currentTime = 0;
       this.currentAudio = null;
     }
+    this.isSpeaking = false;
+  }
+
+  isActive(): boolean {
+    return this.isSpeaking;
   }
 }
 

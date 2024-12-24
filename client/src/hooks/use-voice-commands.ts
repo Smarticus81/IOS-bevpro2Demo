@@ -49,6 +49,27 @@ export function useVoiceCommands({
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const COMMAND_DEBOUNCE_MS = 1000;
 
+  // Define stopListening before it's used
+  const stopListening = useCallback(async () => {
+    try {
+      await googleVoiceService.stopListening();
+      setIsListening(false);
+      await voiceSynthesis.speak("Voice commands deactivated.", "professional");
+      toast({
+        title: "Voice Commands Stopped",
+        description: "Voice recognition is now inactive.",
+      });
+    } catch (error: any) {
+      console.error('Failed to stop voice commands:', error);
+      setIsListening(false);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to stop voice recognition",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
   const respondWith = useCallback(async (
     message: string,
     emotion: "professional" | "friendly" | "excited" | "apologetic" | "confirmative" = "professional"
@@ -70,11 +91,7 @@ export function useVoiceCommands({
       setIsProcessingPayment(true);
       await respondWith(RESPONSES.processingPayment, "professional");
 
-      // Create payment intent and process payment
-      const result = await paymentService.processPayment({
-        amount,
-        paymentMethod: 'credit_card',
-      });
+      const result = await paymentService.processPayment({ amount });
 
       if (result.success) {
         await respondWith(RESPONSES.paymentSuccess, "excited");
@@ -152,8 +169,6 @@ export function useVoiceCommands({
 
       try {
         await respondWith(RESPONSES.orderComplete(total), "confirmative");
-
-        // Process payment
         const paymentSuccess = await processPayment(total);
 
         if (paymentSuccess) {
@@ -219,26 +234,6 @@ export function useVoiceCommands({
     );
   }, [drinks, cart, lastCommand, onAddToCart, processPayment, respondWith, stopListening, toast, isProcessingPayment]);
 
-  const stopListening = useCallback(async () => {
-    try {
-      await googleVoiceService.stopListening();
-      setIsListening(false);
-      await respondWith("Voice commands deactivated.", "professional");
-      toast({
-        title: "Voice Commands Stopped",
-        description: "Voice recognition is now inactive.",
-      });
-    } catch (error: any) {
-      console.error('Failed to stop voice commands:', error);
-      setIsListening(false);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to stop voice recognition",
-        variant: "destructive",
-      });
-    }
-  }, [respondWith, toast]);
-
   const startListening = useCallback(async () => {
     console.log('Attempting to start voice recognition...', {
       drinksAvailable: drinks.length,
@@ -271,14 +266,10 @@ export function useVoiceCommands({
       setIsListening(true);
       console.log('Voice recognition started successfully');
 
-      try {
-        await voiceSynthesis.speak(
-          "Voice commands activated. I'm listening and ready to help!",
-          "excited"
-        );
-      } catch (synthError) {
-        console.error('Error with voice synthesis:', synthError);
-      }
+      await respondWith(
+        "Voice commands activated. I'm listening and ready to help!",
+        "excited"
+      );
 
       toast({
         title: "Voice Commands Active",

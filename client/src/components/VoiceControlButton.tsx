@@ -25,14 +25,14 @@ export function VoiceControlButton({
 
   // Ensure we have the drinks data before enabling voice commands
   const isReady = !isDrinksLoading && drinks.length > 0;
-  
+
   console.log('VoiceControlButton state:', {
     isDrinksLoading,
     drinksCount: drinks.length,
     hasAddToCart: !!onAddToCart,
     cartItems: cart.length
   });
-  
+
   // Validate required props
   if (!onAddToCart || !onRemoveItem || !onPlaceOrder) {
     console.error('Missing required props:', { 
@@ -50,7 +50,7 @@ export function VoiceControlButton({
     onRemoveItem,
     onPlaceOrder
   });
-  
+
   const { toast } = useToast();
 
   const handleClick = async () => {
@@ -60,7 +60,7 @@ export function VoiceControlButton({
         isListening,
         hookState: 'initialized'
       });
-      
+
       if (!isSupported) {
         console.warn('Voice commands not supported in this browser');
         toast({
@@ -70,6 +70,9 @@ export function VoiceControlButton({
         });
         return;
       }
+
+      // Ensure voice synthesis is stopped before toggling listening state
+      voiceSynthesis.stop();
 
       if (isListening) {
         console.log('Stopping voice recognition...');
@@ -89,13 +92,15 @@ export function VoiceControlButton({
   };
 
   // Don't render if speech recognition is not supported
-  if (!isSupported) {
+  if (!isSupported || !isReady) {
     return null;
   }
 
   const handleTestVoice = async () => {
     try {
-      await voiceSynthesis.speak("Hello! Voice synthesis is working correctly.");
+      // Stop any ongoing synthesis
+      voiceSynthesis.stop();
+      await voiceSynthesis.speak("Hello! Voice synthesis is working correctly.", "professional");
       toast({
         title: "Voice Test",
         description: "Testing voice synthesis...",
@@ -126,7 +131,7 @@ export function VoiceControlButton({
               ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
               : 'bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black'
             }`}
-          disabled={!isSupported}
+          disabled={!isSupported || !isReady}
           title={isListening ? "Stop voice commands" : "Start voice commands"}
         >
           <AnimatePresence mode="wait">
@@ -153,7 +158,7 @@ export function VoiceControlButton({
             )}
           </AnimatePresence>
         </Button>
-        
+
         <Button
           onClick={handleTestVoice}
           size="lg"
