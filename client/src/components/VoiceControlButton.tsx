@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff } from "lucide-react";
+import { Mic, MicOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useVoiceCommands } from "@/hooks/use-voice-commands";
 import { useToast } from "@/hooks/use-toast";
@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 interface VoiceControlButtonProps {
   onAddToCart?: (action: { type: 'ADD_ITEM'; drink: any; quantity: number }) => void;
@@ -27,12 +27,13 @@ export function VoiceControlButton({
 }: VoiceControlButtonProps) {
   const { toast } = useToast();
   const [showDialog, setShowDialog] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
 
   // Fetch drinks data
   const { data: drinks = [], isLoading: isDrinksLoading } = useQuery<any[]>({
     queryKey: ["/api/drinks"],
     retry: 1,
-    staleTime: 30000, // Cache drinks data for 30 seconds
+    staleTime: 30000,
   });
 
   // Initialize voice commands with proper dependency checks
@@ -42,15 +43,18 @@ export function VoiceControlButton({
     stopListening, 
     isSupported 
   } = useVoiceCommands({
-    drinks: isDrinksLoading ? [] : drinks,
+    drinks,
     cart,
     onAddToCart,
     onRemoveItem,
     onPlaceOrder
   });
 
-  const handleClick = async () => {
+  const handleClick = useCallback(async () => {
+    if (isInitializing) return;
+
     try {
+      setIsInitializing(true);
       console.log('Voice button clicked:', {
         isSupported,
         isDrinksLoading,
@@ -98,11 +102,13 @@ export function VoiceControlButton({
         description: error instanceof Error ? error.message : "Failed to process voice command",
         variant: "destructive",
       });
+    } finally {
+      setIsInitializing(false);
     }
-  };
+  }, [isSupported, isListening, drinks, onAddToCart, onRemoveItem, onPlaceOrder, startListening, stopListening, toast, isInitializing]);
 
   // Determine if button should be disabled
-  const isButtonDisabled = !drinks.length || !onAddToCart || !onRemoveItem || !onPlaceOrder;
+  const isButtonDisabled = !drinks.length || !onAddToCart || !onRemoveItem || !onPlaceOrder || isInitializing;
 
   return (
     <>
@@ -126,7 +132,17 @@ export function VoiceControlButton({
             title={isListening ? "Stop voice commands" : "Start voice commands"}
           >
             <AnimatePresence mode="wait">
-              {isListening ? (
+              {isInitializing ? (
+                <motion.div
+                  key="loading"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </motion.div>
+              ) : isListening ? (
                 <motion.div
                   key="mic-off"
                   initial={{ scale: 0 }}
