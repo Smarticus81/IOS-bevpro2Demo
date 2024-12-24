@@ -1,0 +1,150 @@
+sAddToCart: false, hasRemoveItem: false, hasPlaceOrder: false}
+VoiceControlButton @ VoiceControlButton.tsx:39
+renderWithHooks @ chunk-RPCDYKBN.js?v=d6ffdfe1:11548
+mountIndeterminateComponent @ chunk-RPCDYKBN.js?v=d6ffdfe1:14926
+beginWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:15914
+beginWork$1 @ chunk-RPCDYKBN.js?v=d6ffdfe1:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=d6ffdfe1:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=d6ffdfe1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=d6ffdfe1:18627Understand this errorAI
+VoiceControlButton.tsx:27 VoiceControlButton state: {isDrinksLoading: true, drinksCount: 0, hasAddToCart: false, hasRemoveItem: false, hasPlaceOrder: false, …}
+VoiceControlButton.tsx:39 Missing required props: {hasAddToCart: false, hasRemoveItem: false, hasPlaceOrder: false}
+VoiceControlButton @ VoiceControlButton.tsx:39
+renderWithHooks @ chunk-RPCDYKBN.js?v=d6ffdfe1:11548
+mountIndeterminateComponent @ chunk-RPCDYKBN.js?v=d6ffdfe1:14976
+beginWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:15914
+beginWork$1 @ chunk-RPCDYKBN.js?v=d6ffdfe1:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=d6ffdfe1:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=d6ffdfe1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=d6ffdfe1:18627Understand this errorAI
+use-voice-commands.ts:50 Cart updated: {items: Array(0), timestamp: '2024-12-24T06:34:33.592Z'}
+use-voice-commands.ts:50 Cart updated: {items: Array(0), timestamp: '2024-12-24T06:34:33.594Z'}
+voice-synthesis.ts:28 AudioContext resumed successfully
+VoiceControlButton.tsx:27 VoiceControlButton state: {isDrinksLoading: false, drinksCount: 65, hasAddToCart: true, hasRemoveItem: true, hasPlaceOrder: true, …}
+VoiceControlButton.tsx:27 VoiceControlButton state: {isDrinksLoading: false, drinksCount: 65, hasAddToCart: true, hasRemoveItem: true, hasPlaceOrder: true, …}
+VoiceControlButton.tsx:27 VoiceControlButton state: {isDrinksLoading: false, drinksCount: 65, hasAddToCart: false, hasRemoveItem: false, hasPlaceOrder: false, …}
+VoiceControlButton.tsx:39 Missing required props: {hasAddToCart: false, hasRemoveItem: false, hasPlaceOrder: false}
+VoiceControlButton @ VoiceControlButton.tsx:39
+renderWithHooks @ chunk-RPCDYKBN.js?v=d6ffdfe1:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=d6ffdfe1:14582
+beginWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:15924
+beginWork$1 @ chunk-RPCDYKBN.js?v=d6ffdfe1:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=d6ffdfe1:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=d6ffdfe1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=d6ffdfe1:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=d6ffdfe1:555
+flush @ @tanstack_react-query.js?v=d6ffdfe1:569
+batch @ @tanstack_react-query.js?v=d6ffdfe1:587
+dispatch_fn @ @tanstack_react-query.js?v=d6ffdfe1:996
+setData @ @tanstack_react-query.js?v=d6ffdfe1:696
+onSuccess @ @tanstack_react-query.js?v=d6ffdfe1:897
+resolve @ @tanstack_react-query.js?v=d6ffdfe1:456
+Promise.then
+run @ @tanstack_react-query.js?v=d6ffdfe1:498
+start @ @tanstack_react-query.js?v=d6ffdfe1:536
+fetch @ @tanstack_react-query.js?v=d6ffdfe1:926
+executeFetch_fn @ @tanstack_react-query.js?v=d6ffdfe1:2211
+onSubscribe @ @tanstack_react-query.js?v=d6ffdfe1:1898
+subscribe @ @tanstack_react-query.js?v=d6ffdfe1:24
+(anonymous) @ @tanstack_react-query.js?v=d6ffdfe1:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=d6ffdfe1:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=d6ffdfe1:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=d6ffdfe1:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=d6ffdfe1:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=d6ffdfe1:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=d6ffdfe1:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=d6ffdfe1:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=d6ffdfe1:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=d6ffdfe1:19416
+commitRoot @ chunk-RPCDYKBN.js?v=d6ffdfe1:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=d6ffdfe1:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=d6ffdfe1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=d6ffdfe1:18627Understand this errorAI
+VoiceControlButton.tsx:27 VoiceControlButton state: {isDrinksLoading: false, drinksCount: 65, hasAddToCart: false, hasRemoveItem: false, hasPlaceOrder: false, …}
+VoiceControlButton.tsx:39 Missing required props: {hasAddToCart: false, hasRemoveItem: false, hasPlaceOrder: false}
+VoiceControlButton @ VoiceControlButton.tsx:39
+renderWithHooks @ chunk-RPCDYKBN.js?v=d6ffdfe1:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=d6ffdfe1:14587
+beginWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:15924
+beginWork$1 @ chunk-RPCDYKBN.js?v=d6ffdfe1:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=d6ffdfe1:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=d6ffdfe1:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=d6ffdfe1:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=d6ffdfe1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=d6ffdfe1:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=d6ffdfe1:555
+flush @ @tanstack_react-query.js?v=d6ffdfe1:569
+batch @ @tanstack_react-query.js?v=d6ffdfe1:587
+dispatch_fn @ @tanstack_react-query.js?v=d6ffdfe1:996
+setData @ @tanstack_react-query.js?v=d6ffdfe1:696
+onSuccess @ @tanstack_react-query.js?v=d6ffdfe1:897
+resolve @ @tanstack_react-query.js?v=d6ffdfe1:456
+Promise.then
+run @ @tanstack_react-query.js?v=d6ffdfe1:498
+start @ @tanstack_react-query.js?v=d6ffdfe1:536
+fetch @ @tanstack_react-query.js?v=d6ffdfe1:926
+executeFetch_fn @ @tanstack_react-query.js?v=d6ffdfe1:2211
+onSubscribe @ @tanstack_react-query.js?v=d6ffdfe1:1898
+subscribe @ @tanstack_react-query.js?v=d6ffdfe1:24
+(anonymous) @ @tanstack_react-query.js?v=d6ffdfe1:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=d6ffdfe1:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=d6ffdfe1:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=d6ffdfe1:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=d6ffdfe1:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=d6ffdfe1:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=d6ffdfe1:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=d6ffdfe1:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=d6ffdfe1:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=d6ffdfe1:19416
+commitRoot @ chunk-RPCDYKBN.js?v=d6ffdfe1:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=d6ffdfe1:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=d6ffdfe1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=d6ffdfe1:18627Understand this errorAI
+VoiceControlButton.tsx:62 Voice control button clicked: {isSupported: true, isListening: false, drinksLoaded: true, cartSize: 0, timestamp: '2024-12-24T06:34:35.750Z'}
+VoiceControlButton.tsx:87 Starting voice recognition...
+google-voice-service.ts:134 Started listening for voice commands
+voice-synthesis.ts:78 Starting speech synthesis: {text: "Voice commands activated. I'm listening and ready to help!", emotion: 'excited', timestamp: '2024-12-24T06:34:35.752Z'}
+openai.ts:9 Initializing OpenAI client...
+VoiceControlButton.tsx:27 VoiceControlButton state: {isDrinksLoading: false, drinksCount: 65, hasAddToCart: true, hasRemoveItem: true, hasPlaceOrder: true, …}
+VoiceControlButton.tsx:27 VoiceControlButton state: {isDrinksLoading: false, drinksCount: 65, hasAddToCart: true, hasRemoveItem: true, hasPlaceOrder: true, …}
+google-voice-service.ts:83 Audio capturing started
+openai.ts:36 OpenAI client initialized and tested successfully
+VoiceControlButton.tsx:27 VoiceControlButton state: {isDrinksLoading: false, drinksCount: 65, hasAddToCart: true, hasRemoveItem: true, hasPlaceOrder: true, …}
+VoiceControlButton.tsx:27 VoiceControlButton state: {isDrinksLoading: false, drinksCount: 65, hasAddToCart: true, hasRemoveItem: true, hasPlaceOrder: true, …}
+google-voice-service.ts:48 Voice command recognized: can I get a Diet Coke please
+use-voice-commands.ts:151 Processing voice command: {command: 'can i get a diet coke please', cartItems: Array(0), cartSize: 0, timestamp: '2024-12-24T06:34:44.133Z'}
+voice-synthesis.ts:78 Starting speech synthesis: {text: `I heard "can I get a Diet Coke please". If you'd l…e" or "three beers please". How can I assist you?`, emotion: 'friendly', timestamp: '2024-12-24T06:34:44.134Z'}
+VoiceControlButton.tsx:27 VoiceControlButton state: {isDrinksLoading: false, drinksCount: 65, hasAddToCart: true, hasRemoveItem: true, hasPlaceOrder: true, …}
+VoiceControlButton.tsx:27 VoiceControlButton state: {isDrinksLoading: false, drinksCount: 65, hasAddToCart: true, hasRemoveItem: true, hasPlaceOrder: true, …}
+voice-synthesis.ts:136 Speech synthesis error: Error: Audio playback timed out
+    at voice-synthesis.ts:125:18
+speak @ voice-synthesis.ts:136
+await in speak
+(anonymous) @ use-voice-commands.ts:251
+recognition.onresult @ google-voice-service.ts:50Understand this errorAI
+voice-synthesis.ts:139 Uncaught (in promise) Error: Speech synthesis failed: Audio playback timed out
+    at VoiceSynthesis.speak (voice-synthesis.ts:139:13)
+    at async GoogleVoiceService.callback (use-voice-commands.ts:251:5)
+speak @ voice-synthesis.ts:139
+await in speak
+(anonymous) @ use-voice-commands.ts:251
+recognition.onresult @ google-voice-service.ts:50Understand this errorAI
+google-voice-service.ts:87 Audio capturing ended
+google-voice-service.ts:67 Speech recognition ended
+VoiceControlButton.tsx:62 Voice control button clicked: {isSupported: true, isListening: true, drinksLoaded: true, cartSize: 0, timestamp: '2024-12-24T06:34:58.749Z'}
+VoiceControlButton.tsx:84 Stopping voice recognition...
+voice-synthesis.ts:78 Starting speech synthesis: {text: 'Voice commands deactivated.', emotion: 'professional', timestamp: '2024-12-24T06:34:58.750Z'}
+VoiceControlButton.tsx:27 VoiceControlButton state: {isDrinksLoading: false, drinksCount: 65, hasAddToCart: true, hasRemoveItem: true, hasPlaceOrder: true, …}
+VoiceControlButton.tsx:27 VoiceControlButton state: {isDrinksLoading: false, drinksCount: 65, hasAddToCart: true, hasRemoveItem: true, hasPlaceOrder: true, …}

@@ -13,36 +13,42 @@ interface VoiceControlButtonProps {
   cart?: Array<{ drink: any; quantity: number }>;
 }
 
-export function VoiceControlButton({ 
-  onAddToCart,
-  onRemoveItem,
-  onPlaceOrder,
-  cart = []
+// Default no-op functions for required props
+const defaultProps = {
+  onAddToCart: () => {
+    console.warn('onAddToCart handler not provided');
+  },
+  onRemoveItem: () => {
+    console.warn('onRemoveItem handler not provided');
+  },
+  onPlaceOrder: () => {
+    console.warn('onPlaceOrder handler not provided');
+  },
+  cart: []
+};
+
+export function VoiceControlButton({
+  onAddToCart = defaultProps.onAddToCart,
+  onRemoveItem = defaultProps.onRemoveItem,
+  onPlaceOrder = defaultProps.onPlaceOrder,
+  cart = defaultProps.cart
 }: VoiceControlButtonProps) {
   const { data: drinks = [], isLoading: isDrinksLoading } = useQuery<any[]>({
     queryKey: ["/api/drinks"],
   });
 
-  // Enhanced logging for component state
+  // Enhanced logging for component state and debug info
   console.log('VoiceControlButton state:', {
     isDrinksLoading,
     drinksCount: drinks.length,
-    hasAddToCart: !!onAddToCart,
-    hasRemoveItem: !!onRemoveItem,
-    hasPlaceOrder: !!onPlaceOrder,
+    hasAddToCart: typeof onAddToCart === 'function',
+    hasRemoveItem: typeof onRemoveItem === 'function',
+    hasPlaceOrder: typeof onPlaceOrder === 'function',
     cartItems: cart.length,
     timestamp: new Date().toISOString()
   });
 
-  // Validate required props early
-  if (!onAddToCart || !onRemoveItem || !onPlaceOrder) {
-    console.error('Missing required props:', { 
-      hasAddToCart: !!onAddToCart,
-      hasRemoveItem: !!onRemoveItem,
-      hasPlaceOrder: !!onPlaceOrder
-    });
-    return null;
-  }
+  const { toast } = useToast();
 
   // Ensure we have the drinks data before enabling voice commands
   const isReady = !isDrinksLoading && drinks.length > 0;
@@ -55,12 +61,10 @@ export function VoiceControlButton({
     onPlaceOrder
   });
 
-  const { toast } = useToast();
-
   const handleClick = async () => {
     try {
-      console.log('Voice control button clicked:', { 
-        isSupported, 
+      console.log('Voice control button clicked:', {
+        isSupported,
         isListening,
         drinksLoaded: isReady,
         cartSize: cart.length,
@@ -102,6 +106,7 @@ export function VoiceControlButton({
     return null;
   }
 
+  // Enhanced voice synthesis test with better error handling
   const handleTestVoice = async () => {
     try {
       // Ensure any ongoing synthesis is stopped
