@@ -56,19 +56,12 @@ export function useVoiceCommands({
       await voiceSynthesis.speak(message, emotion);
     } catch (error) {
       console.error('Error speaking response:', error);
-      try {
-        const utterance = new SpeechSynthesisUtterance(message);
-        utterance.rate = 1.0;
-        utterance.pitch = emotion === 'excited' ? 1.2 : emotion === 'apologetic' ? 0.8 : 1.0;
-        window.speechSynthesis.speak(utterance);
-      } catch (fallbackError) {
-        console.error('Fallback speech synthesis failed:', fallbackError);
-        toast({
-          title: "Voice Response",
-          description: message,
-          duration: 5000,
-        });
-      }
+      // Show visual feedback when voice fails instead of using web speech
+      toast({
+        title: "Voice Response",
+        description: message,
+        duration: 5000,
+      });
     }
   }, [toast]);
 

@@ -42,20 +42,21 @@ class VoiceSynthesis {
 
   // Enhanced voice configuration based on emotion
   private getVoiceConfig(emotion: EmotionType): { voice: VoiceId; speed: number } {
+    // Always use Nova voice with different speeds and intonations for emotions
     switch (emotion) {
       case "professional":
-        return { voice: "nova", speed: 1.0 }; // Clear, authoritative voice
+        return { voice: "nova", speed: 1.0 }; // Clear, authoritative tone
       case "friendly":
-        return { voice: "fable", speed: 1.1 }; // Warm, approachable voice
+        return { voice: "nova", speed: 1.05 }; // Slightly faster, warm tone
       case "excited":
-        return { voice: "fable", speed: 1.2 }; // Energetic, enthusiastic
+        return { voice: "nova", speed: 1.1 }; // Faster, energetic tone
       case "apologetic":
-        return { voice: "shimmer", speed: 0.95 }; // Softer, empathetic
+        return { voice: "nova", speed: 0.95 }; // Slower, empathetic tone
       case "confirmative":
-        return { voice: "onyx", speed: 1.0 }; // Clear, confident
+        return { voice: "nova", speed: 1.0 }; // Clear, confident tone
       case "neutral":
       default:
-        return { voice: "nova", speed: 1.0 }; // Balanced, professional
+        return { voice: "nova", speed: 1.0 }; // Balanced tone
     }
   }
 
@@ -83,11 +84,7 @@ class VoiceSynthesis {
 
     const { voice, speed } = this.getVoiceConfig(emotion);
 
-    const timeoutPromise = new Promise<void>((_, reject) => {
-      setTimeout(() => reject(new Error('Speech synthesis timeout')), this.SYNTHESIS_TIMEOUT);
-    });
-
-    const synthesisPromise = async () => {
+    try {
       const openai = await getOpenAIClient();
       const response = await openai.audio.speech.create({
         model: "tts-1",
@@ -100,7 +97,7 @@ class VoiceSynthesis {
       const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
       const url = URL.createObjectURL(blob);
 
-      return new Promise<void>((resolve, reject) => {
+      await new Promise<void>((resolve, reject) => {
         this.currentAudio = new Audio(url);
 
         this.currentAudio.addEventListener('ended', () => {
@@ -123,25 +120,10 @@ class VoiceSynthesis {
           reject(error);
         });
       });
-    };
-
-    try {
-      this.speakPromise = Promise.race([synthesisPromise(), timeoutPromise]);
-      await this.speakPromise;
     } catch (error: any) {
       console.error('Speech synthesis error:', error);
-      this.speakPromise = null;
-
       const errorMessage = error.message || 'Unknown speech synthesis error';
-      if (errorMessage.includes('timeout')) {
-        throw new Error('Speech synthesis timed out. Please try again.');
-      } else if (error.response?.status === 429) {
-        throw new Error('Too many voice requests. Please wait a moment.');
-      } else if (error.code === 'PLAY_FAILED') {
-        throw new Error('Failed to play audio. Please check your audio settings.');
-      } else {
-        throw new Error(`Speech synthesis failed: ${errorMessage}`);
-      }
+      throw new Error(`Speech synthesis failed: ${errorMessage}`);
     }
   }
 
