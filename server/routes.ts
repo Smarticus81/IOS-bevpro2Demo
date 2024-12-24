@@ -1,16 +1,10 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { 
-  drinks, 
-  orders, 
-  orderItems,
-  tabs,
-  splitPayments,
-  eventPackages 
-} from "@db/schema";
-import { eq, sql } from "drizzle-orm";
+import { drinks, orders, orderItems } from "@db/schema";
+import { eq } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
+import { PaymentService } from "./services/payments";
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
@@ -22,38 +16,45 @@ export function registerRoutes(app: Express): Server {
     try {
       const { amount, orderId } = req.body;
 
-      // Simulate payment processing delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('Processing payment:', {
+        amount,
+        orderId,
+        timestamp: new Date().toISOString()
+      });
 
-      // Simulate 90% success rate
-      const success = Math.random() > 0.1;
+      if (!amount || amount <= 0) {
+        throw new Error('Invalid payment amount');
+      }
 
-      if (success) {
-        // If we have an order ID, update its status
-        if (orderId) {
-          await db
-            .update(orders)
-            .set({ status: 'paid' })
-            .where(eq(orders.id, orderId));
-        }
+      const result = await PaymentService.processPayment(amount, orderId);
+
+      if (result.success) {
+        console.log('Payment successful:', {
+          amount,
+          orderId,
+          timestamp: new Date().toISOString()
+        });
 
         res.json({ 
           success: true,
-          message: `Payment of $${(amount / 100).toFixed(2)} processed successfully`,
-          transactionId: `sim_${Date.now()}`
+          message: result.message,
+          transactionId: `txn_${Date.now()}`
         });
       } else {
-        throw new Error('Payment simulation failed');
+        throw new Error(result.message);
       }
     } catch (error) {
-      console.error("Error processing payment:", error);
+      console.error("Payment processing error:", {
+        error: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString()
+      });
+
       res.status(500).json({ 
         success: false,
         message: error instanceof Error ? error.message : "Payment processing failed" 
       });
     }
   });
-
 
   // Get all drinks
   app.get("/api/drinks", async (_req, res) => {
