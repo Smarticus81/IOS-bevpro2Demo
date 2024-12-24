@@ -34,7 +34,7 @@ class PaymentService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount,
+          amount: Math.round(amount), // Ensure whole number
           orderId,
           currency: 'usd'
         }),

@@ -1,7 +1,15 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { drinks, orders, orderItems, transactions } from "@db/schema";
+import { 
+  drinks, 
+  orders, 
+  orderItems, 
+  transactions, 
+  tabs, 
+  splitPayments,
+  eventPackages 
+} from "@db/schema";
 import { eq } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
 import { PaymentService } from "./services/payments";
