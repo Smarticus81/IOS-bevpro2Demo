@@ -9,13 +9,28 @@ class VoiceSynthesis {
   private audioContext: AudioContext | null = null;
   private currentAudio: HTMLAudioElement | null = null;
   private isAudioInitialized: boolean = false;
-  private readonly MIN_INTERVAL = 300; // Minimum time between speeches in ms
-  private readonly SYNTHESIS_TIMEOUT = 8000; // Maximum time to wait for synthesis
+  private initializationPromise: Promise<void> | null = null;
 
   private constructor() {
-    // Don't create AudioContext until first user interaction
-    this.initializeAudioContext = this.initializeAudioContext.bind(this);
-    this.attachUserInteractionListeners();
+    // Initialize after user interaction
+    this.initializationPromise = new Promise((resolve) => {
+      const initializeAudio = async () => {
+        try {
+          await this.initializeAudioContext();
+          ['click', 'touchstart', 'keydown'].forEach(type => {
+            document.removeEventListener(type, initializeAudio);
+          });
+          resolve();
+        } catch (error) {
+          console.error('Failed to initialize audio context:', error);
+          // Keep listeners active to retry on next interaction
+        }
+      };
+
+      ['click', 'touchstart', 'keydown'].forEach(type => {
+        document.addEventListener(type, initializeAudio, { once: true });
+      });
+    });
   }
 
   static getInstance(): VoiceSynthesis {
@@ -25,71 +40,56 @@ class VoiceSynthesis {
     return VoiceSynthesis.instance;
   }
 
-  private attachUserInteractionListeners() {
-    const initOnInteraction = (event: Event) => {
-      this.initializeAudioContext();
-      // Remove listeners after first interaction
-      ['click', 'touchstart', 'keydown'].forEach(type => {
-        document.removeEventListener(type, initOnInteraction);
-      });
-    };
-
-    ['click', 'touchstart', 'keydown'].forEach(eventType => {
-      document.addEventListener(eventType, initOnInteraction);
-    });
-  }
-
-  private async initializeAudioContext() {
+  private async initializeAudioContext(): Promise<void> {
     if (this.isAudioInitialized) return;
 
     try {
       this.audioContext = new AudioContext();
       if (this.audioContext.state === 'suspended') {
         await this.audioContext.resume();
+        console.log('AudioContext resumed successfully');
       }
       this.isAudioInitialized = true;
       console.log('Audio context initialized successfully');
     } catch (error) {
       console.error('Failed to initialize audio context:', error);
       this.isAudioInitialized = false;
-      throw new Error('Failed to initialize audio system');
+      throw error;
     }
   }
 
-  async speak(text: string, voice: VoiceId = "alloy", emotion: "neutral" | "excited" | "apologetic" = "neutral") {
+  async waitForInitialization(): Promise<void> {
+    if (!this.initializationPromise) {
+      throw new Error('Voice synthesis not properly initialized');
+    }
+    return this.initializationPromise;
+  }
+
+  async speak(text: string, voice: VoiceId = "alloy", emotion: "neutral" | "excited" | "apologetic" = "neutral"): Promise<void> {
     if (!text?.trim()) {
       console.warn('Empty text provided to speak');
       return;
     }
 
-    // Ensure audio context is initialized
-    if (!this.isAudioInitialized) {
-      try {
-        await this.initializeAudioContext();
-      } catch (error) {
-        console.error('Failed to initialize audio before speaking:', error);
-        return;
-      }
-    }
-
-    // Apply emotional variations to speech
-    let speechSpeed = 1.0;
-    let voiceSelection: VoiceId = voice;
-
-    switch (emotion) {
-      case "excited":
-        speechSpeed = 1.15;
-        voiceSelection = "fable";
-        break;
-      case "apologetic":
-        speechSpeed = 0.95;
-        voiceSelection = "shimmer";
-        break;
-      default:
-        voiceSelection = "alloy";
-    }
-
     try {
+      await this.waitForInitialization();
+
+      let speechSpeed = 1.0;
+      let voiceSelection: VoiceId = voice;
+
+      switch (emotion) {
+        case "excited":
+          speechSpeed = 1.15;
+          voiceSelection = "fable";
+          break;
+        case "apologetic":
+          speechSpeed = 0.95;
+          voiceSelection = "shimmer";
+          break;
+        default:
+          voiceSelection = "alloy";
+      }
+
       const openai = await getOpenAIClient();
       const response = await openai.audio.speech.create({
         model: "tts-1",
@@ -99,49 +99,58 @@ class VoiceSynthesis {
       });
 
       const arrayBuffer = await response.arrayBuffer();
-      const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+      const blob = new Blob([arrayBuffer]);
       const url = URL.createObjectURL(blob);
 
-      // Clean up any existing audio
       this.stop();
 
       return new Promise<void>((resolve, reject) => {
         this.currentAudio = new Audio(url);
 
-        this.currentAudio.addEventListener('ended', () => {
+        const cleanup = () => {
           URL.revokeObjectURL(url);
-          this.currentAudio = null;
-          resolve();
-        });
+          if (this.currentAudio) {
+            this.currentAudio.removeEventListener('ended', onEnded);
+            this.currentAudio.removeEventListener('error', onError);
+            this.currentAudio = null;
+          }
+        };
 
-        this.currentAudio.addEventListener('error', (e) => {
-          URL.revokeObjectURL(url);
-          this.currentAudio = null;
+        const onEnded = () => {
+          cleanup();
+          resolve();
+        };
+
+        const onError = () => {
+          cleanup();
           reject(new Error('Audio playback failed'));
-        });
+        };
+
+        this.currentAudio.addEventListener('ended', onEnded);
+        this.currentAudio.addEventListener('error', onError);
 
         this.currentAudio.play().catch(error => {
           console.error('Failed to play audio:', error);
-          URL.revokeObjectURL(url);
-          this.currentAudio = null;
+          cleanup();
           reject(error);
         });
       });
     } catch (error) {
       console.error('Speech synthesis error:', error);
-      throw new Error('Failed to synthesize speech');
+      throw error;
     }
   }
 
   stop() {
     if (this.currentAudio) {
       this.currentAudio.pause();
+      this.currentAudio.currentTime = 0;
       this.currentAudio = null;
     }
   }
 
   isReady(): boolean {
-    return this.isAudioInitialized && this.audioContext?.state === 'running';
+    return this.isAudioInitialized && !!this.audioContext && this.audioContext.state === 'running';
   }
 }
 

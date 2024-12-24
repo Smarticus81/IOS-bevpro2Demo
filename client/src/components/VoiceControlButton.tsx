@@ -6,9 +6,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 
 interface VoiceControlButtonProps {
-  onAddToCart: (action: { type: 'ADD_ITEM'; drink: any; quantity: number }) => void;
-  onRemoveItem: (drinkId: number) => void;
-  onPlaceOrder: () => Promise<void>;
+  onAddToCart?: (action: { type: 'ADD_ITEM'; drink: any; quantity: number }) => void;
+  onRemoveItem?: (drinkId: number) => void;
+  onPlaceOrder?: () => Promise<void>;
   cart?: Array<{ drink: any; quantity: number }>;
 }
 
@@ -36,9 +36,10 @@ export function VoiceControlButton({
   } = useVoiceCommands({
     drinks: isDrinksLoading ? [] : drinks,
     cart,
-    onAddToCart: drinks.length > 0 ? onAddToCart : undefined,
-    onRemoveItem: drinks.length > 0 ? onRemoveItem : undefined,
-    onPlaceOrder: drinks.length > 0 ? onPlaceOrder : undefined
+    // Only pass the handlers if they exist and drinks are loaded
+    onAddToCart: drinks.length > 0 && onAddToCart ? onAddToCart : undefined,
+    onRemoveItem: drinks.length > 0 && onRemoveItem ? onRemoveItem : undefined,
+    onPlaceOrder: drinks.length > 0 && onPlaceOrder ? onPlaceOrder : undefined
   });
 
   const handleClick = async () => {
@@ -47,6 +48,16 @@ export function VoiceControlButton({
         toast({
           title: "Voice Control",
           description: "Voice commands are not supported in this browser.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Verify required handlers are available
+      if (!onAddToCart || !onRemoveItem || !onPlaceOrder) {
+        toast({
+          title: "Setup Error",
+          description: "Voice control requires cart management functions to be configured.",
           variant: "destructive",
         });
         return;
@@ -108,7 +119,7 @@ export function VoiceControlButton({
               ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
               : 'bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black'
             }`}
-          disabled={!isSupported || isDrinksLoading}
+          disabled={!isSupported || isDrinksLoading || !onAddToCart || !onRemoveItem || !onPlaceOrder}
           title={isListening ? "Stop voice commands" : "Start voice commands"}
         >
           <AnimatePresence mode="wait">

@@ -65,27 +65,17 @@ app.use((req, res, next) => {
       serveStatic(app);
     }
 
-    // Start server with port fallback
-    const tryPort = (port: number): Promise<void> => {
-      return new Promise((resolve, reject) => {
-        server.listen(port, "0.0.0.0")
-          .once('error', (err: any) => {
-            if (err.code === 'EADDRINUSE') {
-              log(`Port ${port} is in use, trying ${port + 1}...`);
-              server.close();
-              resolve(tryPort(port + 1));
-            } else {
-              reject(err);
-            }
-          })
-          .once('listening', () => {
-            log(`Server running on port ${port}`);
-            resolve();
-          });
-      });
-    };
-
-    await tryPort(5000);
+    // Start server on port 5000
+    server.listen(5000, "0.0.0.0", () => {
+      log(`Server running on port 5000`);
+    }).on('error', (err: any) => {
+      if (err.code === 'EADDRINUSE') {
+        log(`Port 5000 is in use, shutting down`);
+        process.exit(1);
+      } else {
+        throw err;
+      }
+    });
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);

@@ -1,5 +1,11 @@
-interface VoiceRecognitionCallback {
-  (text: string): void;
+import { type VoiceRecognitionCallback } from "@/types/speech";
+
+// Extend Window interface with WebKit prefixed types
+declare global {
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition;
+    webkitSpeechRecognition: typeof SpeechRecognition;
+  }
 }
 
 class GoogleVoiceService {
@@ -66,17 +72,11 @@ class GoogleVoiceService {
       this.recognition.onend = () => {
         console.log('Speech recognition ended');
         this.isListening = false;
-        if (this.callback) {
-          this.callback('');
-        }
       };
 
-      // Add event listeners for better error handling
-      this.recognition.onnomatch = () => {
-        console.log('No speech was recognized');
-        if (this.callback) {
-          this.callback('');
-        }
+      this.recognition.onstart = () => {
+        console.log('Speech recognition started');
+        this.isListening = true;
       };
 
       this.recognition.onaudiostart = () => {
@@ -91,7 +91,8 @@ class GoogleVoiceService {
       console.log('Speech recognition initialized successfully');
     } catch (error) {
       console.error('Failed to initialize speech recognition:', error);
-      this.handleError(error);
+      const err = error instanceof Error ? error : new Error('Failed to initialize speech recognition');
+      this.handleError(err);
     }
   }
 
@@ -127,24 +128,27 @@ class GoogleVoiceService {
           return;
         }
 
-        // Setup one-time success handler
+        const startTimeout = setTimeout(() => {
+          reject(new Error('Speech recognition start timeout'));
+        }, 5000);
+
         const onStart = () => {
-          this.recognition?.removeEventListener('start', onStart);
-          this.isListening = true;
-          console.log('Started listening for voice commands');
+          clearTimeout(startTimeout);
           resolve();
         };
 
-        // Setup one-time error handler
-        const onError = (event: ErrorEvent) => {
-          this.recognition?.removeEventListener('error', onError);
+        const onError = (event: SpeechRecognitionErrorEvent) => {
+          clearTimeout(startTimeout);
           reject(new Error(`Failed to start speech recognition: ${event.error}`));
         };
 
-        this.recognition.addEventListener('start', onStart);
-        this.recognition.addEventListener('error', onError);
+        // Use one-time event listeners
+        this.recognition.onstart = onStart;
+        this.recognition.onerror = onError;
         this.recognition.start();
       });
+
+      console.log('Started listening for voice commands');
     } catch (error) {
       console.error('Error starting voice recognition:', error);
       this.isListening = false;
@@ -165,19 +169,22 @@ class GoogleVoiceService {
           return;
         }
 
-        // Setup one-time handlers
-        const onStop = () => {
-          this.recognition?.removeEventListener('end', onStop);
+        const stopTimeout = setTimeout(() => {
+          reject(new Error('Speech recognition stop timeout'));
+        }, 5000);
+
+        const onEnd = () => {
+          clearTimeout(stopTimeout);
           resolve();
         };
 
-        const onError = (event: ErrorEvent) => {
-          this.recognition?.removeEventListener('error', onError);
+        const onError = (event: SpeechRecognitionErrorEvent) => {
+          clearTimeout(stopTimeout);
           reject(new Error(`Failed to stop speech recognition: ${event.error}`));
         };
 
-        this.recognition.addEventListener('end', onStop);
-        this.recognition.addEventListener('error', onError);
+        this.recognition.onend = onEnd;
+        this.recognition.onerror = onError;
         this.recognition.stop();
       });
 
@@ -199,14 +206,6 @@ class GoogleVoiceService {
 
   isSupported(): boolean {
     return this.isInitialized && this.recognition !== null;
-  }
-}
-
-// Add type declarations for Web Speech API
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
   }
 }
 

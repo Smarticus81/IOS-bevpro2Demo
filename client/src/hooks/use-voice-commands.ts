@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { googleVoiceService } from '@/lib/google-voice-service';
 import { useToast } from '@/hooks/use-toast';
 import { voiceSynthesis } from '@/lib/voice-synthesis';
@@ -30,21 +30,30 @@ export function useVoiceCommands({
 }: VoiceCommandsProps) {
   const [isListening, setIsListening] = useState(false);
   const { toast } = useToast();
-  const [lastCommand, setLastCommand] = useState<{ text: string; timestamp: number }>({ text: '', timestamp: 0 });
+  const lastCommandRef = useRef<{ text: string; timestamp: number }>({ text: '', timestamp: 0 });
   const COMMAND_DEBOUNCE_MS = 1000;
 
   // Helper function to validate dependencies
   const validateDependencies = useCallback(() => {
-    const missing = [];
-    if (!drinks.length) missing.push('drinks menu');
-    if (!onAddToCart) missing.push('add to cart function');
-    if (!onRemoveItem) missing.push('remove item function');
-    if (!onPlaceOrder) missing.push('place order function');
+    const requirements = {
+      hasDrinks: drinks.length > 0,
+      hasAddToCart: !!onAddToCart,
+      hasRemoveItem: !!onRemoveItem,
+      hasPlaceOrder: !!onPlaceOrder
+    };
+
+    const missing = Object.entries(requirements)
+      .filter(([_, value]) => !value)
+      .map(([key]) => key);
 
     if (missing.length) {
-      const error = `Missing required dependencies: ${missing.join(', ')}`;
-      console.error(error);
-      return error;
+      console.log('Missing required dependencies:', {
+        hasDrinks: requirements.hasDrinks,
+        hasAddToCart: requirements.hasAddToCart,
+        hasRemoveItem: requirements.hasRemoveItem,
+        hasPlaceOrder: requirements.hasPlaceOrder
+      });
+      return `Required dependencies missing: ${missing.join(', ')}`;
     }
     return null;
   }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder]);
@@ -112,7 +121,6 @@ export function useVoiceCommands({
         "excited"
       );
 
-      // Demo: Call onPlaceOrder without payment processing
       await onPlaceOrder();
 
       await respondWith(
@@ -147,11 +155,12 @@ export function useVoiceCommands({
     const now = Date.now();
 
     // Prevent duplicate commands within the debounce window
-    if (command === lastCommand.text && now - lastCommand.timestamp < COMMAND_DEBOUNCE_MS) {
+    if (command === lastCommandRef.current.text && 
+        now - lastCommandRef.current.timestamp < COMMAND_DEBOUNCE_MS) {
       return;
     }
 
-    setLastCommand({ text: command, timestamp: now });
+    lastCommandRef.current = { text: command, timestamp: now };
 
     // Check for order completion commands first
     if (/(?:complete|finish|process|submit|confirm|checkout|pay for|place)\s+(?:the\s+)?order/.test(command) ||
@@ -236,7 +245,7 @@ export function useVoiceCommands({
       "shimmer",
       "apologetic"
     );
-  }, [drinks, onAddToCart, respondWith, stopListening, toast, processOrder, lastCommand]);
+  }, [drinks, onAddToCart, respondWith, stopListening, toast, processOrder]);
 
   // Start listening function
   const startListening = useCallback(async () => {
