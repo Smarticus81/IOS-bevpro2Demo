@@ -13,8 +13,11 @@ class GoogleVoiceService {
   private isListening: boolean = false;
   private callback: VoiceRecognitionCallback | null = null;
   private isInitialized: boolean = false;
+  private initializationAttempts: number = 0;
+  private readonly MAX_INIT_ATTEMPTS = 3;
 
   constructor() {
+    console.log('GoogleVoiceService constructor called');
     // Defer initialization until actually needed
     if (typeof window !== 'undefined') {
       this.initializeSpeechRecognition();
@@ -22,7 +25,18 @@ class GoogleVoiceService {
   }
 
   private initializeSpeechRecognition() {
-    if (this.isInitialized) return;
+    if (this.isInitialized) {
+      console.log('Speech recognition already initialized');
+      return;
+    }
+
+    if (this.initializationAttempts >= this.MAX_INIT_ATTEMPTS) {
+      console.warn('Maximum initialization attempts reached');
+      return;
+    }
+
+    this.initializationAttempts++;
+    console.log(`Attempting speech recognition initialization (attempt ${this.initializationAttempts})`);
 
     try {
       // Check if we're in a browser environment
@@ -44,45 +58,19 @@ class GoogleVoiceService {
       this.recognition.lang = 'en-US';
 
       // Configure event handlers with proper TypeScript types
-      this.recognition.onresult = (event: SpeechRecognitionEvent) => {
-        try {
-          const results = event.results;
-          if (results && results.length > 0) {
-            const result = results[results.length - 1];
-            if (result.isFinal) {
-              const text = result[0].transcript;
-              console.log('Voice command recognized:', text);
-              if (this.callback) {
-                this.callback(text);
-              }
-            }
-          }
-        } catch (error) {
-          const err = error instanceof Error ? error : new Error('Unknown error processing speech result');
-          console.error('Error processing speech result:', err);
-          this.handleError(err);
-        }
-      };
-
-      this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error('Speech recognition error:', event.error);
-        this.handleError(new Error(`Speech recognition error: ${event.error}`));
-      };
-
+      this.recognition.onresult = this.handleRecognitionResult.bind(this);
+      this.recognition.onerror = this.handleRecognitionError.bind(this);
       this.recognition.onend = () => {
         console.log('Speech recognition ended');
         this.isListening = false;
       };
-
       this.recognition.onstart = () => {
         console.log('Speech recognition started');
         this.isListening = true;
       };
-
       this.recognition.onaudiostart = () => {
         console.log('Audio capturing started');
       };
-
       this.recognition.onaudioend = () => {
         console.log('Audio capturing ended');
       };
@@ -96,6 +84,35 @@ class GoogleVoiceService {
     }
   }
 
+  private handleRecognitionResult(event: SpeechRecognitionEvent) {
+    try {
+      const results = event.results;
+      if (results && results.length > 0) {
+        const result = results[results.length - 1];
+        if (result.isFinal) {
+          const text = result[0].transcript;
+          console.log('Voice command recognized:', text);
+          if (this.callback) {
+            this.callback(text);
+          }
+        }
+      }
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error('Unknown error processing speech result');
+      console.error('Error processing speech result:', err);
+      this.handleError(err);
+    }
+  }
+
+  private handleRecognitionError(event: SpeechRecognitionErrorEvent) {
+    console.error('Speech recognition error:', {
+      error: event.error,
+      message: event.message,
+      timestamp: new Date().toISOString()
+    });
+    this.handleError(new Error(`Speech recognition error: ${event.error}`));
+  }
+
   private handleError(error: Error) {
     this.isListening = false;
     if (this.callback) {
@@ -104,6 +121,8 @@ class GoogleVoiceService {
   }
 
   async startListening(callback: VoiceRecognitionCallback): Promise<void> {
+    console.log('Starting voice recognition...');
+
     // Ensure initialization on first use
     if (!this.isInitialized) {
       this.initializeSpeechRecognition();
@@ -142,7 +161,6 @@ class GoogleVoiceService {
           reject(new Error(`Failed to start speech recognition: ${event.error}`));
         };
 
-        // Use one-time event listeners
         this.recognition.onstart = onStart;
         this.recognition.onerror = onError;
         this.recognition.start();
