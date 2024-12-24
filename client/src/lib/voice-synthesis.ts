@@ -2,7 +2,8 @@ import type { VoiceError } from "@/types/speech";
 import { getOpenAIClient } from "./openai";
 
 type VoiceModel = "tts-1";
-type VoiceId = "alloy" | "echo" | "fable" | "onyx" | "shimmer";
+type VoiceId = "alloy" | "echo" | "fable" | "onyx" | "shimmer" | "nova";
+type EmotionType = "neutral" | "excited" | "apologetic" | "professional" | "friendly" | "confirmative";
 
 class VoiceSynthesis {
   private static instance: VoiceSynthesis;
@@ -10,26 +11,23 @@ class VoiceSynthesis {
   private currentAudio: HTMLAudioElement | null = null;
   private speakPromise: Promise<void> | null = null;
   private lastSpeakTime: number = 0;
-  private readonly MIN_INTERVAL = 300; // Minimum time between speeches in ms
-  private readonly SYNTHESIS_TIMEOUT = 8000; // Maximum time to wait for synthesis
+  private readonly MIN_INTERVAL = 300;
+  private readonly SYNTHESIS_TIMEOUT = 8000;
 
   private constructor() {
-    // Initialize context but keep it suspended until user interaction
-    this.audioContext = new AudioContext();
-    this.audioContext.suspend();
+    if (typeof window !== 'undefined') {
+      this.audioContext = new AudioContext();
+      this.audioContext.suspend();
+    }
 
-    // Resume audio context on any user interaction
     const resumeAudioContext = () => {
       if (this.audioContext?.state === 'suspended') {
-        this.audioContext.resume().then(() => {
-          console.log('AudioContext resumed successfully');
-        }).catch(error => {
-          console.error('Failed to resume AudioContext:', error);
-        });
+        this.audioContext.resume()
+          .then(() => console.log('AudioContext resumed successfully'))
+          .catch(error => console.error('Failed to resume AudioContext:', error));
       }
     };
 
-    // Listen for various user interactions
     ['click', 'touchstart', 'keydown'].forEach(eventType => {
       document.addEventListener(eventType, resumeAudioContext, { once: true });
     });
@@ -42,7 +40,27 @@ class VoiceSynthesis {
     return VoiceSynthesis.instance;
   }
 
-  async speak(text: string, voice: VoiceId = "alloy", emotion: "neutral" | "excited" | "apologetic" = "neutral") {
+  // Enhanced voice configuration based on emotion
+  private getVoiceConfig(emotion: EmotionType): { voice: VoiceId; speed: number } {
+    switch (emotion) {
+      case "professional":
+        return { voice: "nova", speed: 1.0 }; // Clear, authoritative voice
+      case "friendly":
+        return { voice: "fable", speed: 1.1 }; // Warm, approachable voice
+      case "excited":
+        return { voice: "fable", speed: 1.2 }; // Energetic, enthusiastic
+      case "apologetic":
+        return { voice: "shimmer", speed: 0.95 }; // Softer, empathetic
+      case "confirmative":
+        return { voice: "onyx", speed: 1.0 }; // Clear, confident
+      case "neutral":
+      default:
+        return { voice: "nova", speed: 1.0 }; // Balanced, professional
+    }
+  }
+
+  // Enhanced speech synthesis with professional variations
+  async speak(text: string, emotion: EmotionType = "professional") {
     if (!text?.trim()) {
       console.warn('Empty text provided to speak');
       return;
@@ -53,55 +71,38 @@ class VoiceSynthesis {
       console.log('Speech request too soon, skipping:', text);
       return;
     }
-    
-    console.log('Starting speech synthesis for text:', text, 'with voice:', voice, 'emotion:', emotion);
-    
-    // Clean up any existing audio before starting new synthesis
-    this.stop();
 
-    // Apply emotional variations to speech
-    let speechSpeed = 1.2;
-    let voiceSelection: VoiceId = voice;
-
-    switch (emotion) {
-      case "excited":
-        speechSpeed = 1.3;
-        voiceSelection = "fable"; // More energetic voice
-        break;
-      case "apologetic":
-        speechSpeed = 1.1;
-        voiceSelection = "shimmer"; // Softer voice
-        break;
-      default:
-        voiceSelection = "alloy"; // Neutral voice
-    }
-
-    this.lastSpeakTime = now;
-
-    // Create a timeout promise
-    const timeoutPromise = new Promise<void>((_, reject) => {
-      setTimeout(() => {
-        reject(new Error('Speech synthesis timeout'));
-      }, this.SYNTHESIS_TIMEOUT);
+    console.log('Starting speech synthesis:', {
+      text,
+      emotion,
+      timestamp: new Date().toISOString()
     });
 
-    // Create the synthesis promise
+    this.stop();
+    this.lastSpeakTime = now;
+
+    const { voice, speed } = this.getVoiceConfig(emotion);
+
+    const timeoutPromise = new Promise<void>((_, reject) => {
+      setTimeout(() => reject(new Error('Speech synthesis timeout')), this.SYNTHESIS_TIMEOUT);
+    });
+
     const synthesisPromise = async () => {
       const openai = await getOpenAIClient();
       const response = await openai.audio.speech.create({
         model: "tts-1",
-        voice: voiceSelection,
-        input: text,
-        speed: speechSpeed
+        voice,
+        input: this.enhanceText(text, emotion),
+        speed
       });
 
       const arrayBuffer = await response.arrayBuffer();
       const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
       const url = URL.createObjectURL(blob);
-      
+
       return new Promise<void>((resolve, reject) => {
         this.currentAudio = new Audio(url);
-        
+
         this.currentAudio.addEventListener('ended', () => {
           URL.revokeObjectURL(url);
           this.currentAudio = null;
@@ -125,14 +126,12 @@ class VoiceSynthesis {
     };
 
     try {
-      // Race between timeout and synthesis
       this.speakPromise = Promise.race([synthesisPromise(), timeoutPromise]);
       await this.speakPromise;
     } catch (error: any) {
       console.error('Speech synthesis error:', error);
       this.speakPromise = null;
-      
-      // Enhance error handling with more specific error information
+
       const errorMessage = error.message || 'Unknown speech synthesis error';
       if (errorMessage.includes('timeout')) {
         throw new Error('Speech synthesis timed out. Please try again.');
@@ -143,6 +142,25 @@ class VoiceSynthesis {
       } else {
         throw new Error(`Speech synthesis failed: ${errorMessage}`);
       }
+    }
+  }
+
+  // Enhanced text processing for more natural speech
+  private enhanceText(text: string, emotion: EmotionType): string {
+    // Add subtle variations and professional touches based on emotion
+    switch (emotion) {
+      case "professional":
+        return text.replace(/^/g, "Certainly. ").replace(/\.$/, ".");
+      case "friendly":
+        return text.replace(/^/g, "Great! ").replace(/\.$/, ".");
+      case "excited":
+        return text.replace(/^/g, "Excellent! ").replace(/\.$/, "!");
+      case "apologetic":
+        return text.replace(/^/g, "I apologize, ").replace(/\.$/, ".");
+      case "confirmative":
+        return text.replace(/^/g, "Perfect. ").replace(/\.$/, ".");
+      default:
+        return text;
     }
   }
 
