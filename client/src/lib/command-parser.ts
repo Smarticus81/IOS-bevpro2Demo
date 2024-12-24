@@ -1,7 +1,7 @@
 import type { Drink } from "@db/schema";
 
 type ParsedCommand = {
-  type: 'order' | 'inquiry' | 'modify' | 'cancel';
+  type: 'order' | 'inquiry' | 'modify' | 'cancel' | 'system';
   items?: Array<{
     name: string;
     quantity: number;
@@ -21,41 +21,41 @@ function normalizeText(text: string): string {
 // Find best matching drink from inventory
 function findMatchingDrink(drinkName: string, availableDrinks: Drink[]): Drink | null {
   const normalizedInput = normalizeText(drinkName);
-  
+
   // Try exact match first
   const exactMatch = availableDrinks.find(d => 
     normalizeText(d.name) === normalizedInput
   );
-  
+
   if (exactMatch) {
     console.log('Found exact drink match:', exactMatch.name);
     return exactMatch;
   }
-  
-  // Try partial matches
+
+  // Try partial matches with word boundaries
   const partialMatches = availableDrinks.filter(d => {
-    const drinkNameNorm = normalizeText(d.name);
-    return drinkNameNorm.includes(normalizedInput) ||
-           normalizedInput.includes(drinkNameNorm);
+    const drinkName = d.name.toLowerCase();
+    return drinkName.includes(normalizedInput) ||
+           normalizedInput.includes(drinkName) ||
+           // Handle special cases like "cooler" variants
+           (drinkName.includes('cooler') && normalizedInput.includes('cooler'));
   });
-  
+
   if (partialMatches.length > 0) {
-    // Return the closest match by length
-    const bestMatch = partialMatches.sort((a, b) => 
-      Math.abs(normalizeText(a.name).length - normalizedInput.length) - 
-      Math.abs(normalizeText(b.name).length - normalizedInput.length)
-    )[0];
-    
-    console.log('Found partial drink match:', {
-      input: drinkName,
-      matched: bestMatch.name,
+    // If multiple matches, prefer the shortest name as it's likely more specific
+    const bestMatch = partialMatches.sort((a, b) => a.name.length - b.name.length)[0];
+    console.log('Found best partial match:', {
+      searchTerm: normalizedInput,
+      matchedDrink: bestMatch.name,
       allMatches: partialMatches.map(d => d.name)
     });
-    
     return bestMatch;
   }
-  
-  console.log('No matching drink found for:', drinkName);
+
+  console.log('No drink match found:', {
+    searchTerm: normalizedInput,
+    availableDrinks: availableDrinks.map(d => d.name)
+  });
   return null;
 }
 
@@ -67,68 +67,74 @@ export function parseVoiceCommand(text: string, availableDrinks: Drink[]): Parse
   }
 
   const textLower = text.toLowerCase().trim();
-  console.log('Parsing voice command:', textLower);
+  console.log('Voice command received:', {
+    text: textLower,
+    drinksAvailable: availableDrinks.length
+  });
 
-  // Command patterns
+  // Check for system commands first
+  const systemCommands = {
+    stop: /(?:stop|end|quit|exit|turn off|disable)\s+(?:listening|voice|commands?)/i,
+    help: /(?:help|what can i say|commands|menu|what can you do)/i,
+    repeat: /(?:repeat that|say that again|what did you say)/i
+  };
+
+  for (const [action, pattern] of Object.entries(systemCommands)) {
+    if (pattern.test(textLower)) {
+      console.log('Matched system command:', action);
+      return { type: 'system', action };
+    }
+  }
+
+  // Command patterns for orders
   const orderPatterns = [
     /(?:can i|could i|i want to|i would like to|let me|i'd like to|i want|get me|give me)\s+(?:get|have|order)/i,
     /(?:order|get|add)\s+(?:a|an|some|\d+)/i,
-    /(?:i'll take|i will take|i will have|i'll have)/i
+    /(?:i'll|i will)\s+(?:take|have)/i,
+    /(?:give|get)\s+me/i
   ];
 
-  // Check if this is an order command
-  const isOrderCommand = orderPatterns.some(pattern => pattern.test(textLower));
-  if (!isOrderCommand) {
-    console.log('Not recognized as an order command');
-    return null;
-  }
-
-  // Remove filler words and normalize input
-  const cleanedText = textLower
-    .replace(/can i get|could i get|i want to get|i would like to get|i want|i would like|give me|get me|please|and/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  console.log('Cleaned command text:', cleanedText);
-
-  // Extract quantities and drink names
+  // Split compound orders on "and"
+  const orderParts = textLower.split(/\s+and\s+|\s*,\s*/);
   const items: ParsedCommand['items'] = [];
-  const matches = cleanedText.match(/(\d+|a|one|two|three|four|five)\s+([a-z\s]+?)(?=\s+\d+|$)/g);
 
-  if (matches) {
-    console.log('Found quantity-drink matches:', matches);
-
-    for (const match of matches) {
-      const [quantityStr, ...nameParts] = match.split(/\s+/);
+  for (const part of orderParts) {
+    // Try to extract quantity and drink name
+    const quantityMatch = part.match(/(\d+|a|one|two|three|four|five)\s+(.+)/i);
+    if (quantityMatch) {
+      const [_, quantityStr, drinkName] = quantityMatch;
       const quantity = parseInt(quantityStr) || 
-                      { 'a': 1, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5 }[quantityStr] || 
+                      { 'a': 1, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5 }[quantityStr.toLowerCase()] || 
                       1;
-      const drinkInput = nameParts.join(' ');
-      
-      const matchedDrink = findMatchingDrink(drinkInput, availableDrinks);
-      
+
+      const matchedDrink = findMatchingDrink(drinkName, availableDrinks);
       if (matchedDrink) {
         items.push({
           name: matchedDrink.name,
           quantity,
-          modifiers: extractModifiers(drinkInput)
+          modifiers: extractModifiers(drinkName)
         });
-      } else {
-        console.log('No matching drink found for:', drinkInput);
+      }
+    } else {
+      // Try to match without explicit quantity
+      const matchedDrink = findMatchingDrink(part, availableDrinks);
+      if (matchedDrink) {
+        items.push({
+          name: matchedDrink.name,
+          quantity: 1,
+          modifiers: extractModifiers(part)
+        });
       }
     }
   }
 
-  if (items.length === 0) {
-    console.log('No valid items found in command');
-    return null;
+  if (items.length > 0) {
+    console.log('Successfully parsed order items:', items);
+    return { type: 'order', items };
   }
 
-  console.log('Successfully parsed items:', items);
-  return {
-    type: 'order',
-    items
-  };
+  console.log('No valid items found in command');
+  return null;
 }
 
 function extractModifiers(itemName: string): string[] {
