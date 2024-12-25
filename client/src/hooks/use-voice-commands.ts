@@ -23,6 +23,7 @@ export function useVoiceCommands({
   const { toast } = useToast();
   const lastCommandRef = useRef<{ text: string; timestamp: number }>({ text: '', timestamp: 0 });
   const COMMAND_DEBOUNCE_MS = 1000;
+  const restartTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Helper function to validate dependencies
   const validateDependencies = useCallback((): boolean => {
@@ -73,7 +74,33 @@ export function useVoiceCommands({
     }
 
     try {
+      // Store current listening state
+      const wasListening = googleVoiceService.isActive();
+
+      // Attempt to speak with automatic recognition resume
       await voiceSynthesis.speak(message, undefined, emotion);
+
+      // If recognition was active and hasn't been resumed, restart it
+      if (wasListening && !googleVoiceService.isActive()) {
+        console.log('Ensuring speech recognition resumes...');
+        try {
+          await googleVoiceService.startListening(handleVoiceCommand);
+        } catch (error) {
+          console.error('Failed to resume speech recognition after response:', error);
+          // Try one more time after a short delay
+          if (restartTimeoutRef.current) {
+            clearTimeout(restartTimeoutRef.current);
+          }
+          restartTimeoutRef.current = setTimeout(async () => {
+            try {
+              await googleVoiceService.startListening(handleVoiceCommand);
+            } catch (retryError) {
+              console.error('Failed to resume speech recognition on retry:', retryError);
+              setIsListening(false);
+            }
+          }, 100);
+        }
+      }
     } catch (error) {
       console.error('Error speaking response:', error);
       toast({
@@ -323,6 +350,9 @@ export function useVoiceCommands({
     return () => {
       if (isListening) {
         googleVoiceService.stopListening().catch(console.error);
+      }
+      if (restartTimeoutRef.current) {
+        clearTimeout(restartTimeoutRef.current);
       }
     };
   }, [isListening]);
