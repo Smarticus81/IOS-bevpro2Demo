@@ -8,10 +8,10 @@ class GoogleVoiceService {
   private initializationAttempts: number = 0;
   private readonly MAX_INIT_ATTEMPTS = 3;
   private restartTimeout: NodeJS.Timeout | null = null;
+  private isManualStop: boolean = false;
 
   constructor() {
     console.log('GoogleVoiceService constructor called');
-    // Defer initialization until actually needed
     if (typeof window !== 'undefined') {
       this.initializeSpeechRecognition();
     }
@@ -71,7 +71,7 @@ class GoogleVoiceService {
     this.recognition.onstart = () => {
       console.log('Speech recognition started');
       this.isListening = true;
-      // Clear any existing restart timeout
+      this.isManualStop = false;
       if (this.restartTimeout) {
         clearTimeout(this.restartTimeout);
         this.restartTimeout = null;
@@ -82,18 +82,18 @@ class GoogleVoiceService {
       console.log('Speech recognition ended');
 
       // Only attempt to restart if we're still supposed to be listening
-      if (this.isListening && this.callback) {
-        console.log('Immediately restarting speech recognition...');
+      // and it wasn't manually stopped
+      if (this.isListening && !this.isManualStop && this.callback) {
+        console.log('Attempting to restart speech recognition...');
         try {
-          // Attempt immediate restart
           this.recognition?.start();
         } catch (error) {
-          console.error('Failed immediate restart, trying with delay:', error);
+          console.error('Failed to restart speech recognition immediately, trying with delay:', error);
 
           // If immediate restart fails, try with a minimal delay
           if (!this.restartTimeout) {
             this.restartTimeout = setTimeout(() => {
-              if (this.isListening && this.callback) {
+              if (this.isListening && this.callback && !this.isManualStop) {
                 console.log('Attempting delayed restart of speech recognition...');
                 try {
                   this.recognition?.start();
@@ -104,7 +104,7 @@ class GoogleVoiceService {
                 }
               }
               this.restartTimeout = null;
-            }, 50); // Reduced delay to 50ms
+            }, 50);
           }
         }
       } else {
@@ -163,7 +163,6 @@ class GoogleVoiceService {
     if (this.callback) {
       this.callback('');
     }
-    // Clear any pending restart
     if (this.restartTimeout) {
       clearTimeout(this.restartTimeout);
       this.restartTimeout = null;
@@ -188,6 +187,8 @@ class GoogleVoiceService {
 
     try {
       this.callback = callback;
+      this.isManualStop = false;
+
       await new Promise<void>((resolve, reject) => {
         if (!this.recognition) {
           reject(new Error('Speech recognition is not available'));
@@ -240,6 +241,9 @@ class GoogleVoiceService {
     }
 
     try {
+      // Mark this as a manual stop
+      this.isManualStop = true;
+
       // Clear any pending restart timeout
       if (this.restartTimeout) {
         clearTimeout(this.restartTimeout);
@@ -293,6 +297,10 @@ class GoogleVoiceService {
       this.callback = null;
       throw error;
     }
+  }
+
+  getCurrentCallback(): VoiceRecognitionCallback | null {
+    return this.callback;
   }
 
   isActive(): boolean {

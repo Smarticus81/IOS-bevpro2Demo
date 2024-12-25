@@ -1,5 +1,6 @@
 import type { VoiceError } from "@/types/speech";
 import { getOpenAIClient } from "./openai";
+import { googleVoiceService } from "./google-voice-service";
 
 type VoiceModel = "tts-1";
 type VoiceId = "alloy" | "echo" | "fable" | "onyx" | "shimmer";
@@ -12,6 +13,7 @@ class VoiceSynthesis {
   private initializationPromise: Promise<void> | null = null;
   private initializationAttempts: number = 0;
   private readonly MAX_INIT_ATTEMPTS = 3;
+  private isSpeaking: boolean = false;
 
   private constructor() {
     console.log('VoiceSynthesis constructor called');
@@ -39,7 +41,6 @@ class VoiceSynthesis {
           resolve();
         } catch (error) {
           console.error('Audio initialization failed:', error);
-          // Keep listeners active to retry on next interaction
         }
       };
 
@@ -47,7 +48,6 @@ class VoiceSynthesis {
         document.addEventListener(type, initializeAudio, { once: true });
       });
 
-      // Attempt immediate initialization for browsers that don't require user interaction
       initializeAudio().catch(console.error);
     });
   }
@@ -68,7 +68,6 @@ class VoiceSynthesis {
 
     console.log('Initializing AudioContext...');
     try {
-      // Create new context if none exists or if current one is closed
       if (!this.audioContext || this.audioContext.state === 'closed') {
         this.audioContext = new AudioContext();
         console.log('New AudioContext created');
@@ -79,7 +78,6 @@ class VoiceSynthesis {
         console.log('AudioContext resumed successfully');
       }
 
-      // Verify the context is actually running
       if (this.audioContext.state !== 'running') {
         throw new Error(`AudioContext state is ${this.audioContext.state}`);
       }
@@ -107,9 +105,23 @@ class VoiceSynthesis {
       return;
     }
 
+    if (this.isSpeaking) {
+      console.log('Already speaking, stopping current playback');
+      this.stop();
+    }
+
     try {
       console.log('Attempting to speak:', { text: text.substring(0, 50) + '...', voice, emotion });
       await this.waitForInitialization();
+
+      // Pause speech recognition while synthesizing speech
+      const wasListening = googleVoiceService.isActive();
+      if (wasListening) {
+        console.log('Temporarily pausing speech recognition for synthesis');
+        await googleVoiceService.stopListening();
+      }
+
+      this.isSpeaking = true;
 
       let speechSpeed = 1.0;
       let voiceSelection: VoiceId = voice;
@@ -147,24 +159,35 @@ class VoiceSynthesis {
         console.log('Setting up audio playback...');
         this.currentAudio = new Audio(url);
 
-        const cleanup = () => {
+        const cleanup = async () => {
           URL.revokeObjectURL(url);
           if (this.currentAudio) {
             this.currentAudio.removeEventListener('ended', onEnded);
             this.currentAudio.removeEventListener('error', onError);
             this.currentAudio = null;
           }
+          this.isSpeaking = false;
+
+          // Resume speech recognition if it was active before
+          if (wasListening) {
+            console.log('Resuming speech recognition after synthesis');
+            try {
+              await googleVoiceService.startListening(googleVoiceService.getCurrentCallback());
+            } catch (error) {
+              console.error('Failed to resume speech recognition:', error);
+            }
+          }
         };
 
-        const onEnded = () => {
+        const onEnded = async () => {
           console.log('Audio playback completed successfully');
-          cleanup();
+          await cleanup();
           resolve();
         };
 
-        const onError = (error: Event) => {
+        const onError = async (error: Event) => {
           console.error('Audio playback failed:', error);
-          cleanup();
+          await cleanup();
           reject(new Error('Audio playback failed'));
         };
 
@@ -172,14 +195,15 @@ class VoiceSynthesis {
         this.currentAudio.addEventListener('error', onError);
 
         console.log('Starting audio playback...');
-        this.currentAudio.play().catch(error => {
+        this.currentAudio.play().catch(async error => {
           console.error('Failed to play audio:', error);
-          cleanup();
+          await cleanup();
           reject(error);
         });
       });
     } catch (error) {
       console.error('Speech synthesis error:', error);
+      this.isSpeaking = false;
       throw error;
     }
   }
@@ -191,6 +215,7 @@ class VoiceSynthesis {
       this.currentAudio.currentTime = 0;
       this.currentAudio = null;
     }
+    this.isSpeaking = false;
   }
 
   isReady(): boolean {
@@ -202,6 +227,10 @@ class VoiceSynthesis {
       ready
     });
     return ready;
+  }
+
+  isSpeakingNow(): boolean {
+    return this.isSpeaking;
   }
 }
 
