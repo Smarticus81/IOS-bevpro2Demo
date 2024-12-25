@@ -1,21 +1,3 @@
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string;
-  message: string;
-}
-
-interface SpeechRecognitionEvent extends Event {
-  resultIndex: number;
-  results: SpeechRecognitionResultList;
-}
-
-// Extend Window interface with WebKit prefixed types
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
-  }
-}
-
 import { type VoiceRecognitionCallback, type VoiceError } from "@/types/speech";
 
 class GoogleVoiceService {
@@ -25,6 +7,7 @@ class GoogleVoiceService {
   private isInitialized: boolean = false;
   private initializationAttempts: number = 0;
   private readonly MAX_INIT_ATTEMPTS = 3;
+  private restartTimeout: NodeJS.Timeout | null = null;
 
   constructor() {
     console.log('GoogleVoiceService constructor called');
@@ -49,13 +32,11 @@ class GoogleVoiceService {
     console.log(`Attempting speech recognition initialization (attempt ${this.initializationAttempts})`);
 
     try {
-      // Check if we're in a browser environment
       if (typeof window === 'undefined') {
         console.warn('Speech recognition is only available in browser environments');
         return;
       }
 
-      // Initialize Web Speech API with proper type checking
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
         console.error('Speech recognition not supported in this browser');
@@ -90,20 +71,34 @@ class GoogleVoiceService {
     this.recognition.onstart = () => {
       console.log('Speech recognition started');
       this.isListening = true;
+      // Clear any existing restart timeout
+      if (this.restartTimeout) {
+        clearTimeout(this.restartTimeout);
+        this.restartTimeout = null;
+      }
     };
 
     this.recognition.onend = () => {
       console.log('Speech recognition ended');
 
-      // Only set isListening to false if we're intentionally stopping
-      if (this.callback && this.isListening) {
-        console.log('Restarting speech recognition...');
-        try {
-          this.recognition?.start();
-        } catch (error) {
-          console.error('Failed to restart speech recognition:', error);
-          this.isListening = false;
-        }
+      // Only attempt to restart if we're still supposed to be listening
+      // and don't already have a restart pending
+      if (this.isListening && !this.restartTimeout && this.callback) {
+        console.log('Setting up recognition restart...');
+        // Add a small delay before restarting to prevent rapid restarts
+        this.restartTimeout = setTimeout(() => {
+          if (this.isListening && this.callback) {
+            console.log('Restarting speech recognition...');
+            try {
+              this.recognition?.start();
+            } catch (error) {
+              console.error('Failed to restart speech recognition:', error);
+              this.isListening = false;
+              this.callback = null;
+            }
+          }
+          this.restartTimeout = null;
+        }, 100);
       } else {
         this.isListening = false;
       }
@@ -143,12 +138,14 @@ class GoogleVoiceService {
       timestamp: new Date().toISOString()
     });
 
-    // Don't treat 'no-speech' as a fatal error
-    if (event.error === 'no-speech') {
-      console.log('No speech detected, continuing to listen...');
+    // Don't treat these errors as fatal
+    const nonFatalErrors = ['no-speech', 'audio-capture', 'network'];
+    if (nonFatalErrors.includes(event.error)) {
+      console.log(`Non-fatal error "${event.error}" detected, continuing to listen...`);
       return;
     }
 
+    // For fatal errors, stop listening
     this.handleError(new Error(`Speech recognition error: ${event.error}`));
   }
 
@@ -158,22 +155,24 @@ class GoogleVoiceService {
     if (this.callback) {
       this.callback('');
     }
+    // Clear any pending restart
+    if (this.restartTimeout) {
+      clearTimeout(this.restartTimeout);
+      this.restartTimeout = null;
+    }
   }
 
   async startListening(callback: VoiceRecognitionCallback): Promise<void> {
     console.log('Starting voice recognition...');
 
-    // Ensure initialization on first use
     if (!this.isInitialized) {
       this.initializeSpeechRecognition();
     }
 
-    // Check if speech recognition is available
     if (!this.recognition) {
       throw new Error('Speech recognition is not available');
     }
 
-    // Prevent multiple listeners
     if (this.isListening) {
       console.warn('Already listening for voice commands');
       return;
@@ -194,7 +193,7 @@ class GoogleVoiceService {
         const onStart = () => {
           clearTimeout(startTimeout);
           if (this.recognition) {
-            this.recognition.onstart = null;
+            this.recognition.onstart = this.setupEventHandlers.bind(this);
           }
           resolve();
         };
@@ -202,7 +201,7 @@ class GoogleVoiceService {
         const onError = (event: SpeechRecognitionErrorEvent) => {
           clearTimeout(startTimeout);
           if (this.recognition) {
-            this.recognition.onstart = null;
+            this.recognition.onstart = this.setupEventHandlers.bind(this);
           }
           reject(new Error(`Failed to start speech recognition: ${event.error}`));
         };
@@ -210,7 +209,6 @@ class GoogleVoiceService {
         this.recognition.onstart = onStart;
         this.recognition.onerror = onError;
 
-        // Attempt to start recognition
         try {
           this.recognition.start();
         } catch (error) {
@@ -234,6 +232,12 @@ class GoogleVoiceService {
     }
 
     try {
+      // Clear any pending restart timeout
+      if (this.restartTimeout) {
+        clearTimeout(this.restartTimeout);
+        this.restartTimeout = null;
+      }
+
       await new Promise<void>((resolve, reject) => {
         if (!this.recognition) {
           reject(new Error('Speech recognition is not available'));
@@ -247,7 +251,7 @@ class GoogleVoiceService {
         const onEnd = () => {
           clearTimeout(stopTimeout);
           if (this.recognition) {
-            this.recognition.onend = null;
+            this.recognition.onend = this.setupEventHandlers.bind(this);
           }
           resolve();
         };
@@ -255,7 +259,7 @@ class GoogleVoiceService {
         const onError = (event: SpeechRecognitionErrorEvent) => {
           clearTimeout(stopTimeout);
           if (this.recognition) {
-            this.recognition.onend = null;
+            this.recognition.onend = this.setupEventHandlers.bind(this);
           }
           reject(new Error(`Failed to stop speech recognition: ${event.error}`));
         };
