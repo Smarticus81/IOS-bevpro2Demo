@@ -82,23 +82,31 @@ class GoogleVoiceService {
       console.log('Speech recognition ended');
 
       // Only attempt to restart if we're still supposed to be listening
-      // and don't already have a restart pending
-      if (this.isListening && !this.restartTimeout && this.callback) {
-        console.log('Setting up recognition restart...');
-        // Add a small delay before restarting to prevent rapid restarts
-        this.restartTimeout = setTimeout(() => {
-          if (this.isListening && this.callback) {
-            console.log('Restarting speech recognition...');
-            try {
-              this.recognition?.start();
-            } catch (error) {
-              console.error('Failed to restart speech recognition:', error);
-              this.isListening = false;
-              this.callback = null;
-            }
+      if (this.isListening && this.callback) {
+        console.log('Immediately restarting speech recognition...');
+        try {
+          // Attempt immediate restart
+          this.recognition?.start();
+        } catch (error) {
+          console.error('Failed immediate restart, trying with delay:', error);
+
+          // If immediate restart fails, try with a minimal delay
+          if (!this.restartTimeout) {
+            this.restartTimeout = setTimeout(() => {
+              if (this.isListening && this.callback) {
+                console.log('Attempting delayed restart of speech recognition...');
+                try {
+                  this.recognition?.start();
+                } catch (error) {
+                  console.error('Failed to restart speech recognition:', error);
+                  this.isListening = false;
+                  this.callback = null;
+                }
+              }
+              this.restartTimeout = null;
+            }, 50); // Reduced delay to 50ms
           }
-          this.restartTimeout = null;
-        }, 100);
+        }
       } else {
         this.isListening = false;
       }
@@ -139,7 +147,7 @@ class GoogleVoiceService {
     });
 
     // Don't treat these errors as fatal
-    const nonFatalErrors = ['no-speech', 'audio-capture', 'network'];
+    const nonFatalErrors = ['no-speech', 'audio-capture', 'network', 'aborted'];
     if (nonFatalErrors.includes(event.error)) {
       console.log(`Non-fatal error "${event.error}" detected, continuing to listen...`);
       return;
