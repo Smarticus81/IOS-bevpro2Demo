@@ -1,0 +1,142 @@
+he AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. <URL>Understand this warningAI
+voice-synthesis.ts:82 New AudioContext created
+voice-synthesis.ts:86 Resuming suspended AudioContext...
+sound-effects.ts:43 Audio context initialized successfully
+2use-voice-commands.ts:371 Cleaning up voice commands...
+2voice-synthesis.ts:27 Already initializing, waiting...
+use-voice-commands.ts:337 Initializing voice recognition...
+use-voice-commands.ts:33 Validating voice command dependencies: {drinks: true, handlers: {…}}
+use-voice-commands.ts:348 Starting voice recognition...
+google-voice-service.ts:179 Starting voice recognition...
+google-voice-service.ts:236 Started listening for voice commands
+use-voice-commands.ts:67 Preparing voice response: {text: "Voice commands activated. I'm listening and ready ...", emotion: 'excited', data: undefined}
+voice-synthesis.ts:256 Voice synthesis ready state: {initialized: false, contextExists: true, contextState: 'suspended', ready: false}
+use-voice-commands.ts:74 Voice synthesis not ready, displaying toast instead
+(anonymous) @ use-voice-commands.ts:74
+(anonymous) @ use-voice-commands.ts:352
+await in (anonymous)
+handleClick @ VoiceControlButton.tsx:69
+callCallback2 @ chunk-RPCDYKBN.js?v=eb3ea133:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=eb3ea133:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=eb3ea133:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=eb3ea133:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=eb3ea133:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=eb3ea133:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=eb3ea133:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=eb3ea133:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=eb3ea133:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=eb3ea133:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=eb3ea133:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=eb3ea133:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=eb3ea133:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=eb3ea133:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=eb3ea133:5449Understand this warningAI
+use-voice-commands.ts:371 Cleaning up voice commands...
+google-voice-service.ts:124 Audio capturing started
+google-voice-service.ts:135 Voice command recognized: can I get a Diet Coke please
+use-voice-commands.ts:196 Processing voice command: can i get a diet coke please
+use-voice-commands.ts:236 Searching for drink: diet coke please
+use-voice-commands.ts:240 Checking drink: Lav Lemonade Match: false
+use-voice-commands.ts:240 Checking drink: Exotico Teq Blanco Match: false
+use-voice-commands.ts:240 Checking drink: Captain Morgan Match: false
+use-voice-commands.ts:240 Checking drink: Tonic Water Match: false
+use-voice-commands.ts:240 Checking drink: Bombay Sapphire Match: false
+use-voice-commands.ts:240 Checking drink: White Claw Match: false
+use-voice-commands.ts:240 Checking drink: Moscow Mule Match: false
+use-voice-commands.ts:240 Checking drink: Bud Light Match: false
+use-voice-commands.ts:240 Checking drink: Miller Lite Match: false
+use-voice-commands.ts:240 Checking drink: Pinot G Match: false
+use-voice-commands.ts:240 Checking drink: Michelob Ultra Match: false
+use-voice-commands.ts:240 Checking drink: Shiner Bock Match: false
+use-voice-commands.ts:240 Checking drink: Coors Light Match: false
+use-voice-commands.ts:240 Checking drink: Crown Royal Match: false
+use-voice-commands.ts:240 Checking drink: Jameson Whiskey Match: false
+use-voice-commands.ts:240 Checking drink: Jim Beam Match: false
+use-voice-commands.ts:240 Checking drink: Moscato Match: false
+use-voice-commands.ts:240 Checking drink: Pineapple Juice Match: false
+use-voice-commands.ts:240 Checking drink: Josh Wine Match: false
+use-voice-commands.ts:240 Checking drink: Makers Mark Match: false
+use-voice-commands.ts:240 Checking drink: Corona Extra Match: false
+use-voice-commands.ts:240 Checking drink: Stella Artois Match: false
+use-voice-commands.ts:240 Checking drink: Orange Juice Match: false
+use-voice-commands.ts:240 Checking drink: Truly's Seltzer Match: false
+use-voice-commands.ts:240 Checking drink: Woodford Reserve Match: false
+use-voice-commands.ts:240 Checking drink: Well Vodka Match: false
+use-voice-commands.ts:240 Checking drink: JD's Whiskey Match: false
+use-voice-commands.ts:240 Checking drink: March Prosecco Match: false
+use-voice-commands.ts:240 Checking drink: The Honeymoon Match: false
+use-voice-commands.ts:240 Checking drink: Sav Blanc Match: false
+use-voice-commands.ts:240 Checking drink: Dos XX Match: false
+use-voice-commands.ts:240 Checking drink: Canyon Rd Cab Match: false
+use-voice-commands.ts:240 Checking drink: Basil Hayden Match: false
+use-voice-commands.ts:240 Checking drink: Cruzan Light Match: false
+use-voice-commands.ts:240 Checking drink: J.W. Black Match: false
+use-voice-commands.ts:240 Checking drink: Hennessy Cognac Match: false
+use-voice-commands.ts:240 Checking drink: New Amsterdam Match: false
+use-voice-commands.ts:240 Checking drink: Angels Envy Match: false
+use-voice-commands.ts:240 Checking drink: Don Julio Match: false
+use-voice-commands.ts:240 Checking drink: Patron Silver Match: false
+use-voice-commands.ts:240 Checking drink: Heineken Match: false
+use-voice-commands.ts:240 Checking drink: Diet Coke Match: true
+use-voice-commands.ts:245 Adding to cart: {drink: {…}, quantity: 1}
+use-voice-commands.ts:67 Preparing voice response: {text: "I've added 1 Diet Coke to your order. Your total i...", emotion: 'excited', data: {…}}
+voice-synthesis.ts:256 Voice synthesis ready state: {initialized: false, contextExists: true, contextState: 'suspended', ready: false}
+use-voice-commands.ts:74 Voice synthesis not ready, displaying toast instead
+(anonymous) @ use-voice-commands.ts:74
+(anonymous) @ use-voice-commands.ts:264
+handleRecognitionResult @ google-voice-service.ts:137Understand this warningAI
+google-voice-service.ts:135 Voice command recognized:  I want one Diet Coke
+use-voice-commands.ts:196 Processing voice command: i want one diet coke
+use-voice-commands.ts:236 Searching for drink: diet coke
+use-voice-commands.ts:240 Checking drink: Lav Lemonade Match: false
+use-voice-commands.ts:240 Checking drink: Exotico Teq Blanco Match: false
+use-voice-commands.ts:240 Checking drink: Captain Morgan Match: false
+use-voice-commands.ts:240 Checking drink: Tonic Water Match: false
+use-voice-commands.ts:240 Checking drink: Bombay Sapphire Match: false
+use-voice-commands.ts:240 Checking drink: White Claw Match: false
+use-voice-commands.ts:240 Checking drink: Moscow Mule Match: false
+use-voice-commands.ts:240 Checking drink: Bud Light Match: false
+use-voice-commands.ts:240 Checking drink: Miller Lite Match: false
+use-voice-commands.ts:240 Checking drink: Pinot G Match: false
+use-voice-commands.ts:240 Checking drink: Michelob Ultra Match: false
+use-voice-commands.ts:240 Checking drink: Shiner Bock Match: false
+use-voice-commands.ts:240 Checking drink: Coors Light Match: false
+use-voice-commands.ts:240 Checking drink: Crown Royal Match: false
+use-voice-commands.ts:240 Checking drink: Jameson Whiskey Match: false
+use-voice-commands.ts:240 Checking drink: Jim Beam Match: false
+use-voice-commands.ts:240 Checking drink: Moscato Match: false
+use-voice-commands.ts:240 Checking drink: Pineapple Juice Match: false
+use-voice-commands.ts:240 Checking drink: Josh Wine Match: false
+use-voice-commands.ts:240 Checking drink: Makers Mark Match: false
+use-voice-commands.ts:240 Checking drink: Corona Extra Match: false
+use-voice-commands.ts:240 Checking drink: Stella Artois Match: false
+use-voice-commands.ts:240 Checking drink: Orange Juice Match: false
+use-voice-commands.ts:240 Checking drink: Truly's Seltzer Match: false
+use-voice-commands.ts:240 Checking drink: Woodford Reserve Match: false
+use-voice-commands.ts:240 Checking drink: Well Vodka Match: false
+use-voice-commands.ts:240 Checking drink: JD's Whiskey Match: false
+use-voice-commands.ts:240 Checking drink: March Prosecco Match: false
+use-voice-commands.ts:240 Checking drink: The Honeymoon Match: false
+use-voice-commands.ts:240 Checking drink: Sav Blanc Match: false
+use-voice-commands.ts:240 Checking drink: Dos XX Match: false
+use-voice-commands.ts:240 Checking drink: Canyon Rd Cab Match: false
+use-voice-commands.ts:240 Checking drink: Basil Hayden Match: false
+use-voice-commands.ts:240 Checking drink: Cruzan Light Match: false
+use-voice-commands.ts:240 Checking drink: J.W. Black Match: false
+use-voice-commands.ts:240 Checking drink: Hennessy Cognac Match: false
+use-voice-commands.ts:240 Checking drink: New Amsterdam Match: false
+use-voice-commands.ts:240 Checking drink: Angels Envy Match: false
+use-voice-commands.ts:240 Checking drink: Don Julio Match: false
+use-voice-commands.ts:240 Checking drink: Patron Silver Match: false
+use-voice-commands.ts:240 Checking drink: Heineken Match: false
+use-voice-commands.ts:240 Checking drink: Diet Coke Match: true
+use-voice-commands.ts:245 Adding to cart: {drink: {…}, quantity: 1}
+use-voice-commands.ts:67 Preparing voice response: {text: "I've added 1 Diet Coke to your order. Your total i...", emotion: 'excited', data: {…}}
+voice-synthesis.ts:256 Voice synthesis ready state: {initialized: false, contextExists: true, contextState: 'suspended', ready: false}
+use-voice-commands.ts:74 Voice synthesis not ready, displaying toast instead
+(anonymous) @ use-voice-commands.ts:74
+(anonymous) @ use-voice-commands.ts:264
+handleRecognitionResult @ google-voice-service.ts:137Understand this warningAI
+use-voice-commands.ts:46 Attempting to stop voice recognition...
+use-voice-commands.ts:55 Voice commands stopped successfully
+use-voice-commands.ts:371 Cleaning up voice commands...

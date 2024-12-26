@@ -40,6 +40,7 @@ class VoiceSynthesis {
           this.initializationAttempts++;
           await this.initializeAudioContext();
 
+          // Remove event listeners only after successful initialization
           ['click', 'touchstart', 'keydown'].forEach(type => {
             document.removeEventListener(type, initializeAudio);
           });
@@ -53,12 +54,10 @@ class VoiceSynthesis {
         }
       };
 
+      // Add event listeners for user interaction
       ['click', 'touchstart', 'keydown'].forEach(type => {
         document.addEventListener(type, initializeAudio, { once: true });
       });
-
-      // Initial attempt
-      initializeAudio().catch(console.error);
     });
   }
 
