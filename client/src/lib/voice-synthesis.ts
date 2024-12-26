@@ -12,6 +12,7 @@ class VoiceSynthesis {
   private initializationAttempts: number = 0;
   private readonly MAX_INIT_ATTEMPTS = 3;
   private isSpeaking: boolean = false;
+  private isInitializing: boolean = false;
 
   private constructor() {
     console.log('VoiceSynthesis constructor called');
@@ -19,10 +20,18 @@ class VoiceSynthesis {
   }
 
   private setupInitialization() {
+    console.log('Setting up voice synthesis initialization...');
     this.initializationPromise = new Promise((resolve) => {
       const initializeAudio = async () => {
+        if (this.isInitializing) {
+          console.log('Already initializing, waiting...');
+          return;
+        }
+
         try {
+          this.isInitializing = true;
           console.log('Attempting audio initialization...');
+
           if (this.initializationAttempts >= this.MAX_INIT_ATTEMPTS) {
             console.warn('Maximum initialization attempts reached');
             return;
@@ -39,6 +48,8 @@ class VoiceSynthesis {
           resolve();
         } catch (error) {
           console.error('Audio initialization failed:', error);
+        } finally {
+          this.isInitializing = false;
         }
       };
 
@@ -46,6 +57,7 @@ class VoiceSynthesis {
         document.addEventListener(type, initializeAudio, { once: true });
       });
 
+      // Initial attempt
       initializeAudio().catch(console.error);
     });
   }
@@ -59,19 +71,19 @@ class VoiceSynthesis {
   }
 
   private async initializeAudioContext(): Promise<void> {
-    if (this.isAudioInitialized && this.audioContext?.state === 'running') {
-      console.log('AudioContext already initialized and running');
-      return;
-    }
+    console.log('Initializing AudioContext...', {
+      isInitialized: this.isAudioInitialized,
+      currentState: this.audioContext?.state
+    });
 
-    console.log('Initializing AudioContext...');
     try {
       if (!this.audioContext || this.audioContext.state === 'closed') {
-        this.audioContext = new AudioContext();
+        this.audioContext = new window.AudioContext();
         console.log('New AudioContext created');
       }
 
       if (this.audioContext.state === 'suspended') {
+        console.log('Resuming suspended AudioContext...');
         await this.audioContext.resume();
         console.log('AudioContext resumed successfully');
       }
@@ -94,7 +106,13 @@ class VoiceSynthesis {
       console.warn('Voice synthesis not properly initialized, retrying setup');
       this.setupInitialization();
     }
-    return this.initializationPromise;
+
+    try {
+      await this.initializationPromise;
+    } catch (error) {
+      console.error('Error waiting for initialization:', error);
+      throw error;
+    }
   }
 
   async speak(response: VoiceResponse | string): Promise<void> {
@@ -105,6 +123,12 @@ class VoiceSynthesis {
       console.warn('Empty text provided to speak');
       return;
     }
+
+    console.log('Voice synthesis state before speaking:', {
+      isInitialized: this.isAudioInitialized,
+      contextState: this.audioContext?.state,
+      isSpeaking: this.isSpeaking
+    });
 
     if (this.isSpeaking) {
       console.log('Already speaking, stopping current playback');
@@ -120,7 +144,7 @@ class VoiceSynthesis {
 
       await this.waitForInitialization();
 
-      // Pause speech recognition while synthesizing speech
+      // Store current recognition state
       const wasListening = googleVoiceService.isActive();
       if (wasListening) {
         console.log('Temporarily pausing speech recognition for synthesis');
@@ -129,6 +153,7 @@ class VoiceSynthesis {
 
       this.isSpeaking = true;
 
+      // Configure voice based on emotion
       let speechSpeed = 1.0;
       let voiceSelection: VoiceId = 'alloy';
 
@@ -146,6 +171,7 @@ class VoiceSynthesis {
       }
 
       console.log('Generating speech with OpenAI...', { voice: voiceSelection, speed: speechSpeed });
+
       const openai = await getOpenAIClient();
       const audioResponse = await openai.audio.speech.create({
         model: "tts-1",
@@ -166,6 +192,7 @@ class VoiceSynthesis {
         this.currentAudio = new Audio(url);
 
         const cleanup = async () => {
+          console.log('Cleaning up audio resources...');
           URL.revokeObjectURL(url);
           if (this.currentAudio) {
             this.currentAudio.removeEventListener('ended', onEnded);

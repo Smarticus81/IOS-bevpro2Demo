@@ -23,7 +23,6 @@ export function useVoiceCommands({
   const { toast } = useToast();
   const lastCommandRef = useRef<{ text: string; timestamp: number }>({ text: '', timestamp: 0 });
   const COMMAND_DEBOUNCE_MS = 1000;
-  const restartTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const validateDependencies = useCallback((): boolean => {
     const isValid = drinks.length > 0 && 
@@ -44,7 +43,11 @@ export function useVoiceCommands({
   }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder]);
 
   const stopListening = useCallback(async () => {
-    if (!isListening) return;
+    console.log('Attempting to stop voice recognition...');
+    if (!isListening) {
+      console.log('Not listening, no need to stop');
+      return;
+    }
 
     try {
       await googleVoiceService.stopListening();
@@ -56,12 +59,16 @@ export function useVoiceCommands({
     }
   }, [isListening]);
 
-  const respondWith = useCallback(async (
-    messageOrResponse: string | VoiceResponse
-  ) => {
+  const respondWith = useCallback(async (messageOrResponse: string | VoiceResponse) => {
     const response: VoiceResponse = typeof messageOrResponse === 'string' 
       ? { text: messageOrResponse, emotion: 'neutral' }
       : messageOrResponse;
+
+    console.log('Preparing voice response:', {
+      text: response.text.substring(0, 50) + '...',
+      emotion: response.emotion,
+      data: response.data
+    });
 
     if (!voiceSynthesis.isReady()) {
       console.warn('Voice synthesis not ready, displaying toast instead');
@@ -178,8 +185,10 @@ export function useVoiceCommands({
     const command = text.toLowerCase().trim();
     const now = Date.now();
 
+    // Debounce handling
     if (command === lastCommandRef.current.text && 
         now - lastCommandRef.current.timestamp < COMMAND_DEBOUNCE_MS) {
+      console.log('Debouncing duplicate command:', command);
       return;
     }
 
@@ -257,7 +266,7 @@ export function useVoiceCommands({
             emotion: "excited",
             data: {
               type: "cart_update",
-              items: addedItems,
+              items: cart,
               total: currentTotal
             }
           });
@@ -325,12 +334,18 @@ export function useVoiceCommands({
   }, [drinks, onAddToCart, respondWith, stopListening, toast, processOrder, cart]);
 
   const startListening = useCallback(async () => {
+    console.log('Initializing voice recognition...');
+
     try {
-      console.log('Starting voice recognition...');
       if (!googleVoiceService.isSupported()) {
         throw new Error('Speech recognition is not supported in this browser');
       }
 
+      if (!validateDependencies()) {
+        throw new Error('Required dependencies are not available');
+      }
+
+      console.log('Starting voice recognition...');
       await googleVoiceService.startListening(handleVoiceCommand);
       setIsListening(true);
 
@@ -348,15 +363,14 @@ export function useVoiceCommands({
       setIsListening(false);
       throw error;
     }
-  }, [handleVoiceCommand, respondWith, toast]);
+  }, [handleVoiceCommand, respondWith, toast, validateDependencies]);
 
+  // Cleanup effect
   useEffect(() => {
     return () => {
+      console.log('Cleaning up voice commands...');
       if (isListening) {
         googleVoiceService.stopListening().catch(console.error);
-      }
-      if (restartTimeoutRef.current) {
-        clearTimeout(restartTimeoutRef.current);
       }
     };
   }, [isListening]);

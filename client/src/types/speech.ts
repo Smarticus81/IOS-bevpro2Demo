@@ -52,8 +52,8 @@ export interface VoiceSynthesisOptions {
 export interface VoiceResponse {
   text: string;
   data?: {
-    type: 'order_update' | 'confirmation' | 'error' | 'help';
-    items?: CartItem[];
+    type: 'order_update' | 'confirmation' | 'error' | 'help' | 'cart_update';
+    items?: CartItem[] | string[];
     total?: number;
     status?: string;
     error?: string;
