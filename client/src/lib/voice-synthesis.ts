@@ -1,6 +1,7 @@
 import type { VoiceError } from "@/types/speech";
 import { getOpenAIClient } from "./openai";
 import { googleVoiceService } from "./google-voice-service";
+import type { VoiceResponse, VoiceId } from "@/types/speech";
 
 type VoiceModel = "tts-1";
 type VoiceId = "alloy" | "echo" | "fable" | "onyx" | "shimmer";
@@ -99,7 +100,10 @@ class VoiceSynthesis {
     return this.initializationPromise;
   }
 
-  async speak(text: string, voice: VoiceId = "alloy", emotion: "neutral" | "excited" | "apologetic" = "neutral"): Promise<void> {
+  async speak(response: VoiceResponse | string, voice?: VoiceId): Promise<void> {
+    const text = typeof response === 'string' ? response : response.text;
+    const emotion = typeof response === 'string' ? 'neutral' : response.emotion;
+
     if (!text?.trim()) {
       console.warn('Empty text provided to speak');
       return;
@@ -111,7 +115,12 @@ class VoiceSynthesis {
     }
 
     try {
-      console.log('Attempting to speak:', { text: text.substring(0, 50) + '...', voice, emotion });
+      console.log('Attempting to speak:', { 
+        text: text.substring(0, 50) + '...', 
+        emotion,
+        data: typeof response === 'string' ? undefined : response.data
+      });
+
       await this.waitForInitialization();
 
       // Pause speech recognition while synthesizing speech
@@ -124,7 +133,7 @@ class VoiceSynthesis {
       this.isSpeaking = true;
 
       let speechSpeed = 1.0;
-      let voiceSelection: VoiceId = voice;
+      let voiceSelection: VoiceId = voice || 'alloy';
 
       switch (emotion) {
         case "excited":
@@ -141,7 +150,7 @@ class VoiceSynthesis {
 
       console.log('Generating speech with OpenAI...', { voice: voiceSelection, speed: speechSpeed });
       const openai = await getOpenAIClient();
-      const response = await openai.audio.speech.create({
+      const audioResponse = await openai.audio.speech.create({
         model: "tts-1",
         voice: voiceSelection,
         input: text,
@@ -149,7 +158,7 @@ class VoiceSynthesis {
       });
 
       console.log('Speech generated successfully, preparing for playback');
-      const arrayBuffer = await response.arrayBuffer();
+      const arrayBuffer = await audioResponse.arrayBuffer();
       const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
       const url = URL.createObjectURL(blob);
 

@@ -48,3 +48,16 @@ export interface VoiceSynthesisOptions {
   emotion?: keyof VoiceEmotions;
   speed?: number;
 }
+
+export interface VoiceResponse {
+  text: string;
+  data?: {
+    type: 'order_update' | 'confirmation' | 'error' | 'help';
+    items?: CartItem[];
+    total?: number;
+    status?: string;
+    error?: string;
+    suggestions?: string[];
+  };
+  emotion: keyof VoiceEmotions;
+}
