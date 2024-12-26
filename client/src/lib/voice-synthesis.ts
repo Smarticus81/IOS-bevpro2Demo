@@ -3,9 +3,6 @@ import { getOpenAIClient } from "./openai";
 import { googleVoiceService } from "./google-voice-service";
 import type { VoiceResponse, VoiceId } from "@/types/speech";
 
-type VoiceModel = "tts-1";
-type VoiceId = "alloy" | "echo" | "fable" | "onyx" | "shimmer";
-
 class VoiceSynthesis {
   private static instance: VoiceSynthesis;
   private audioContext: AudioContext | null = null;
@@ -100,7 +97,7 @@ class VoiceSynthesis {
     return this.initializationPromise;
   }
 
-  async speak(response: VoiceResponse | string, voice?: VoiceId): Promise<void> {
+  async speak(response: VoiceResponse | string): Promise<void> {
     const text = typeof response === 'string' ? response : response.text;
     const emotion = typeof response === 'string' ? 'neutral' : response.emotion;
 
@@ -127,13 +124,13 @@ class VoiceSynthesis {
       const wasListening = googleVoiceService.isActive();
       if (wasListening) {
         console.log('Temporarily pausing speech recognition for synthesis');
-        await googleVoiceService.stopListening();
+        await googleVoiceService.pauseListening();
       }
 
       this.isSpeaking = true;
 
       let speechSpeed = 1.0;
-      let voiceSelection: VoiceId = voice || 'alloy';
+      let voiceSelection: VoiceId = 'alloy';
 
       switch (emotion) {
         case "excited":
@@ -181,7 +178,7 @@ class VoiceSynthesis {
           if (wasListening) {
             console.log('Resuming speech recognition after synthesis');
             try {
-              await googleVoiceService.startListening(googleVoiceService.getCurrentCallback());
+              await googleVoiceService.resumeListening();
             } catch (error) {
               console.error('Failed to resume speech recognition:', error);
             }

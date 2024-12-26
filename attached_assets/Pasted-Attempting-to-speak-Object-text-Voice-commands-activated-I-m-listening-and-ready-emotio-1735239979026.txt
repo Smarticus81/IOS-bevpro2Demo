@@ -1,0 +1,56 @@
+Attempting to speak: 
+Object {text: "Voice commands activated. I'm listening and ready ...", emotion: "excited", data: undefined}
+Generating speech with OpenAI... 
+Object {voice: "fable", speed: 1.15}
+Initializing OpenAI client...
+Audio capturing started
+OpenAI client initialized and tested successfully
+Speech generated successfully, preparing for playback
+Setting up audio playback...
+Starting audio playback...
+Audio playback completed successfully
+Voice command recognized: can I get one Captain Morgan
+Processing voice command: can i get one captain morgan
+Searching for drink: captain morgan
+Checking drink: Lav Lemonade Match: false
+Checking drink: Exotico Teq Blanco Match: false
+Checking drink: Captain Morgan Match: true
+Adding to cart: 
+Object {drink: {…}, quantity: 1}
+Voice synthesis ready state: 
+Object {initialized: true, contextExists: true, contextState: "running", ready: true}
+Attempting to speak: 
+Object {text: "I've added 1 Captain Morgan to your order. Your to...", emotion: "excited", data: {…}}
+Generating speech with OpenAI... 
+Object {voice: "fable", speed: 1.15}
+Speech generated successfully, preparing for playback
+Setting up audio playback...
+Starting audio playback...
+`DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
+
+If you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.
+
+For more information, see https://radix-ui.com/primitives/docs/components/dialog
+Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+`DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
+
+If you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.
+
+For more information, see https://radix-ui.com/primitives/docs/components/dialog
+Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+Audio playback completed successfully
+Voice command recognized:  complete order
+Processing voice command: complete order
+Voice synthesis ready state: 
+Object {initialized: true, contextExists: true, contextState: "running", ready: true}
+Attempting to speak: 
+Object {text: "Your cart is empty. Would you like to order some d...", emotion: "apologetic", data: {…}}
+Generating speech with OpenAI... 
+Object {voice: "shimmer", speed: 0.95}
+Speech generated successfully, preparing for playback
+Setting up audio playback...
+Starting audio playback...
+Voice commands stopped successfully
+Audio playback completed successfully
+Audio capturing ended
+Speech recognition ended

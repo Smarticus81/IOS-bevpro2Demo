@@ -9,6 +9,7 @@ class GoogleVoiceService {
   private readonly MAX_INIT_ATTEMPTS = 3;
   private restartTimeout: NodeJS.Timeout | null = null;
   private isManualStop: boolean = false;
+  private isPaused: boolean = false;
 
   constructor() {
     console.log('GoogleVoiceService constructor called');
@@ -72,6 +73,7 @@ class GoogleVoiceService {
       console.log('Speech recognition started');
       this.isListening = true;
       this.isManualStop = false;
+      this.isPaused = false;
       if (this.restartTimeout) {
         clearTimeout(this.restartTimeout);
         this.restartTimeout = null;
@@ -82,8 +84,8 @@ class GoogleVoiceService {
       console.log('Speech recognition ended');
 
       // Only attempt to restart if we're still supposed to be listening
-      // and it wasn't manually stopped
-      if (this.isListening && !this.isManualStop && this.callback) {
+      // and it wasn't manually stopped and not paused
+      if (this.isListening && !this.isManualStop && !this.isPaused) {
         console.log('Attempting to restart speech recognition...');
         try {
           this.recognition?.start();
@@ -93,7 +95,7 @@ class GoogleVoiceService {
           // If immediate restart fails, try with a minimal delay
           if (!this.restartTimeout) {
             this.restartTimeout = setTimeout(() => {
-              if (this.isListening && this.callback && !this.isManualStop) {
+              if (this.isListening && this.callback && !this.isManualStop && !this.isPaused) {
                 console.log('Attempting delayed restart of speech recognition...');
                 try {
                   this.recognition?.start();
@@ -108,7 +110,11 @@ class GoogleVoiceService {
           }
         }
       } else {
-        this.isListening = false;
+        console.log('Not restarting recognition:', {
+          isListening: this.isListening,
+          isManualStop: this.isManualStop,
+          isPaused: this.isPaused
+        });
       }
     };
 
@@ -180,7 +186,7 @@ class GoogleVoiceService {
       throw new Error('Speech recognition is not available');
     }
 
-    if (this.isListening) {
+    if (this.isListening && !this.isPaused) {
       console.warn('Already listening for voice commands');
       return;
     }
@@ -188,6 +194,7 @@ class GoogleVoiceService {
     try {
       this.callback = callback;
       this.isManualStop = false;
+      this.isPaused = false;
 
       await new Promise<void>((resolve, reject) => {
         if (!this.recognition) {
@@ -243,6 +250,7 @@ class GoogleVoiceService {
     try {
       // Mark this as a manual stop
       this.isManualStop = true;
+      this.isPaused = false;
 
       // Clear any pending restart timeout
       if (this.restartTimeout) {
@@ -299,12 +307,42 @@ class GoogleVoiceService {
     }
   }
 
+  async pauseListening(): Promise<void> {
+    if (!this.isListening || !this.recognition) return;
+
+    try {
+      this.isPaused = true;
+      await this.recognition.stop();
+      console.log('Speech recognition paused');
+    } catch (error) {
+      console.error('Error pausing speech recognition:', error);
+      throw error;
+    }
+  }
+
+  async resumeListening(): Promise<void> {
+    if (!this.isPaused || !this.callback) return;
+
+    try {
+      this.isPaused = false;
+      await this.startListening(this.callback);
+      console.log('Speech recognition resumed');
+    } catch (error) {
+      console.error('Error resuming speech recognition:', error);
+      throw error;
+    }
+  }
+
   getCurrentCallback(): VoiceRecognitionCallback | null {
     return this.callback;
   }
 
   isActive(): boolean {
-    return this.isListening;
+    return this.isListening && !this.isPaused;
+  }
+
+  isPausing(): boolean {
+    return this.isPaused;
   }
 
   isSupported(): boolean {
