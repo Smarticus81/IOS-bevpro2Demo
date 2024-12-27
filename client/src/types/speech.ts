@@ -52,26 +52,11 @@ export interface VoiceResponse {
   text: string;
   data?: {
     type: 'order_update' | 'confirmation' | 'error' | 'help' | 'cart_update';
-    items?: CartItem[] | string[];
+    items?: CartItem[];
     total?: number;
     status?: string;
     error?: string;
     suggestions?: string[];
   };
   emotion: keyof VoiceEmotions;
-}
-
-// Session types for recommendations
-export interface SessionContext {
-  id: string;
-  preferences?: {
-    categories?: string[];
-    tasteProfile?: {
-      sweet: number;
-      bitter: number;
-      strong: number;
-      refreshing: number;
-    };
-  };
-  orderHistory?: CartItem[];
 }

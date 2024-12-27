@@ -2,9 +2,9 @@ import OpenAI from "openai";
 import { recommendationService } from './recommendation-service';
 import { conversationState } from "./conversation-state";
 
-// Browser-safe base64 encoding/decoding
+// Browser-safe base64 utilities using native browser APIs
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  const binaryString = window.atob(base64);
+  const binaryString = atob(base64.replace(/^data:.*;base64,/, ''));
   const bytes = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
     bytes[i] = binaryString.charCodeAt(i);
@@ -14,11 +14,10 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return window.btoa(binary);
+  const binaryString = Array.from(bytes)
+    .map(byte => String.fromCharCode(byte))
+    .join('');
+  return btoa(binaryString);
 }
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
@@ -27,18 +26,14 @@ let openai: OpenAI | null = null;
 export async function getOpenAIClient(): Promise<OpenAI> {
   if (!openai) {
     try {
-      console.log('Initializing OpenAI client...');
       const response = await fetch('/api/config');
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Config API error:', response.status, errorText);
-        throw new Error(`Config API returned ${response.status}: ${errorText}`);
+        throw new Error(`Config API returned ${response.status}`);
       }
 
       const data = await response.json();
       if (!data.openaiKey) {
-        console.error('OpenAI API key missing from server response');
         throw new Error('OpenAI API key not configured');
       }
 
@@ -47,73 +42,57 @@ export async function getOpenAIClient(): Promise<OpenAI> {
         dangerouslyAllowBrowser: true
       });
 
-      // Test the client with a simple request
-      await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [{ role: "user", content: "Test connection" }],
-        max_tokens: 5,
-        response_format: { type: "json_object" }
-      });
-
-      console.log('OpenAI client initialized and tested successfully');
       return openai;
     } catch (error: any) {
       console.error('OpenAI client initialization failed:', error);
-      openai = null; // Reset the client on failure
-      throw new Error(error.message || 'Failed to initialize OpenAI client');
+      openai = null;
+      throw error;
     }
   }
   return openai;
 }
 
-interface OrderIntent {
+export interface BaseIntent {
+  sentiment: 'positive' | 'negative' | 'neutral';
+  conversational_response: string;
+}
+
+export interface OrderIntent extends BaseIntent {
   type: "order";
   items: Array<{
     name: string;
     quantity: number;
   }>;
-  conversational_response: string;
 }
 
-interface IncompleteOrderIntent {
+export interface IncompleteOrderIntent extends BaseIntent {
   type: "incomplete_order";
   missing: "drink_type" | "quantity";
   quantity?: number;
   drink_type?: string;
-  conversational_response: string;
 }
 
-interface QueryIntent {
+export interface QueryIntent extends BaseIntent {
   type: "query";
   category?: string;
   attribute?: string;
-  conversational_response: string;
 }
 
-interface GreetingIntent {
+export interface GreetingIntent extends BaseIntent {
   type: "greeting";
-  conversational_response: string;
 }
 
-interface CompleteTransactionIntent {
+export interface CompleteTransactionIntent extends BaseIntent {
   type: "complete_transaction";
   total?: number;
-  conversational_response: string;
 }
 
-interface ShutdownIntent {
+export interface ShutdownIntent extends BaseIntent {
   type: "shutdown";
-  conversational_response: string;
 }
 
-interface CancelIntent {
+export interface CancelIntent extends BaseIntent {
   type: "cancel";
-  conversational_response: string;
-}
-
-export interface BaseIntent {
-  sentiment: 'positive' | 'negative' | 'neutral';
-  conversational_response: string;
 }
 
 export interface RecommendationIntent extends BaseIntent {
@@ -123,9 +102,9 @@ export interface RecommendationIntent extends BaseIntent {
   context?: string;
 }
 
-export type Intent = (OrderIntent | IncompleteOrderIntent | QueryIntent | GreetingIntent | CompleteTransactionIntent | ShutdownIntent | CancelIntent | RecommendationIntent) & BaseIntent;
+export type Intent = OrderIntent | IncompleteOrderIntent | QueryIntent | GreetingIntent |
+                    CompleteTransactionIntent | ShutdownIntent | CancelIntent | RecommendationIntent;
 
-// Store conversation history with improved context management
 const MAX_HISTORY_LENGTH = 6;
 let conversationHistory: Array<{ role: "system" | "user" | "assistant"; content: string }> = [];
 
@@ -133,19 +112,19 @@ export async function processVoiceCommand(text: string, sessionId: string): Prom
   try {
     const client = await getOpenAIClient();
 
-    if (!text || text.trim().length === 0) {
+    if (!text?.trim()) {
       throw new Error('Empty voice command received');
     }
 
-    // Maintain conversation history with context
+    // Maintain conversation history
     if (conversationHistory.length > MAX_HISTORY_LENGTH) {
       conversationHistory = conversationHistory.slice(-MAX_HISTORY_LENGTH);
     }
 
-    // Get relevant context from conversation state
+    // Get relevant context
     const relevantContext = conversationState.getRelevantContext();
 
-    // Get personalized recommendations if needed
+    // Get recommendations if needed
     let recommendationContext = null;
     if (text.toLowerCase().includes('recommend') || text.toLowerCase().includes('suggestion')) {
       const currentTime = new Date().getHours();
@@ -159,7 +138,7 @@ export async function processVoiceCommand(text: string, sessionId: string): Prom
         currentOrder: conversationState.getCurrentOrder()?.map(item => ({
           drink: item.drink,
           quantity: item.quantity
-        })) || []
+        }))
       });
 
       if (recommendations.length > 0) {
@@ -167,34 +146,27 @@ export async function processVoiceCommand(text: string, sessionId: string): Prom
       }
     }
 
-    const systemMessage = {
-      role: "system" as const,
-      content: `You are a knowledgeable and helpful AI bartender with emotional intelligence and agentic capabilities.
-      You should be proactive in offering recommendations and assistance.
-      Your voice should be pleasant, upbeat, and feminine.
-      Use natural, conversational language while maintaining professionalism.
+    const messages = [
+      {
+        role: "system" as const,
+        content: `You are an intelligent AI bartender with emotional intelligence and agentic capabilities.
+        Be proactive in offering recommendations and assistance.
+        Use natural, pleasant, upbeat, and feminine voice while maintaining professionalism.
 
-      Response types:
-      - "order": Complete orders with suggestions
-      - "incomplete_order": Ask clarifying questions
-      - "query": Answer questions about drinks
-      - "recommendation": Provide personalized recommendations
-      - "greeting": Friendly welcome with context-aware suggestions
-      - "complete_transaction": Process order with final recommendations
-      - "shutdown": Turn off voice commands
-      - "cancel": Cancel current operation
+        Response format must be JSON with these fields:
+        - type: order | incomplete_order | query | recommendation | greeting | complete_transaction | shutdown | cancel
+        - sentiment: positive | negative | neutral
+        - conversational_response: string
+        - Additional fields based on type (items for orders, etc.)
 
-      Always maintain a helpful, proactive, and friendly tone.
-      Always include a sentiment field in the response.`
-    };
-
-    // Build messages array with proper typing
-    const messages = [systemMessage];
+        Always maintain a helpful, proactive, and friendly tone.`
+      }
+    ];
 
     if (relevantContext) {
       messages.push({ 
         role: "system" as const, 
-        content: `Previous context: ${relevantContext}`
+        content: `Current context: ${relevantContext}`
       });
     }
 
@@ -205,7 +177,7 @@ export async function processVoiceCommand(text: string, sessionId: string): Prom
       });
     }
 
-    messages.push({ role: "user" as const, content: text });
+    messages.push({ role: "user", content: text });
 
     const response = await client.chat.completions.create({
       model: "gpt-4o",
@@ -225,28 +197,13 @@ export async function processVoiceCommand(text: string, sessionId: string): Prom
     // Update conversation state and history
     conversationState.updateContext(parsed, text);
     conversationHistory.push({ 
-      role: "assistant" as const, 
+      role: "assistant", 
       content: content
     });
 
     return parsed;
   } catch (error: any) {
     console.error("Failed to process voice command:", error);
-
-    if (error.message.includes('fetch')) {
-      throw new Error("Could not connect to the AI service. Please try again.");
-    } else if (error.message.includes('JSON')) {
-      console.error('Raw response:', error.response?.data);
-      throw new Error("The AI service returned an invalid response. Please try again.");
-    } else if (error.message.includes('format')) {
-      throw new Error("Sorry, I couldn't understand that. Could you rephrase?");
-    } else {
-      throw new Error("Sorry, I couldn't process that request. Please try again.");
-    }
+    throw new Error(error.message || "Failed to process voice command");
   }
-}
-
-//  Added a dummy function since the edited code references it and it's not in the original
-function convertToFullDrink(drink: string): string {
-  return drink; // Replace with actual implementation if available.
 }

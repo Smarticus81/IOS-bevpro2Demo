@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { googleVoiceService } from '@/lib/google-voice-service';
 import { useToast } from '@/hooks/use-toast';
 import { voiceSynthesis } from '@/lib/voice-synthesis';
-import type { DrinkItem, CartItem, AddToCartAction, VoiceResponse, SessionContext } from '@/types/speech';
+import type { DrinkItem, CartItem, AddToCartAction, VoiceResponse } from '@/types/speech';
 import { recommendationService } from '@/lib/recommendation-service';
 import type { Drink } from '@db/schema';
 import { conversationState } from '@/lib/conversation-state';
@@ -30,11 +30,10 @@ interface VoiceCommandsProps {
   onProcessingStateChange?: (isProcessing: boolean) => void;
 }
 
-// Generate a session ID if not present
 function getOrCreateSessionId(): string {
   let sessionId = sessionStorage.getItem('voice_session_id');
   if (!sessionId) {
-    sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    sessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     sessionStorage.setItem('voice_session_id', sessionId);
   }
   return sessionId;
@@ -51,10 +50,8 @@ export function useVoiceCommands({
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
-  const lastCommandRef = useRef<{ text: string; timestamp: number }>({ text: '', timestamp: 0 });
   const responseQueueRef = useRef<VoiceResponse[]>([]);
   const isProcessingResponseRef = useRef(false);
-  const COMMAND_DEBOUNCE_MS = 1000;
   const sessionId = getOrCreateSessionId();
 
   // Update parent component with processing state
@@ -83,19 +80,56 @@ export function useVoiceCommands({
       isProcessingResponseRef.current = true;
       const response = responseQueueRef.current[0];
 
+      // Process response
       await voiceSynthesis.speak(response);
 
-      // Show visual feedback
+      // Update UI with toast notification
       toast({
-        title: "Voice Response",
+        title: "Voice Assistant",
         description: response.text,
         duration: 5000,
       });
+
+      // Handle UI updates based on response type
+      if (response.data) {
+        switch (response.data.type) {
+          case 'cart_update':
+            if (response.data.items) {
+              // Cart updates will be reflected through onAddToCart callbacks
+              toast({
+                title: "Cart Updated",
+                description: `Updated ${response.data.items.length} items`,
+                duration: 3000,
+              });
+            }
+            break;
+          case 'confirmation':
+            toast({
+              title: "Order Confirmation",
+              description: `Total: $${response.data.total?.toFixed(2)}`,
+              duration: 3000,
+            });
+            break;
+          case 'error':
+            toast({
+              title: "Error",
+              description: response.data.error || "An error occurred",
+              variant: "destructive",
+              duration: 5000,
+            });
+            break;
+        }
+      }
 
       // Remove processed response
       responseQueueRef.current.shift();
     } catch (error) {
       console.error('Error processing voice response:', error);
+      toast({
+        title: "Error",
+        description: "Failed to process voice response",
+        variant: "destructive",
+      });
     } finally {
       isProcessingResponseRef.current = false;
       // Process next response if available
@@ -122,7 +156,6 @@ export function useVoiceCommands({
         throw new Error('Required dependencies are not available');
       }
 
-      console.log('Starting voice recognition...');
       await googleVoiceService.startListening(async (text) => {
         try {
           const response = await fetch('/api/voice-command', {
@@ -161,7 +194,6 @@ export function useVoiceCommands({
             case 'complete_transaction':
               await processOrder();
               break;
-            // Add other command types as needed
           }
         } catch (error) {
           console.error('Error processing voice command:', error);
@@ -179,16 +211,12 @@ export function useVoiceCommands({
         emotion: "excited"
       });
 
-      toast({
-        title: "Voice Commands Active",
-        description: "Listening for your commands...",
-      });
     } catch (error) {
       console.error('Failed to start voice commands:', error);
       setIsListening(false);
       throw error;
     }
-  }, [drinks, onAddToCart, queueResponse, toast, validateDependencies, sessionId]);
+  }, [drinks, onAddToCart, queueResponse, validateDependencies, sessionId]);
 
   const stopListening = useCallback(async () => {
     if (!isListening) return;
@@ -196,7 +224,6 @@ export function useVoiceCommands({
     try {
       await googleVoiceService.stopListening();
       setIsListening(false);
-      console.log('Voice commands stopped successfully');
     } catch (error) {
       console.error('Failed to stop voice commands:', error);
       setIsListening(false);
@@ -233,7 +260,7 @@ export function useVoiceCommands({
     try {
       setIsProcessing(true);
 
-      // Temporarily pause voice recognition during payment processing
+      // Pause voice recognition during payment processing
       await googleVoiceService.pauseListening();
 
       queueResponse({
@@ -271,9 +298,6 @@ export function useVoiceCommands({
 
       // Clear conversation state after successful order
       conversationState.clearContext();
-
-      // Resume voice recognition after successful order
-      await googleVoiceService.resumeListening();
       return true;
     } catch (error) {
       console.error('Error processing order:', error);
@@ -287,22 +311,19 @@ export function useVoiceCommands({
           status: "failed"
         }
       });
-
-      // Resume voice recognition after error
-      await googleVoiceService.resumeListening();
       return false;
     } finally {
       setIsProcessing(false);
+      await googleVoiceService.resumeListening();
     }
   }, [cart, onPlaceOrder, queueResponse, sessionId]);
 
-  // Cleanup effect
   useEffect(() => {
     return () => {
       if (isListening) {
         googleVoiceService.stopListening().catch(console.error);
       }
-      // Clear any pending responses
+      // Clear pending responses
       responseQueueRef.current = [];
       isProcessingResponseRef.current = false;
     };

@@ -47,12 +47,6 @@ export class ConversationState {
   }
 
   public updateContext(intent: Intent, query: string) {
-    console.log('Updating conversation context:', {
-      previousContext: this.context,
-      newIntent: intent,
-      query
-    });
-
     // Update timestamp
     this.context.timestamp = Date.now();
     this.context.lastIntent = intent;
@@ -60,29 +54,23 @@ export class ConversationState {
 
     // Extract and track topics from the query
     const topics = this.extractTopics(query);
-    this.context.topics = [...new Set([...this.context.topics, ...topics])];
+    this.context.topics = Array.from(new Set([...this.context.topics, ...topics]));
 
     // Track relevant drinks for drink-related queries
     if (intent.type === 'query' && intent.category) {
-      this.context.relevantDrinks = [
-        ...new Set([...this.context.relevantDrinks, intent.category])
-      ];
+      this.context.relevantDrinks = Array.from(new Set([...this.context.relevantDrinks, intent.category]));
     }
-
-    console.log('Updated context:', this.context);
   }
 
   public getContext(): ConversationContext {
     // Check if context has expired
     if (this.hasContextExpired()) {
-      console.log('Context expired, creating new context');
       this.context = this.createNewContext();
     }
     return this.context;
   }
 
   public clearContext() {
-    console.log('Clearing conversation context');
     this.context = this.createNewContext();
   }
 
@@ -130,7 +118,7 @@ export class ConversationState {
       }
     });
 
-    return Array.from(topics); // Convert Set to Array
+    return Array.from(topics);
   }
 
   public getRelevantContext(): string {
