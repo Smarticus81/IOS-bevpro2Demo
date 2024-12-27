@@ -60,7 +60,7 @@ export class ConversationState {
 
     // Extract and track topics from the query
     const topics = this.extractTopics(query);
-    this.context.topics = Array.from(new Set([...this.context.topics, ...topics]));
+    this.context.topics = [...new Set([...this.context.topics, ...topics])];
 
     // Track relevant drinks for drink-related queries
     if (intent.type === 'query' && intent.category) {
@@ -92,7 +92,7 @@ export class ConversationState {
   }
 
   private extractTopics(query: string): string[] {
-    const topics: string[] = [];
+    const topics = new Set<string>();
 
     // Extract drink categories from our defined schema
     const drinkCategories = [
@@ -102,7 +102,7 @@ export class ConversationState {
 
     drinkCategories.forEach(category => {
       if (query.toLowerCase().includes(category)) {
-        topics.push(category);
+        topics.add(category);
       }
     });
 
@@ -114,7 +114,7 @@ export class ConversationState {
 
     drinkTypes.forEach(type => {
       if (query.toLowerCase().includes(type)) {
-        topics.push(type);
+        topics.add(type);
       }
     });
 
@@ -126,11 +126,11 @@ export class ConversationState {
 
     attributes.forEach(attr => {
       if (query.toLowerCase().includes(attr)) {
-        topics.push(attr);
+        topics.add(attr);
       }
     });
 
-    return [...new Set(topics)]; // Remove duplicates
+    return Array.from(topics); // Convert Set to Array
   }
 
   public getRelevantContext(): string {

@@ -2,6 +2,25 @@ import OpenAI from "openai";
 import { recommendationService } from './recommendation-service';
 import { conversationState } from "./conversation-state";
 
+// Browser-safe base64 encoding/decoding
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binaryString = window.atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return window.btoa(binary);
+}
+
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 let openai: OpenAI | null = null;
 
@@ -107,8 +126,8 @@ export interface RecommendationIntent extends BaseIntent {
 export type Intent = (OrderIntent | IncompleteOrderIntent | QueryIntent | GreetingIntent | CompleteTransactionIntent | ShutdownIntent | CancelIntent | RecommendationIntent) & BaseIntent;
 
 // Store conversation history with improved context management
-const MAX_HISTORY_LENGTH = 6; // Keep last 3 exchanges
-let conversationHistory: Array<{ role: string, content: string }> = [];
+const MAX_HISTORY_LENGTH = 6;
+let conversationHistory: Array<{ role: "system" | "user" | "assistant"; content: string }> = [];
 
 export async function processVoiceCommand(text: string, sessionId: string): Promise<Intent> {
   try {
@@ -137,7 +156,10 @@ export async function processVoiceCommand(text: string, sessionId: string): Prom
         timeOfDay,
         dayOfWeek,
         sessionId,
-        currentOrder: conversationState.getCurrentOrder() || []
+        currentOrder: conversationState.getCurrentOrder()?.map(item => ({
+          drink: item.drink,
+          quantity: item.quantity
+        })) || []
       });
 
       if (recommendations.length > 0) {
@@ -145,48 +167,49 @@ export async function processVoiceCommand(text: string, sessionId: string): Prom
       }
     }
 
-    // Add context and user's message to history
+    const systemMessage = {
+      role: "system" as const,
+      content: `You are a knowledgeable and helpful AI bartender with emotional intelligence and agentic capabilities.
+      You should be proactive in offering recommendations and assistance.
+      Your voice should be pleasant, upbeat, and feminine.
+      Use natural, conversational language while maintaining professionalism.
+
+      Response types:
+      - "order": Complete orders with suggestions
+      - "incomplete_order": Ask clarifying questions
+      - "query": Answer questions about drinks
+      - "recommendation": Provide personalized recommendations
+      - "greeting": Friendly welcome with context-aware suggestions
+      - "complete_transaction": Process order with final recommendations
+      - "shutdown": Turn off voice commands
+      - "cancel": Cancel current operation
+
+      Always maintain a helpful, proactive, and friendly tone.
+      Always include a sentiment field in the response.`
+    };
+
+    // Build messages array with proper typing
+    const messages = [systemMessage];
+
     if (relevantContext) {
-      conversationHistory.push({ 
-        role: "system", 
+      messages.push({ 
+        role: "system" as const, 
         content: `Previous context: ${relevantContext}`
       });
     }
 
     if (recommendationContext) {
-      conversationHistory.push({
-        role: "system",
+      messages.push({
+        role: "system" as const,
         content: `Recommendation context: ${recommendationContext}`
       });
     }
 
-    conversationHistory.push({ role: "user", content: text });
+    messages.push({ role: "user" as const, content: text });
 
     const response = await client.chat.completions.create({
       model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: `You are a knowledgeable and helpful AI bartender with emotional intelligence and agentic capabilities.
-          You should be proactive in offering recommendations and assistance.
-          Your voice should be pleasant, upbeat, and feminine.
-          Use natural, conversational language while maintaining professionalism.
-
-          Response types:
-          - "order": Complete orders with suggestions
-          - "incomplete_order": Ask clarifying questions
-          - "query": Answer questions about drinks
-          - "recommendation": Provide personalized recommendations
-          - "greeting": Friendly welcome with context-aware suggestions
-          - "complete_transaction": Process order with final recommendations
-          - "shutdown": Turn off voice commands
-          - "cancel": Cancel current operation
-
-          Always maintain a helpful, proactive, and friendly tone.
-          Always include a sentiment field in the response.`
-        },
-        ...conversationHistory
-      ],
+      messages,
       temperature: 0.7,
       max_tokens: 150,
       response_format: { type: "json_object" }
@@ -202,8 +225,8 @@ export async function processVoiceCommand(text: string, sessionId: string): Prom
     // Update conversation state and history
     conversationState.updateContext(parsed, text);
     conversationHistory.push({ 
-      role: "assistant", 
-      content: JSON.stringify(parsed)
+      role: "assistant" as const, 
+      content: content
     });
 
     return parsed;
@@ -221,4 +244,9 @@ export async function processVoiceCommand(text: string, sessionId: string): Prom
       throw new Error("Sorry, I couldn't process that request. Please try again.");
     }
   }
+}
+
+//  Added a dummy function since the edited code references it and it's not in the original
+function convertToFullDrink(drink: string): string {
+  return drink; // Replace with actual implementation if available.
 }

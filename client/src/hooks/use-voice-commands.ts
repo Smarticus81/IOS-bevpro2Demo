@@ -17,7 +17,7 @@ function convertToFullDrink(item: DrinkItem): Drink {
     dietary_info: null,
     seasonal_availability: null,
     last_recommended: null,
-    recommendation_score: null
+    recommendation_score: 0
   };
 }
 
@@ -68,12 +68,10 @@ export function useVoiceCommands({
   }, [cart]);
 
   const validateDependencies = useCallback((): boolean => {
-    const isValid = drinks.length > 0 && 
-                   typeof onAddToCart === 'function' &&
-                   typeof onRemoveItem === 'function' &&
-                   typeof onPlaceOrder === 'function';
-
-    return isValid;
+    return drinks.length > 0 && 
+           typeof onAddToCart === 'function' &&
+           typeof onRemoveItem === 'function' &&
+           typeof onPlaceOrder === 'function';
   }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder]);
 
   const processResponseQueue = useCallback(async () => {
@@ -111,6 +109,99 @@ export function useVoiceCommands({
     responseQueueRef.current.push(response);
     processResponseQueue();
   }, [processResponseQueue]);
+
+  const startListening = useCallback(async () => {
+    console.log('Initializing voice recognition...');
+
+    try {
+      if (!googleVoiceService.isSupported()) {
+        throw new Error('Speech recognition is not supported in this browser');
+      }
+
+      if (!validateDependencies()) {
+        throw new Error('Required dependencies are not available');
+      }
+
+      console.log('Starting voice recognition...');
+      await googleVoiceService.startListening(async (text) => {
+        try {
+          const response = await fetch('/api/voice-command', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, sessionId })
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to process voice command');
+          }
+
+          const result = await response.json();
+          queueResponse({
+            text: result.conversational_response,
+            emotion: result.sentiment || "neutral",
+            data: result
+          });
+
+          // Update UI based on command type
+          switch (result.type) {
+            case 'order':
+              result.items.forEach((item: { name: string; quantity: number }) => {
+                const matchedDrink = drinks.find(d => 
+                  d.name.toLowerCase() === item.name.toLowerCase()
+                );
+                if (matchedDrink) {
+                  onAddToCart({
+                    type: 'ADD_ITEM',
+                    drink: matchedDrink,
+                    quantity: item.quantity
+                  });
+                }
+              });
+              break;
+            case 'complete_transaction':
+              await processOrder();
+              break;
+            // Add other command types as needed
+          }
+        } catch (error) {
+          console.error('Error processing voice command:', error);
+          queueResponse({
+            text: "I'm sorry, I couldn't process that command. Please try again.",
+            emotion: "apologetic",
+            data: { type: "error", error: "processing_failed" }
+          });
+        }
+      });
+
+      setIsListening(true);
+      queueResponse({
+        text: "Voice commands activated. I'm listening and ready to help! Say 'help' to learn what I can do.",
+        emotion: "excited"
+      });
+
+      toast({
+        title: "Voice Commands Active",
+        description: "Listening for your commands...",
+      });
+    } catch (error) {
+      console.error('Failed to start voice commands:', error);
+      setIsListening(false);
+      throw error;
+    }
+  }, [drinks, onAddToCart, queueResponse, toast, validateDependencies, sessionId]);
+
+  const stopListening = useCallback(async () => {
+    if (!isListening) return;
+
+    try {
+      await googleVoiceService.stopListening();
+      setIsListening(false);
+      console.log('Voice commands stopped successfully');
+    } catch (error) {
+      console.error('Failed to stop voice commands:', error);
+      setIsListening(false);
+    }
+  }, [isListening]);
 
   const processOrder = useCallback(async () => {
     if (isProcessing) {
@@ -161,7 +252,10 @@ export function useVoiceCommands({
       // Record order context for recommendations
       await recommendationService.recordOrderContext(
         sessionId,
-        cart.map(item => ({ drink: convertToFullDrink(item.drink), quantity: item.quantity })),
+        cart.map(item => ({
+          drink: convertToFullDrink(item.drink),
+          quantity: item.quantity
+        })),
         total
       );
 
@@ -173,11 +267,6 @@ export function useVoiceCommands({
           status: "success",
           total: total
         }
-      });
-
-      toast({
-        title: "Order Complete",
-        description: `Successfully processed order for $${total.toFixed(2)}`,
       });
 
       // Clear conversation state after successful order
@@ -199,121 +288,17 @@ export function useVoiceCommands({
         }
       });
 
-      toast({
-        title: "Order Error",
-        description: "Failed to process order. Please try again.",
-        variant: "destructive",
-      });
-
       // Resume voice recognition after error
       await googleVoiceService.resumeListening();
       return false;
     } finally {
       setIsProcessing(false);
     }
-  }, [cart, onPlaceOrder, queueResponse, toast, sessionId]);
-
-  const startListening = useCallback(async () => {
-    console.log('Initializing voice recognition...');
-
-    try {
-      if (!googleVoiceService.isSupported()) {
-        throw new Error('Speech recognition is not supported in this browser');
-      }
-
-      if (!validateDependencies()) {
-        throw new Error('Required dependencies are not available');
-      }
-
-      console.log('Starting voice recognition...');
-      await googleVoiceService.startListening(async (text) => {
-        try {
-          const response = await fetch('/api/voice-command', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, sessionId })
-          });
-
-          if (!response.ok) {
-            throw new Error('Failed to process voice command');
-          }
-
-          const result = await response.json();
-          queueResponse({
-            text: result.conversational_response,
-            emotion: result.sentiment || "neutral",
-            data: result
-          });
-
-          // Update UI based on command type
-          switch (result.type) {
-            case 'order':
-              result.items.forEach((item: { name: string; quantity: number }) => {
-                const matchedDrink = drinks.find(d => 
-                  d.name.toLowerCase().includes(item.name.toLowerCase())
-                );
-                if (matchedDrink) {
-                  onAddToCart({
-                    type: 'ADD_ITEM',
-                    drink: matchedDrink,
-                    quantity: item.quantity
-                  });
-                }
-              });
-              break;
-            case 'complete_transaction':
-              await processOrder();
-              break;
-            // Add other command types as needed
-          }
-        } catch (error) {
-          console.error('Error processing voice command:', error);
-          queueResponse({
-            text: "I'm sorry, I couldn't process that command. Please try again.",
-            emotion: "apologetic",
-            data: { type: "error", error: "processing_failed" }
-          });
-        }
-      });
-
-      setIsListening(true);
-      queueResponse({
-        text: "Voice commands activated. I'm listening and ready to help! Say 'help' to learn what I can do.",
-        emotion: "excited"
-      });
-
-      toast({
-        title: "Voice Commands Active",
-        description: "Listening for your commands...",
-      });
-    } catch (error) {
-      console.error('Failed to start voice commands:', error);
-      setIsListening(false);
-      throw error;
-    }
-  }, [processOrder, drinks, onAddToCart, queueResponse, toast, validateDependencies, sessionId]);
-
-  const stopListening = useCallback(async () => {
-    console.log('Attempting to stop voice recognition...');
-    if (!isListening) {
-      console.log('Not listening, no need to stop');
-      return;
-    }
-
-    try {
-      await googleVoiceService.stopListening();
-      setIsListening(false);
-      console.log('Voice commands stopped successfully');
-    } catch (error) {
-      console.error('Failed to stop voice commands:', error);
-      setIsListening(false);
-    }
-  }, [isListening]);
+  }, [cart, onPlaceOrder, queueResponse, sessionId]);
 
   // Cleanup effect
   useEffect(() => {
     return () => {
-      console.log('Cleaning up voice commands...');
       if (isListening) {
         googleVoiceService.stopListening().catch(console.error);
       }

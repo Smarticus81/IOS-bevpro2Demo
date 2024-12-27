@@ -52,24 +52,43 @@ export function VoiceFeedback({ isListening, isProcessing, volume = 0 }: VoiceFe
           </div>
         )}
 
-        {/* Main icon */}
+        {/* Main icon with hover effect */}
         <motion.div
           className={cn(
-            "relative flex h-12 w-12 items-center justify-center rounded-full",
-            isListening ? "bg-primary text-primary-foreground" : "bg-muted",
+            "relative flex h-12 w-12 items-center justify-center rounded-full transition-colors duration-200",
+            isListening ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80",
+            isProcessing ? "cursor-not-allowed" : "cursor-pointer"
           )}
           initial={{ scale: 0.8 }}
           animate={{
             scale: isListening ? 1 : 0.8,
             backgroundColor: isListening ? "var(--primary)" : "var(--muted)",
           }}
+          whileHover={{ scale: isProcessing ? 0.8 : 0.9 }}
+          whileTap={{ scale: isProcessing ? 0.8 : 0.85 }}
           transition={{ duration: 0.2 }}
         >
-          {isProcessing ? (
-            <Loader2 className="h-6 w-6 animate-spin" />
-          ) : (
-            <Mic className="h-6 w-6" />
-          )}
+          <AnimatePresence mode="wait">
+            {isProcessing ? (
+              <motion.div
+                key="loader"
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.5 }}
+              >
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="mic"
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.5 }}
+              >
+                <Mic className="h-6 w-6" />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
 
         {/* Status text */}
