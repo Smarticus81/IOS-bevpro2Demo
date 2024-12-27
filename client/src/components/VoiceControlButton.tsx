@@ -27,7 +27,7 @@ export function VoiceControlButton() {
     staleTime: 30000,
   });
 
-  // Initialize voice commands with proper dependency checks
+  // Initialize voice commands with proper cart state
   const { 
     isListening, 
     startListening, 
@@ -35,7 +35,7 @@ export function VoiceControlButton() {
     isSupported 
   } = useVoiceCommands({
     drinks,
-    cart: cart.items,
+    cart,
     onAddToCart: addToCart,
     onRemoveItem: removeItem,
     onPlaceOrder: placeOrder
