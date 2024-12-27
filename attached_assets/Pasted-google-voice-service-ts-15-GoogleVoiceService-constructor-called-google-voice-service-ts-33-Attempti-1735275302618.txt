@@ -1,0 +1,59 @@
+google-voice-service.ts:15 GoogleVoiceService constructor called
+google-voice-service.ts:33 Attempting speech recognition initialization (attempt 1)
+google-voice-service.ts:52 Speech recognition initialized successfully
+voice-synthesis.ts:66 Creating new VoiceSynthesis instance
+voice-synthesis.ts:18 VoiceSynthesis constructor called
+voice-synthesis.ts:23 Setting up voice synthesis initialization...
+7The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. <URL>Understand this warningAI
+sound-effects.ts:43 Audio context initialized successfully
+2use-voice-commands.ts:371 Cleaning up voice commands...
+voice-synthesis.ts:33 Attempting audio initialization...
+voice-synthesis.ts:73 Initializing AudioContext... Object
+voice-synthesis.ts:81 New AudioContext created
+voice-synthesis.ts:95 Audio context fully initialized and running
+voice-synthesis.ts:48 Audio initialization successful
+use-voice-commands.ts:337 Initializing voice recognition...
+use-voice-commands.ts:33 Validating voice command dependencies: Object
+use-voice-commands.ts:348 Starting voice recognition...
+google-voice-service.ts:179 Starting voice recognition...
+google-voice-service.ts:236 Started listening for voice commands
+use-voice-commands.ts:67 Preparing voice response: Object
+voice-synthesis.ts:255 Voice synthesis ready state: Object
+voice-synthesis.ts:126 Voice synthesis state before speaking: Object
+voice-synthesis.ts:138 Attempting to speak: Object
+voice-synthesis.ts:172 Generating speech with OpenAI... Object
+openai.ts:9 Initializing OpenAI client...
+use-voice-commands.ts:371 Cleaning up voice commands...
+google-voice-service.ts:124 Audio capturing started
+openai.ts:36 OpenAI client initialized and tested successfully
+voice-synthesis.ts:182 Speech generated successfully, preparing for playback
+voice-synthesis.ts:190 Setting up audio playback...
+voice-synthesis.ts:229 Starting audio playback...
+voice-synthesis.ts:215 Audio playback completed successfully
+voice-synthesis.ts:194 Cleaning up audio resources...
+google-voice-service.ts:135 Voice command recognized: can I get two Captain Morgan's and a Bombay Sapphire
+use-voice-commands.ts:196 Processing voice command: can i get two captain morgan's and a bombay sapphire
+use-voice-commands.ts:236 Searching for drink: captain morgan's
+use-voice-commands.ts:240 Checking drink: Lav Lemonade Match: false
+use-voice-commands.ts:240 Checking drink: Exotico Teq Blanco Match: false
+use-voice-commands.ts:240 Checking drink: Captain Morgan Match: true
+use-voice-commands.ts:245 Adding to cart: Object
+use-voice-commands.ts:236 Searching for drink: bombay sapphire
+use-voice-commands.ts:240 Checking drink: Lav Lemonade Match: false
+use-voice-commands.ts:240 Checking drink: Exotico Teq Blanco Match: false
+use-voice-commands.ts:240 Checking drink: Captain Morgan Match: false
+use-voice-commands.ts:240 Checking drink: Tonic Water Match: false
+use-voice-commands.ts:240 Checking drink: Bombay Sapphire Match: true
+use-voice-commands.ts:245 Adding to cart: Object
+use-voice-commands.ts:67 Preparing voice response: Object
+voice-synthesis.ts:255 Voice synthesis ready state: Object
+voice-synthesis.ts:126 Voice synthesis state before speaking: Object
+voice-synthesis.ts:138 Attempting to speak: Object
+voice-synthesis.ts:172 Generating speech with OpenAI... Object
+voice-synthesis.ts:182 Speech generated successfully, preparing for playback
+voice-synthesis.ts:190 Setting up audio playback...
+voice-synthesis.ts:229 Starting audio playback...
+voice-synthesis.ts:215 Audio playback completed successfully
+voice-synthesis.ts:194 Cleaning up audio resources...
+use-voice-commands.ts:46 Attempting to stop voice recognition...
+use-voice-commands.ts:55 Voice commands stopped successfully

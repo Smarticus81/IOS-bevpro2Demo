@@ -110,13 +110,17 @@ export function useVoiceCommands({
     );
 
     try {
+      // Temporarily pause voice recognition during payment processing
+      await googleVoiceService.pauseListening();
+
       await respondWith({
         text: `Processing your order for ${cart.length} items, total $${total.toFixed(2)}...`,
         emotion: "excited",
         data: {
           type: "order_update",
           items: cart,
-          total: total
+          total: total,
+          status: "processing"
         }
       });
 
@@ -126,7 +130,7 @@ export function useVoiceCommands({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount: total * 100, 
+          amount: total * 100, // Convert to cents for Stripe
           items: cart.map(item => ({
             id: item.drink.id,
             quantity: item.quantity,
@@ -136,13 +140,13 @@ export function useVoiceCommands({
       });
 
       if (!response.ok) {
-        throw new Error('Payment processing failed');
+        throw new Error(await response.text());
       }
 
       await onPlaceOrder();
 
       await respondWith({
-        text: "Order processed successfully! Your drinks will be ready shortly. Would you like to order anything else?",
+        text: "Your order has been processed successfully! Your drinks will be ready shortly. Would you like to order anything else?",
         emotion: "excited",
         data: {
           type: "confirmation",
@@ -156,16 +160,19 @@ export function useVoiceCommands({
         description: `Successfully processed order for $${total.toFixed(2)}`,
       });
 
+      // Resume voice recognition after successful order
+      await googleVoiceService.resumeListening();
       return true;
     } catch (error) {
       console.error('Error processing order:', error);
 
       await respondWith({
-        text: "I'm sorry, there was an error processing your order. Please try again.",
+        text: "I apologize, but there was an error processing your order. Please try again or ask for assistance.",
         emotion: "apologetic",
         data: {
           type: "error",
-          error: "payment_failed"
+          error: "payment_failed",
+          status: "failed"
         }
       });
 
@@ -175,6 +182,8 @@ export function useVoiceCommands({
         variant: "destructive",
       });
 
+      // Resume voice recognition after error
+      await googleVoiceService.resumeListening();
       return false;
     }
   }, [cart, onPlaceOrder, respondWith, toast]);
