@@ -99,8 +99,8 @@ export function VoiceControlButton() {
               ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
               : 'bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black'
             }
-            ${isProcessing || cart.isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-          disabled={!isSupported || isProcessing || cart.isProcessing}
+            ${cart.isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={!isSupported || cart.isProcessing}
           aria-label={isListening ? "Stop voice commands" : "Start voice commands"}
         >
           {isListening ? (

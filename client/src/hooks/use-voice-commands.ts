@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { googleVoiceService } from '@/lib/google-voice-service';
 import { useToast } from '@/hooks/use-toast';
-import type { DrinkItem, CartItem, AddToCartAction } from '@/types/speech';
+import type { DrinkItem, CartItem } from '@/types/speech';
+import type { CartState, AddToCartAction } from '@/types/cart';
 
 interface VoiceCommandsProps {
   drinks: DrinkItem[];
-  cart: CartItem[];
+  cart: CartState;
   onAddToCart: (action: AddToCartAction) => Promise<void>;
   onRemoveItem: (drinkId: number) => Promise<void>;
   onPlaceOrder: () => Promise<void>;
@@ -13,7 +14,7 @@ interface VoiceCommandsProps {
 
 export function useVoiceCommands({
   drinks = [],
-  cart = [],
+  cart,
   onAddToCart,
   onRemoveItem,
   onPlaceOrder
@@ -49,13 +50,18 @@ export function useVoiceCommands({
   }, [toast]);
 
   const processOrder = useCallback(async () => {
-    if (!cart.length) {
+    if (!cart.items.length) {
       showFeedback('Empty Cart', 'Your cart is empty', 'destructive');
       return false;
     }
 
+    if (cart.isProcessing) {
+      showFeedback('Processing', 'Please wait while we process your order...', 'default');
+      return false;
+    }
+
     try {
-      const total = cart.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
+      const total = cart.items.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
       showFeedback('Processing Order', `Total: $${total.toFixed(2)}`);
       await onPlaceOrder();
       showFeedback('Success', 'Order complete!');
@@ -142,7 +148,7 @@ export function useVoiceCommands({
 
         if (addedItems.length > 0) {
           const itemsList = addedItems.join(' and ');
-          const currentTotal = cart.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
+          const currentTotal = cart.items.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
           showFeedback('Added to Cart', `Added ${itemsList}. Total: $${currentTotal.toFixed(2)}`);
         } else {
           showFeedback('Not Found', 'Could not find drink. Try again', 'destructive');
