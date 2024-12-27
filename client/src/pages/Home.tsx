@@ -20,6 +20,7 @@ export function Home() {
   const [cart, setCart] = useState<Array<{ drink: Drink; quantity: number }>>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isOrderSummaryCollapsed, setIsOrderSummaryCollapsed] = useState(false);
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false); // Added state for voice processing
   const { toast } = useToast();
 
   const { data: drinks = [] } = useQuery<Drink[]>({
@@ -77,10 +78,9 @@ export function Home() {
         return [...prev, { drink, quantity }];
       });
     } else if (action.type === 'COMPLETE_TRANSACTION') {
-      // We'll handle this in placeOrder
       placeOrder();
     }
-  }, [setCart]); // Remove placeOrder dependency
+  }, [setCart]); 
 
   const removeFromCart = useCallback((drinkId: number) => {
     console.log('Removing from cart:', drinkId);
@@ -118,17 +118,14 @@ export function Home() {
       console.log('Submitting order to backend...');
       await orderMutation.mutateAsync({ items, total });
       console.log('Order submitted successfully');
-      
       setCart([]);
       console.log('Cart cleared');
-      
       toast({
         title: "Order Completed",
         description: "Your order has been placed successfully!",
       });
     } catch (error) {
       console.error('Order placement failed:', error);
-      
       toast({
         title: "Failed to place order",
         description: "There was an error processing your order. Please try again.",
@@ -145,6 +142,7 @@ export function Home() {
         onRemoveItem={removeFromCart}
         onPlaceOrder={placeOrder}
         cart={cart}
+        setIsProcessingVoice={setIsProcessingVoice} //Pass function to handle voice processing state
       />
       <main className="px-4 pt-4 pb-8 sm:px-6 lg:px-8">
         {/* Category Selector */}
@@ -237,6 +235,7 @@ export function Home() {
                     onRemoveItem={removeFromCart}
                     onPlaceOrder={placeOrder}
                     isLoading={orderMutation.isPending}
+                    isProcessingVoice={isProcessingVoice}
                   />
                 </CardContent>
               </Card>
@@ -253,6 +252,7 @@ export function Home() {
                     onRemoveItem={removeFromCart}
                     onPlaceOrder={placeOrder}
                     isLoading={orderMutation.isPending}
+                    isProcessingVoice={isProcessingVoice}
                     drinks={drinks}
                     onAddToCart={addToCart}
                   />

@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Trash2, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Drink } from "@db/schema";
 
@@ -13,6 +13,7 @@ interface OrderSummaryProps {
   variant?: "default" | "compact";
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  isProcessingVoice?: boolean;
 }
 
 export function OrderSummary({ 
@@ -22,7 +23,8 @@ export function OrderSummary({
   isLoading,
   variant = "default",
   isCollapsed = false,
-  onToggleCollapse
+  onToggleCollapse,
+  isProcessingVoice = false
 }: OrderSummaryProps) {
   const total = cart.reduce((sum, item) => {
     const itemPrice = Number(item.drink.price);
@@ -37,6 +39,12 @@ export function OrderSummary({
           <Badge variant="outline" className="bg-primary/10 text-primary">
             {cart.length} items
           </Badge>
+          {isProcessingVoice && (
+            <Badge variant="outline" className="bg-blue-500/10 text-blue-500 animate-pulse">
+              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+              Processing Voice
+            </Badge>
+          )}
         </div>
         {variant === "compact" && onToggleCollapse && (
           <Button
@@ -53,7 +61,7 @@ export function OrderSummary({
           </Button>
         )}
       </div>
-      
+
       <AnimatePresence>
         {!isCollapsed && (
           <motion.div
@@ -66,10 +74,14 @@ export function OrderSummary({
             {cart.map((item, index) => {
               const itemPrice = Number(item.drink.price);
               const totalPrice = itemPrice * item.quantity;
-              
+
               return (
-                <div 
+                <motion.div 
                   key={`${item.drink.id}-${index}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.2 }}
                   className="flex items-center justify-between gap-2"
                 >
                   <div className="min-w-0 flex-1">
@@ -86,22 +98,27 @@ export function OrderSummary({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6"
+                        className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive"
                         onClick={() => onRemoveItem(item.drink.id)}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
 
             {cart.length === 0 && (
-                <div className={`text-center py-${variant === "compact" ? "4" : "8"} border-2 border-dashed border-primary/20 rounded-lg bg-white shadow-inner`}>
-                  <p className="text-primary font-medium">Ready to take your order</p>
-                </div>
-              )}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className={`text-center py-${variant === "compact" ? "4" : "8"} border-2 border-dashed border-primary/20 rounded-lg bg-white/50 backdrop-blur-sm shadow-inner`}
+              >
+                <p className="text-primary/80 font-medium">Ready to take your order</p>
+                <p className="text-sm text-primary/60 mt-1">Try saying "I want a Moscow Mule"</p>
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -114,14 +131,21 @@ export function OrderSummary({
 
         <div className="space-y-3">
           <Button
-            className="w-full bg-gradient-to-br from-primary via-primary/90 to-primary/80 hover:from-primary/90 hover:via-primary/80 hover:to-primary/70 text-white font-semibold transform transition-all duration-200 hover:scale-[1.02] shadow-xl hover:shadow-primary/40 border border-primary/20"
+            className="w-full bg-gradient-to-br from-primary via-primary/90 to-primary/80 hover:from-primary/90 hover:via-primary/80 hover:to-primary/70 text-white font-semibold transform transition-all duration-200 hover:scale-[1.02] shadow-xl hover:shadow-primary/40 border border-primary/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             size={variant === "compact" ? "default" : "lg"}
             onClick={onPlaceOrder}
             disabled={cart.length === 0 || isLoading}
           >
-            {isLoading ? "Processing..." : "Place Order"}
+            {isLoading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Processing...
+              </span>
+            ) : (
+              "Place Order"
+            )}
           </Button>
-          
+
           <Button
             variant="destructive"
             className="w-full bg-gradient-to-br from-destructive via-destructive/90 to-destructive/80 hover:from-destructive/90 hover:via-destructive/80 hover:to-destructive/70 text-white font-semibold transform transition-all duration-200 hover:scale-[1.02] shadow-xl hover:shadow-destructive/40 border border-destructive/20"
