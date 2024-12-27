@@ -1,24 +1,21 @@
 import { drizzle } from "drizzle-orm/neon-serverless";
 import ws from "ws";
 import * as schema from "@db/schema";
-import { getServerConfig } from "../server/config";
+import { getDatabaseUrl } from "./config";
 
-let db: ReturnType<typeof drizzle>;
+const databaseUrl = getDatabaseUrl();
 
-try {
-  const config = getServerConfig();
-
-  // Initialize database connection
-  db = drizzle({
-    connection: config.databaseUrl,
-    schema,
-    ws: ws,
-  });
-
-} catch (error) {
-  console.error("Failed to initialize database:", error);
-  throw error;
+if (!databaseUrl) {
+  throw new Error(
+    "DATABASE_URL must be set. Did you forget to provision a database?",
+  );
 }
 
-// Export database instance and schema
-export { db, schema };
+export const db = drizzle({
+  connection: databaseUrl,
+  schema,
+  ws: ws,
+});
+
+// Export schema for use in other parts of the application
+export * from "@db/schema";

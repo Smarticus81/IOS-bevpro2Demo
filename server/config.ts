@@ -7,6 +7,7 @@ interface ServerConfig {
 }
 
 export function getServerConfig(): ServerConfig {
+  // Use process.env for server-side environment variables
   const databaseUrl = process.env.DATABASE_URL;
   const openaiKey = process.env.OPENAI_API_KEY;
 
