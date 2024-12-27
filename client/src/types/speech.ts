@@ -1,7 +1,13 @@
 // Common interfaces for voice interactions
-import type { Drink } from "@db/schema";
 
-export interface DrinkItem extends Pick<Drink, "id" | "name" | "price" | "category" | "subcategory" | "image" | "inventory"> {
+export interface DrinkItem {
+  id: number;
+  name: string;
+  price: number;
+  category: string;
+  subcategory: string;
+  image: string;
+  inventory: number;
   sales: number;
 }
 

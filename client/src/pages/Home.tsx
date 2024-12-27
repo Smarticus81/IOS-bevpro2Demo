@@ -2,28 +2,26 @@ import { useState, useCallback, useMemo } from "react";
 import { DrinkCard } from "@/components/DrinkCard";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { VoiceControlButton } from "@/components/VoiceControlButton";
-import { VoiceControl } from "@/components/VoiceControl";
 import { OrderSummary } from "@/components/OrderSummary";
 import OrderSummaryDrawer from "@/components/OrderSummaryDrawer";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { NavBar } from "@/components/NavBar";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Drink } from "@db/schema";
+import type { DrinkItem } from "@/types/speech";
 
 type CartAction = 
-  | { type: 'ADD_ITEM'; drink: Drink; quantity: number }
+  | { type: 'ADD_ITEM'; drink: DrinkItem; quantity: number }
   | { type: 'COMPLETE_TRANSACTION' };
 
 export function Home() {
-  const [cart, setCart] = useState<Array<{ drink: Drink; quantity: number }>>([]);
+  const [cart, setCart] = useState<Array<{ drink: DrinkItem; quantity: number }>>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isOrderSummaryCollapsed, setIsOrderSummaryCollapsed] = useState(false);
-  const [isProcessingVoice, setIsProcessingVoice] = useState(false); // Added state for voice processing
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const { toast } = useToast();
 
-  const { data: drinks = [] } = useQuery<Drink[]>({
+  const { data: drinks = [] } = useQuery<DrinkItem[]>({
     queryKey: ["/api/drinks"],
   });
 
@@ -142,7 +140,7 @@ export function Home() {
         onRemoveItem={removeFromCart}
         onPlaceOrder={placeOrder}
         cart={cart}
-        setIsProcessingVoice={setIsProcessingVoice} //Pass function to handle voice processing state
+        setIsProcessingVoice={setIsProcessingVoice}
       />
       <main className="px-4 pt-4 pb-8 sm:px-6 lg:px-8">
         {/* Category Selector */}

@@ -1,18 +1,49 @@
-import { db } from "@db";
-import type { Drink, CustomerPreference, OrderHistory } from "@db/schema";
-import { drinks, customerPreferences, orderHistory } from "@db/schema";
-import { eq, desc, and, or, gt } from "drizzle-orm";
+import type { DrinkItem } from "@/types/speech";
+
+// Mock data for drinks (matches the data in server/routes.ts)
+const mockDrinks: DrinkItem[] = [
+  {
+    id: 1,
+    name: "Espresso",
+    price: 3.99,
+    category: "Coffee",
+    subcategory: "Hot",
+    image: "/drinks/espresso.png",
+    inventory: 100,
+    sales: 0
+  },
+  {
+    id: 2,
+    name: "Latte",
+    price: 4.99,
+    category: "Coffee",
+    subcategory: "Hot",
+    image: "/drinks/latte.png",
+    inventory: 100,
+    sales: 0
+  },
+  {
+    id: 3,
+    name: "Iced Tea",
+    price: 3.49,
+    category: "Tea",
+    subcategory: "Cold",
+    image: "/drinks/iced-tea.png",
+    inventory: 100,
+    sales: 0
+  }
+];
 
 export interface RecommendationContext {
   timeOfDay: string;
   dayOfWeek: string;
   weather?: string;
-  currentOrder?: Array<{ drink: Drink; quantity: number }>;
+  currentOrder?: Array<{ drink: DrinkItem; quantity: number }>;
   sessionId: string;
 }
 
 export interface RecommendationResult {
-  drink: Drink;
+  drink: DrinkItem;
   confidence: number;
   reason: string;
 }
@@ -43,78 +74,28 @@ export class RecommendationService {
     return "night";
   }
 
-  private async getCustomerPreferences(sessionId: string): Promise<CustomerPreference | null> {
-    const [preferences] = await db
-      .select()
-      .from(customerPreferences)
-      .where(eq(customerPreferences.session_id, sessionId))
-      .limit(1);
-
-    return preferences || null;
-  }
-
-  private async updateCustomerPreferences(
-    sessionId: string,
-    order: Array<{ drink: Drink; quantity: number }>
-  ): Promise<void> {
-    const existingPrefs = await this.getCustomerPreferences(sessionId);
-    const drinkIds = order.map(item => item.drink.id);
-
-    if (existingPrefs) {
-      await db
-        .update(customerPreferences)
-        .set({
-          last_orders: drinkIds,
-          updated_at: new Date()
-        })
-        .where(eq(customerPreferences.session_id, sessionId));
-    } else {
-      await db.insert(customerPreferences).values({
-        session_id: sessionId,
-        last_orders: drinkIds,
-        created_at: new Date(),
-        updated_at: new Date()
-      });
-    }
-  }
-
   public async getRecommendations(
     context: RecommendationContext
   ): Promise<RecommendationResult[]> {
     const timeOfDay = context.timeOfDay || this.getTimeOfDay();
-    const preferences = await this.getCustomerPreferences(context.sessionId);
 
     // Get current order categories if any
     const currentCategories = new Set(
       context.currentOrder?.map(item => item.drink.category) || []
     );
 
-    // Query drinks with recommendations scoring
-    const recommendedDrinks = await db
-      .select()
-      .from(drinks)
-      .where(
-        and(
-          // Ensure sufficient inventory
-          gt(drinks.inventory, 0),
-          // Match time-appropriate categories
-          or(...(this.timeBasedCategories[timeOfDay] || []).map(category => 
-            eq(drinks.category, category)
-          ))
-        )
+    // Filter drinks based on time and inventory
+    const recommendedDrinks = mockDrinks
+      .filter(drink => 
+        drink.inventory > 0 && 
+        this.timeBasedCategories[timeOfDay].includes(drink.category)
       )
-      .orderBy(desc(drinks.recommendation_score))
-      .limit(3);
+      .sort((a, b) => b.sales - a.sales)
+      .slice(0, 3);
 
     return recommendedDrinks.map(drink => {
       let confidence = 0.5; // Base confidence
       let reasons: string[] = [];
-
-      // Increase confidence based on various factors
-      if (preferences?.favorite_categories?.includes(drink.category)) {
-        confidence += 0.2;
-        reasons.push("Based on your preferences");
-      }
 
       if (!currentCategories.has(drink.category)) {
         confidence += 0.1;
@@ -154,25 +135,19 @@ export class RecommendationService {
 
   public async recordOrderContext(
     sessionId: string,
-    order: Array<{ drink: Drink; quantity: number }>,
+    order: Array<{ drink: DrinkItem; quantity: number }>,
     total: number
   ): Promise<void> {
-    const context = {
-      time_of_day: this.getTimeOfDay(),
-      day_of_week: new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase(),
-      weather: "unknown", // Could be enhanced with weather API integration
-      special_occasion: false
-    };
-
-    await db.insert(orderHistory).values({
-      session_id: sessionId,
-      items: order,
+    // In demo mode, just log the order
+    console.log('Order recorded:', {
+      sessionId,
+      items: order.map(item => ({
+        name: item.drink.name,
+        quantity: item.quantity
+      })),
       total,
-      context,
-      order_time: new Date()
+      timestamp: new Date().toISOString()
     });
-
-    await this.updateCustomerPreferences(sessionId, order);
   }
 }
 

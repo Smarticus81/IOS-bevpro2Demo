@@ -4,20 +4,12 @@ import { useToast } from '@/hooks/use-toast';
 import { voiceSynthesis } from '@/lib/voice-synthesis';
 import type { DrinkItem, CartItem, AddToCartAction, VoiceResponse } from '@/types/speech';
 import { recommendationService } from '@/lib/recommendation-service';
-import type { Drink } from '@db/schema';
 import { conversationState } from '@/lib/conversation-state';
 
-// Convert DrinkItem to proper Drink type for recommendation service
-function convertToFullDrink(item: DrinkItem): Drink {
+// Convert DrinkItem for recommendation service
+function convertToFullDrink(item: DrinkItem): DrinkItem {
   return {
-    ...item,
-    popular_pairings: null,
-    peak_hours: null,
-    taste_profile: null,
-    dietary_info: null,
-    seasonal_availability: null,
-    last_recommended: null,
-    recommendation_score: 0
+    ...item
   };
 }
 
