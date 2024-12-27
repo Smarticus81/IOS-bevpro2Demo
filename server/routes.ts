@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import OpenAI from "openai";
+import type { Drink } from "../client/src/types/models";
 
 // OpenAI configuration
 const openai = new OpenAI({
@@ -8,7 +9,7 @@ const openai = new OpenAI({
 });
 
 // Mock drinks data for demo
-const mockDrinks = [
+const mockDrinks: Drink[] = [
   {
     id: 1,
     name: "Espresso",
@@ -48,6 +49,7 @@ export function registerRoutes(app: Express): Server {
   // Get all drinks (using mock data)
   app.get("/api/drinks", (_req, res) => {
     try {
+      console.log('Serving drinks:', mockDrinks.length);
       res.json(mockDrinks);
     } catch (error) {
       console.error("Error fetching drinks:", error);
@@ -63,6 +65,8 @@ export function registerRoutes(app: Express): Server {
       if (!text) {
         return res.status(400).json({ error: "No text provided" });
       }
+
+      console.log('Processing voice command:', { text, sessionId });
 
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -83,6 +87,7 @@ export function registerRoutes(app: Express): Server {
       });
 
       const result = JSON.parse(response.choices[0].message.content);
+      console.log('Voice command processed:', result);
       res.json(result);
     } catch (error) {
       console.error("Error processing voice command:", error);
@@ -93,17 +98,20 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Simple payment simulation (from original, kept as it's not DB-related)
+  // Simple payment simulation (no database required)
   app.post("/api/payment/process", async (req, res) => {
     try {
-      const { amount } = req.body;
+      const { amount, orderId } = req.body;
+      console.log('Processing payment:', { amount, orderId });
       const success = Math.random() > 0.1; // 90% success rate
 
       if (success) {
-        res.json({ 
+        const response = { 
           success: true,
           message: `Payment of $${(amount / 100).toFixed(2)} processed successfully` 
-        });
+        };
+        console.log('Payment successful:', response);
+        res.json(response);
       } else {
         throw new Error('Payment simulation failed');
       }
@@ -116,7 +124,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get OpenAI API configuration (from original)
+  // Get OpenAI API configuration
   app.get("/api/config", (_req, res) => {
     try {
       const openaiKey = process.env.OPENAI_API_KEY;
@@ -152,7 +160,6 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
-
 
   return httpServer;
 }

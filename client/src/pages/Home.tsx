@@ -8,20 +8,20 @@ import { Card, CardContent } from "@/components/ui/card";
 import { NavBar } from "@/components/NavBar";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import type { DrinkItem } from "@/types/speech";
+import type { Drink } from "@/types/models";
 
 type CartAction = 
-  | { type: 'ADD_ITEM'; drink: DrinkItem; quantity: number }
+  | { type: 'ADD_ITEM'; drink: Drink; quantity: number }
   | { type: 'COMPLETE_TRANSACTION' };
 
 export function Home() {
-  const [cart, setCart] = useState<Array<{ drink: DrinkItem; quantity: number }>>([]);
+  const [cart, setCart] = useState<Array<{ drink: Drink; quantity: number }>>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isOrderSummaryCollapsed, setIsOrderSummaryCollapsed] = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const { toast } = useToast();
 
-  const { data: drinks = [] } = useQuery<DrinkItem[]>({
+  const { data: drinks = [] } = useQuery<Drink[]>({
     queryKey: ["/api/drinks"],
   });
 

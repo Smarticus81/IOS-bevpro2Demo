@@ -1,7 +1,7 @@
-import type { DrinkItem } from "@/types/speech";
+import type { Drink } from "@/types/models";
 
 // Mock data for drinks (matches the data in server/routes.ts)
-const mockDrinks: DrinkItem[] = [
+const mockDrinks: Drink[] = [
   {
     id: 1,
     name: "Espresso",
@@ -38,12 +38,12 @@ export interface RecommendationContext {
   timeOfDay: string;
   dayOfWeek: string;
   weather?: string;
-  currentOrder?: Array<{ drink: DrinkItem; quantity: number }>;
+  currentOrder?: Array<{ drink: Drink; quantity: number }>;
   sessionId: string;
 }
 
 export interface RecommendationResult {
-  drink: DrinkItem;
+  drink: Drink;
   confidence: number;
   reason: string;
 }
@@ -90,7 +90,7 @@ export class RecommendationService {
         drink.inventory > 0 && 
         this.timeBasedCategories[timeOfDay].includes(drink.category)
       )
-      .sort((a, b) => b.sales - a.sales)
+      .sort((a, b) => (b.sales || 0) - (a.sales || 0))
       .slice(0, 3);
 
     return recommendedDrinks.map(drink => {
@@ -135,7 +135,7 @@ export class RecommendationService {
 
   public async recordOrderContext(
     sessionId: string,
-    order: Array<{ drink: DrinkItem; quantity: number }>,
+    order: Array<{ drink: Drink; quantity: number }>,
     total: number
   ): Promise<void> {
     // In demo mode, just log the order
