@@ -21,8 +21,7 @@ function App() {
 
   return (
     <CartProvider>
-      <ToastProvider>
-        <Switch>
+      <Switch>
         <Route path="/" component={Home} />
         <Route path="/dashboard" component={Dashboard} />
         <Route path="/inventory" component={Inventory} />
@@ -32,7 +31,6 @@ function App() {
         <Route component={NotFound} />
       </Switch>
       <VoiceControlButton />
-      </ToastProvider>
     </CartProvider>
   );
 }
