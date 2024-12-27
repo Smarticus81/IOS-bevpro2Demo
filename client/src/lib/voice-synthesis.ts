@@ -2,7 +2,6 @@ import type { VoiceError } from "@/types/speech";
 import { getOpenAIClient } from "./openai";
 import { googleVoiceService } from "./google-voice-service";
 import type { VoiceResponse, VoiceId } from "@/types/speech";
-import { BufferUtils } from "./buffer-utils";
 
 class VoiceSynthesis {
   private static instance: VoiceSynthesis;
@@ -14,26 +13,24 @@ class VoiceSynthesis {
   private readonly MAX_INIT_ATTEMPTS = 3;
   private isSpeaking: boolean = false;
   private isInitializing: boolean = false;
-  private activeBlobs: string[] = [];
 
   private constructor() {
+    console.log('VoiceSynthesis constructor called');
     this.setupInitialization();
   }
 
-  public static getInstance(): VoiceSynthesis {
-    if (!VoiceSynthesis.instance) {
-      VoiceSynthesis.instance = new VoiceSynthesis();
-    }
-    return VoiceSynthesis.instance;
-  }
-
   private setupInitialization() {
+    console.log('Setting up voice synthesis initialization...');
     this.initializationPromise = new Promise((resolve) => {
       const initializeAudio = async () => {
-        if (this.isInitializing) return;
+        if (this.isInitializing) {
+          console.log('Already initializing, waiting...');
+          return;
+        }
 
         try {
           this.isInitializing = true;
+          console.log('Attempting audio initialization...');
 
           if (this.initializationAttempts >= this.MAX_INIT_ATTEMPTS) {
             console.warn('Maximum initialization attempts reached');
@@ -43,10 +40,12 @@ class VoiceSynthesis {
           this.initializationAttempts++;
           await this.initializeAudioContext();
 
+          // Remove event listeners only after successful initialization
           ['click', 'touchstart', 'keydown'].forEach(type => {
             document.removeEventListener(type, initializeAudio);
           });
 
+          console.log('Audio initialization successful');
           resolve();
         } catch (error) {
           console.error('Audio initialization failed:', error);
@@ -55,20 +54,37 @@ class VoiceSynthesis {
         }
       };
 
+      // Add event listeners for user interaction
       ['click', 'touchstart', 'keydown'].forEach(type => {
         document.addEventListener(type, initializeAudio, { once: true });
       });
     });
   }
 
+  static getInstance(): VoiceSynthesis {
+    if (!VoiceSynthesis.instance) {
+      console.log('Creating new VoiceSynthesis instance');
+      VoiceSynthesis.instance = new VoiceSynthesis();
+    }
+    return VoiceSynthesis.instance;
+  }
+
   private async initializeAudioContext(): Promise<void> {
+    console.log('Initializing AudioContext...', {
+      isInitialized: this.isAudioInitialized,
+      currentState: this.audioContext?.state
+    });
+
     try {
       if (!this.audioContext || this.audioContext.state === 'closed') {
         this.audioContext = new window.AudioContext();
+        console.log('New AudioContext created');
       }
 
       if (this.audioContext.state === 'suspended') {
+        console.log('Resuming suspended AudioContext...');
         await this.audioContext.resume();
+        console.log('AudioContext resumed successfully');
       }
 
       if (this.audioContext.state !== 'running') {
@@ -76,9 +92,24 @@ class VoiceSynthesis {
       }
 
       this.isAudioInitialized = true;
+      console.log('Audio context fully initialized and running');
     } catch (error) {
       console.error('Failed to initialize audio context:', error);
       this.isAudioInitialized = false;
+      throw error;
+    }
+  }
+
+  async waitForInitialization(): Promise<void> {
+    if (!this.initializationPromise) {
+      console.warn('Voice synthesis not properly initialized, retrying setup');
+      this.setupInitialization();
+    }
+
+    try {
+      await this.initializationPromise;
+    } catch (error) {
+      console.error('Error waiting for initialization:', error);
       throw error;
     }
   }
@@ -92,20 +123,36 @@ class VoiceSynthesis {
       return;
     }
 
+    console.log('Voice synthesis state before speaking:', {
+      isInitialized: this.isAudioInitialized,
+      contextState: this.audioContext?.state,
+      isSpeaking: this.isSpeaking
+    });
+
     if (this.isSpeaking) {
+      console.log('Already speaking, stopping current playback');
       this.stop();
     }
 
     try {
+      console.log('Attempting to speak:', { 
+        text: text.substring(0, 50) + '...', 
+        emotion,
+        data: typeof response === 'string' ? undefined : response.data
+      });
+
       await this.waitForInitialization();
 
+      // Store current recognition state
       const wasListening = googleVoiceService.isActive();
       if (wasListening) {
+        console.log('Temporarily pausing speech recognition for synthesis');
         await googleVoiceService.pauseListening();
       }
 
       this.isSpeaking = true;
 
+      // Configure voice based on emotion
       let speechSpeed = 1.0;
       let voiceSelection: VoiceId = 'alloy';
 
@@ -122,6 +169,8 @@ class VoiceSynthesis {
           voiceSelection = "alloy";
       }
 
+      console.log('Generating speech with OpenAI...', { voice: voiceSelection, speed: speechSpeed });
+
       const openai = await getOpenAIClient();
       const audioResponse = await openai.audio.speech.create({
         model: "tts-1",
@@ -130,17 +179,20 @@ class VoiceSynthesis {
         speed: speechSpeed
       });
 
+      console.log('Speech generated successfully, preparing for playback');
       const arrayBuffer = await audioResponse.arrayBuffer();
-      const blobUrl = BufferUtils.createBlobUrl(arrayBuffer, 'audio/mpeg');
-      this.activeBlobs.push(blobUrl);
+      const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+      const url = URL.createObjectURL(blob);
+
+      this.stop();
 
       return new Promise<void>((resolve, reject) => {
-        this.currentAudio = new Audio(blobUrl);
+        console.log('Setting up audio playback...');
+        this.currentAudio = new Audio(url);
 
         const cleanup = async () => {
-          BufferUtils.releaseBlobUrl(blobUrl);
-          this.activeBlobs = this.activeBlobs.filter(url => url !== blobUrl);
-
+          console.log('Cleaning up audio resources...');
+          URL.revokeObjectURL(url);
           if (this.currentAudio) {
             this.currentAudio.removeEventListener('ended', onEnded);
             this.currentAudio.removeEventListener('error', onError);
@@ -148,7 +200,9 @@ class VoiceSynthesis {
           }
           this.isSpeaking = false;
 
+          // Resume speech recognition if it was active before
           if (wasListening) {
+            console.log('Resuming speech recognition after synthesis');
             try {
               await googleVoiceService.resumeListening();
             } catch (error) {
@@ -158,11 +212,13 @@ class VoiceSynthesis {
         };
 
         const onEnded = async () => {
+          console.log('Audio playback completed successfully');
           await cleanup();
           resolve();
         };
 
         const onError = async (error: Event) => {
+          console.error('Audio playback failed:', error);
           await cleanup();
           reject(new Error('Audio playback failed'));
         };
@@ -170,7 +226,9 @@ class VoiceSynthesis {
         this.currentAudio.addEventListener('ended', onEnded);
         this.currentAudio.addEventListener('error', onError);
 
+        console.log('Starting audio playback...');
         this.currentAudio.play().catch(async error => {
+          console.error('Failed to play audio:', error);
           await cleanup();
           reject(error);
         });
@@ -184,39 +242,27 @@ class VoiceSynthesis {
 
   stop() {
     if (this.currentAudio) {
+      console.log('Stopping current audio playback');
       this.currentAudio.pause();
       this.currentAudio.currentTime = 0;
       this.currentAudio = null;
     }
-
-    // Clean up any remaining blob URLs
-    this.activeBlobs.forEach(url => BufferUtils.releaseBlobUrl(url));
-    this.activeBlobs = [];
-
     this.isSpeaking = false;
   }
 
   isReady(): boolean {
-    return this.isAudioInitialized && 
-           !!this.audioContext && 
-           this.audioContext.state === 'running';
+    const ready = this.isAudioInitialized && !!this.audioContext && this.audioContext.state === 'running';
+    console.log('Voice synthesis ready state:', { 
+      initialized: this.isAudioInitialized,
+      contextExists: !!this.audioContext,
+      contextState: this.audioContext?.state,
+      ready
+    });
+    return ready;
   }
 
   isSpeakingNow(): boolean {
     return this.isSpeaking;
-  }
-
-  private async waitForInitialization(): Promise<void> {
-    if (!this.initializationPromise) {
-      this.setupInitialization();
-    }
-
-    try {
-      await this.initializationPromise;
-    } catch (error) {
-      console.error('Error waiting for initialization:', error);
-      throw error;
-    }
   }
 }
 

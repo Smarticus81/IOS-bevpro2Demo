@@ -1,6 +1,5 @@
 import OpenAI from "openai";
 import { voiceCommandDebouncer, orderProcessingDebouncer, audioSynthesisDebouncer } from "./debounce";
-import { BufferUtils } from './buffer-utils';
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
 let openai: OpenAI | null = null;
@@ -23,6 +22,7 @@ const initializeOpenAI = () => {
   }
 };
 
+// Initialize OpenAI client with proper error handling
 try {
   console.log('Initializing OpenAI client...');
   openai = initializeOpenAI();
@@ -50,42 +50,33 @@ interface VoiceOrderResult {
   isShutdown?: boolean;
 }
 
-async function transcribeAudio(audioBlob: Blob): Promise<string> {
+async function transcribeAudio(audioFile: Blob): Promise<string> {
   if (!openai) throw new Error('Voice processing service is not configured');
 
-  try {
-    // Handle audio data using browser-safe methods
-    const arrayBuffer = await audioBlob.arrayBuffer();
-    const audioData = new Blob([new Uint8Array(arrayBuffer)], { type: 'audio/wav' });
+  const formData = new FormData();
+  formData.append('file', audioFile, 'voice-order.wav');
+  formData.append('model', 'whisper-1');
+  formData.append('language', 'en');
+  formData.append('response_format', 'json');
 
-    const formData = new FormData();
-    formData.append('file', audioData, 'voice-order.wav');
-    formData.append('model', 'whisper-1');
-    formData.append('language', 'en');
-    formData.append('response_format', 'json');
+  const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+    },
+    body: formData
+  });
 
-    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
-      },
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to transcribe audio');
-    }
-
-    const data = await response.json();
-    if (!data.text) {
-      throw new Error('No speech detected');
-    }
-
-    return data.text;
-  } catch (error) {
-    console.error('Error transcribing audio:', error);
-    throw error;
+  if (!response.ok) {
+    throw new Error('Failed to transcribe audio');
   }
+
+  const data = await response.json();
+  if (!data.text) {
+    throw new Error('No speech detected');
+  }
+
+  return data.text;
 }
 
 async function processTranscription(text: string): Promise<VoiceOrderResult['order']> {
@@ -130,7 +121,7 @@ async function processTranscription(text: string): Promise<VoiceOrderResult['ord
     };
   }
 
-  // Process with OpenAI
+  // Fallback to OpenAI for complex queries
   const completion = await openai.chat.completions.create({
     model: "gpt-4o",
     messages: [
@@ -215,9 +206,7 @@ export async function synthesizeOrderConfirmation(order: VoiceOrderResult['order
         input: generateConfirmationMessage(order),
       });
 
-      // Convert the audio response to a URL using browser-safe methods
-      const arrayBuffer = await response.arrayBuffer();
-      return BufferUtils.createBlobUrl(arrayBuffer, 'audio/mpeg');
+      return URL.createObjectURL(new Blob([await response.arrayBuffer()]));
     });
   } catch (error) {
     console.error('Error synthesizing order confirmation:', error);

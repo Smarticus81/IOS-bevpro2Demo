@@ -1,4 +1,4 @@
-import { ShoppingBag, Loader2 } from "lucide-react";
+import { ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
@@ -13,14 +13,13 @@ interface OrderSummaryDrawerProps {
   onRemoveItem: (drinkId: number) => void;
   onPlaceOrder: () => void;
   isLoading: boolean;
-  isProcessingVoice?: boolean;
   drinks: Drink[];
   onAddToCart: (action: { type: 'ADD_ITEM'; drink: Drink; quantity: number }) => void;
 }
 
 export default function OrderSummaryDrawer(props: OrderSummaryDrawerProps) {
   const itemCount = props.cart.reduce((sum, item) => sum + item.quantity, 0);
-
+  
   return (
     <Drawer>
       <DrawerTrigger asChild>
@@ -28,13 +27,8 @@ export default function OrderSummaryDrawer(props: OrderSummaryDrawerProps) {
           variant="outline" 
           className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20"
         >
-          <div className="flex items-center gap-2">
-            <ShoppingBag className="h-4 w-4" />
-            <span>View Order ({itemCount} items)</span>
-            {props.isProcessingVoice && (
-              <Loader2 className="h-4 w-4 animate-spin ml-2" />
-            )}
-          </div>
+          <ShoppingBag className="mr-2 h-4 w-4" />
+          View Order ({itemCount} items)
         </Button>
       </DrawerTrigger>
       <DrawerContent>
