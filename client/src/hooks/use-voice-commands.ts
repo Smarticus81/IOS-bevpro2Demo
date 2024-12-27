@@ -19,7 +19,6 @@ export function useVoiceCommands({
   onPlaceOrder
 }: VoiceCommandsProps) {
   const [isListening, setIsListening] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const lastCommandRef = useRef<{ text: string; timestamp: number }>({ text: '', timestamp: 0 });
   const COMMAND_DEBOUNCE_MS = 500;
@@ -50,18 +49,12 @@ export function useVoiceCommands({
   }, [toast]);
 
   const processOrder = useCallback(async () => {
-    if (isProcessing) {
-      showFeedback('Processing', 'Please wait...', 'destructive');
-      return false;
-    }
-
     if (!cart.length) {
       showFeedback('Empty Cart', 'Your cart is empty', 'destructive');
       return false;
     }
 
     try {
-      setIsProcessing(true);
       const total = cart.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
       showFeedback('Processing Order', `Total: $${total.toFixed(2)}`);
       await onPlaceOrder();
@@ -71,10 +64,8 @@ export function useVoiceCommands({
       console.error('Error processing order:', error);
       showFeedback('Error', 'Failed to process order', 'destructive');
       return false;
-    } finally {
-      setIsProcessing(false);
     }
-  }, [cart, onPlaceOrder, showFeedback, isProcessing]);
+  }, [cart, onPlaceOrder, showFeedback]);
 
   const handleVoiceCommand = useCallback(async (text: string) => {
     if (!text?.trim()) return;
@@ -92,8 +83,6 @@ export function useVoiceCommands({
     console.log('Processing voice command:', command);
 
     try {
-      setIsProcessing(true);
-
       // Process complete order commands
       if (/(?:complete|finish|process|submit|confirm|checkout|pay for|place)\s+(?:the\s+)?order/.test(command) ||
           /(?:i(?:\'m|\s+am)\s+(?:done|finished|ready))|(?:that(?:\'s|\s+is)\s+all)/.test(command)) {
@@ -177,8 +166,6 @@ export function useVoiceCommands({
     } catch (error) {
       console.error('Error processing command:', error);
       showFeedback('Error', 'Failed to process command', 'destructive');
-    } finally {
-      setIsProcessing(false);
     }
   }, [drinks, onAddToCart, processOrder, cart, showFeedback]);
 
@@ -225,7 +212,6 @@ export function useVoiceCommands({
 
   return {
     isListening,
-    isProcessing,
     startListening,
     stopListening,
     isSupported: googleVoiceService.isSupported()
