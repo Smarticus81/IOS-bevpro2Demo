@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { getClientConfig } from "./config";
 import { recommendationService } from './recommendation-service';
 import { conversationState } from "./conversation-state";
 
@@ -8,19 +9,14 @@ let openai: OpenAI | null = null;
 export async function getOpenAIClient(): Promise<OpenAI> {
   if (!openai) {
     try {
-      const response = await fetch('/api/config');
+      const config = getClientConfig();
 
-      if (!response.ok) {
-        throw new Error(`Config API returned ${response.status}`);
-      }
-
-      const data = await response.json();
-      if (!data.openaiKey) {
+      if (!config.openaiKey) {
         throw new Error('OpenAI API key not configured');
       }
 
       openai = new OpenAI({
-        apiKey: data.openaiKey,
+        apiKey: config.openaiKey,
         dangerouslyAllowBrowser: true
       });
 

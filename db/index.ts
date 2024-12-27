@@ -1,27 +1,24 @@
 import { drizzle } from "drizzle-orm/neon-serverless";
 import ws from "ws";
 import * as schema from "@db/schema";
+import { getServerConfig } from "../server/config";
 
-const DATABASE_URL = typeof process !== 'undefined' && process.env.DATABASE_URL ? 
-  process.env.DATABASE_URL : 
-  import.meta.env.VITE_DATABASE_URL;
+let db: ReturnType<typeof drizzle>;
 
-if (!DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Ensure the database is properly provisioned.",
-  );
+try {
+  const config = getServerConfig();
+
+  // Initialize database connection
+  db = drizzle({
+    connection: config.databaseUrl,
+    schema,
+    ws: ws,
+  });
+
+} catch (error) {
+  console.error("Failed to initialize database:", error);
+  throw error;
 }
 
-if (!DATABASE_URL.startsWith('postgres://') && !DATABASE_URL.startsWith('postgresql://')) {
-  throw new Error(
-    "Invalid DATABASE_URL format. Must start with postgres:// or postgresql://",
-  );
-}
-
-export const db = drizzle({
-  connection: DATABASE_URL,
-  schema,
-  ws: ws,
-});
-
-export { schema };
+// Export database instance and schema
+export { db, schema };

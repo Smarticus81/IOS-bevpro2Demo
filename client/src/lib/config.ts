@@ -1,7 +1,16 @@
 // Client-side configuration
-export const getConfig = () => {
+interface ClientConfig {
+  openaiKey: string | undefined;
+}
+
+export function getClientConfig(): ClientConfig {
   return {
-    databaseUrl: import.meta.env.VITE_DATABASE_URL,
-    apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+    openaiKey: import.meta.env.VITE_OPENAI_API_KEY,
   };
-};
+}
+
+// Validate configuration
+export function validateClientConfig(): boolean {
+  const config = getClientConfig();
+  return !!config.openaiKey;
+}
