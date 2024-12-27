@@ -188,8 +188,8 @@ export function useVoiceCommands({
         throw new Error('Speech recognition not supported');
       }
 
-      if (!validateDependencies()) {
-        throw new Error('Required dependencies unavailable');
+      if (!validateDependencies() || cart.isProcessing) {
+        throw new Error('Required dependencies unavailable or cart is processing');
       }
 
       await googleVoiceService.startListening(handleVoiceCommand);
@@ -200,7 +200,7 @@ export function useVoiceCommands({
       setIsListening(false);
       throw error;
     }
-  }, [handleVoiceCommand, showFeedback, validateDependencies]);
+  }, [handleVoiceCommand, showFeedback, validateDependencies, cart.isProcessing]);
 
   useEffect(() => {
     return () => {
