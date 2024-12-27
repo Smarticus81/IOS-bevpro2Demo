@@ -1,4 +1,5 @@
 import { type Intent } from "./openai";
+import type { CartItem } from "@/types/speech";
 
 interface ConversationContext {
   lastIntent?: Intent;
@@ -7,13 +8,14 @@ interface ConversationContext {
   topics: string[];
   relevantDrinks: string[];
   contextExpiry: number;
+  currentOrder?: CartItem[];
 }
 
 export class ConversationState {
   private static instance: ConversationState;
   private context: ConversationContext;
   private readonly DEFAULT_EXPIRY = 300000; // 5 minutes
-  
+
   private constructor() {
     this.context = this.createNewContext();
   }
@@ -30,8 +32,18 @@ export class ConversationState {
       timestamp: Date.now(),
       topics: [],
       relevantDrinks: [],
-      contextExpiry: this.DEFAULT_EXPIRY
+      contextExpiry: this.DEFAULT_EXPIRY,
+      currentOrder: []
     };
+  }
+
+  public getCurrentOrder(): CartItem[] | undefined {
+    return this.context.currentOrder;
+  }
+
+  public setCurrentOrder(order: CartItem[]) {
+    this.context.currentOrder = [...order];
+    this.context.timestamp = Date.now(); // Update timestamp when order changes
   }
 
   public updateContext(intent: Intent, query: string) {
@@ -81,13 +93,13 @@ export class ConversationState {
 
   private extractTopics(query: string): string[] {
     const topics: string[] = [];
-    
+
     // Extract drink categories from our defined schema
     const drinkCategories = [
       'signature', 'classics', 'beer', 'wine', 'spirits', 'non-alcoholic',
       'cocktails', 'lager', 'ale', 'cider', 'red', 'white', 'sparkling'
     ];
-    
+
     drinkCategories.forEach(category => {
       if (query.toLowerCase().includes(category)) {
         topics.push(category);
@@ -99,7 +111,7 @@ export class ConversationState {
       'vodka', 'gin', 'whiskey', 'bourbon', 'rum', 'tequila', 'cognac',
       'beer', 'wine', 'champagne', 'seltzer', 'soda', 'juice'
     ];
-    
+
     drinkTypes.forEach(type => {
       if (query.toLowerCase().includes(type)) {
         topics.push(type);
@@ -111,7 +123,7 @@ export class ConversationState {
       'price', 'cost', 'alcohol content', 'ingredients', 'inventory',
       'stock', 'available', 'special', 'popular', 'recommendation'
     ];
-    
+
     attributes.forEach(attr => {
       if (query.toLowerCase().includes(attr)) {
         topics.push(attr);
@@ -123,24 +135,31 @@ export class ConversationState {
 
   public getRelevantContext(): string {
     const context = this.getContext();
-    
+
     if (!context.lastIntent) {
       return '';
     }
 
     // Build context string based on recent interactions
     const contextParts = [];
-    
+
     if (context.topics.length > 0) {
       contextParts.push(`Recent topics: ${context.topics.join(', ')}`);
     }
-    
+
     if (context.relevantDrinks.length > 0) {
       contextParts.push(`Discussed drinks: ${context.relevantDrinks.join(', ')}`);
     }
-    
+
     if (context.lastQuery) {
       contextParts.push(`Last query: ${context.lastQuery}`);
+    }
+
+    if (context.currentOrder && context.currentOrder.length > 0) {
+      const orderSummary = context.currentOrder
+        .map(item => `${item.quantity}x ${item.drink.name}`)
+        .join(', ');
+      contextParts.push(`Current order: ${orderSummary}`);
     }
 
     return contextParts.join('. ');

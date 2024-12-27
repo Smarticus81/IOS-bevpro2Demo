@@ -1,0 +1,156 @@
+google-voice-service.ts:15 GoogleVoiceService constructor called
+google-voice-service.ts:33 Attempting speech recognition initialization (attempt 1)
+google-voice-service.ts:52 Speech recognition initialized successfully
+voice-synthesis.ts:66 Creating new VoiceSynthesis instance
+voice-synthesis.ts:18 VoiceSynthesis constructor called
+voice-synthesis.ts:23 Setting up voice synthesis initialization...
+sound-effects.ts:43 Audio context initialized successfully
+voice-synthesis.ts:33 Attempting audio initialization...
+voice-synthesis.ts:73 Initializing AudioContext... 
+{isInitialized: false, currentState: undefined}
+voice-synthesis.ts:81 New AudioContext created
+voice-synthesis.ts:95 Audio context fully initialized and running
+voice-synthesis.ts:48 Audio initialization successful
+2
+use-voice-commands.ts:391 Cleaning up voice commands...
+2
+framer-motion.js?v=eb3ea133:222 '240 4.8% 95.9%' is not an animatable color. Use the equivalent color code instead.
+use-voice-commands.ts:357 Initializing voice recognition...
+use-voice-commands.ts:43 Validating voice command dependencies: 
+{drinks: true, handlers: {…}}
+use-voice-commands.ts:368 Starting voice recognition...
+google-voice-service.ts:179 Starting voice recognition...
+google-voice-service.ts:236 Started listening for voice commands
+voice-synthesis.ts:126 Voice synthesis state before speaking: 
+{isInitialized: true, contextState: 'running', isSpeaking: false}
+voice-synthesis.ts:138 Attempting to speak: 
+{text: "Voice commands activated. I'm listening and ready ...", emotion: 'excited', data: undefined}
+voice-synthesis.ts:172 Generating speech with OpenAI... 
+{voice: 'fable', speed: 1.15}
+openai.ts:9 Initializing OpenAI client...
+use-voice-commands.ts:391 Cleaning up voice commands...
+google-voice-service.ts:124 Audio capturing started
+openai.ts:36 OpenAI client initialized and tested successfully
+voice-synthesis.ts:182 Speech generated successfully, preparing for playback
+voice-synthesis.ts:190 Setting up audio playback...
+voice-synthesis.ts:229 Starting audio playback...
+voice-synthesis.ts:215 Audio playback completed successfully
+voice-synthesis.ts:194 Cleaning up audio resources...
+google-voice-service.ts:135 Voice command recognized: can I get one Captain Morgan please
+use-voice-commands.ts:215 Processing voice command: can i get one captain morgan please
+use-voice-commands.ts:259 Searching for drink: captain morgan please
+use-voice-commands.ts:263 Checking drink: Lav Lemonade Match: false
+use-voice-commands.ts:263 Checking drink: Exotico Teq Blanco Match: false
+use-voice-commands.ts:263 Checking drink: Captain Morgan Match: true
+use-voice-commands.ts:268 Adding to cart: 
+{drink: {…}, quantity: 1}
+voice-synthesis.ts:126 Voice synthesis state before speaking: 
+{isInitialized: true, contextState: 'running', isSpeaking: false}
+voice-synthesis.ts:138 Attempting to speak: 
+{text: "I've added 1 Captain Morgan to your order. Your to...", emotion: 'excited', data: {…}}
+voice-synthesis.ts:172 Generating speech with OpenAI... 
+{voice: 'fable', speed: 1.15}
+voice-synthesis.ts:182 Speech generated successfully, preparing for playback
+voice-synthesis.ts:190 Setting up audio playback...
+voice-synthesis.ts:229 Starting audio playback...
+voice-synthesis.ts:215 Audio playback completed successfully
+voice-synthesis.ts:194 Cleaning up audio resources...
+google-voice-service.ts:135 Voice command recognized:  complete order
+use-voice-commands.ts:215 Processing voice command: complete order
+voice-synthesis.ts:126 Voice synthesis state before speaking: 
+{isInitialized: true, contextState: 'running', isSpeaking: false}
+voice-synthesis.ts:138 Attempting to speak: 
+{text: 'Your cart is empty. Would you like to order some d...', emotion: 'apologetic', data: {…}}
+voice-synthesis.ts:172 Generating speech with OpenAI... 
+{voice: 'shimmer', speed: 0.95}
+use-voice-commands.ts:92 Attempting to stop voice recognition...
+use-voice-commands.ts:101 Voice commands stopped successfully
+use-voice-commands.ts:391 Cleaning up voice commands...
+voice-synthesis.ts:182 Speech generated successfully, preparing for playback
+voice-synthesis.ts:190 Setting up audio playback...
+voice-synthesis.ts:229 Starting audio playback...
+voice-synthesis.ts:215 Audio playback completed successfully
+voice-synthesis.ts:194 Cleaning up audio resources...
+google-voice-service.ts:135 Voice command recognized:  yes
+use-voice-commands.ts:215 Processing voice command: yes
+voice-synthesis.ts:126 Voice synthesis state before speaking: 
+{isInitialized: true, contextState: 'running', isSpeaking: false}
+voice-synthesis.ts:138 Attempting to speak: 
+{text: "I heard you say:  yes. I didn't quite understand t...", emotion: 'apologetic', data: {…}}
+voice-synthesis.ts:172 Generating speech with OpenAI... 
+{voice: 'shimmer', speed: 0.95}
+voice-synthesis.ts:182 Speech generated successfully, preparing for playback
+voice-synthesis.ts:190 Setting up audio playback...
+voice-synthesis.ts:229 Starting audio playback...
+use-voice-commands.ts:357 Initializing voice recognition...
+use-voice-commands.ts:43 Validating voice command dependencies: 
+{drinks: true, handlers: {…}}
+use-voice-commands.ts:368 Starting voice recognition...
+google-voice-service.ts:179 Starting voice recognition...
+google-voice-service.ts:238 Error starting voice recognition: InvalidStateError: Failed to execute 'start' on 'SpeechRecognition': recognition has already started.
+    at google-voice-service.ts:229:28
+    at new Promise (<anonymous>)
+    at GoogleVoiceService.startListening (google-voice-service.ts:199:13)
+    at use-voice-commands.ts:369:32
+    at handleClick (VoiceControlButton.tsx:126:15)
+use-voice-commands.ts:382 Failed to start voice commands: InvalidStateError: Failed to execute 'start' on 'SpeechRecognition': recognition has already started.
+    at google-voice-service.ts:229:28
+    at new Promise (<anonymous>)
+    at GoogleVoiceService.startListening (google-voice-service.ts:199:13)
+    at use-voice-commands.ts:369:32
+    at handleClick (VoiceControlButton.tsx:126:15)
+VoiceControlButton.tsx:133 Voice control error: InvalidStateError: Failed to execute 'start' on 'SpeechRecognition': recognition has already started.
+    at google-voice-service.ts:229:28
+    at new Promise (<anonymous>)
+    at GoogleVoiceService.startListening (google-voice-service.ts:199:13)
+    at use-voice-commands.ts:369:32
+    at handleClick (VoiceControlButton.tsx:126:15)
+use-voice-commands.ts:357 Initializing voice recognition...
+use-voice-commands.ts:43 Validating voice command dependencies: 
+{drinks: true, handlers: {…}}
+use-voice-commands.ts:368 Starting voice recognition...
+google-voice-service.ts:179 Starting voice recognition...
+google-voice-service.ts:238 Error starting voice recognition: InvalidStateError: Failed to execute 'start' on 'SpeechRecognition': recognition has already started.
+    at google-voice-service.ts:229:28
+    at new Promise (<anonymous>)
+    at GoogleVoiceService.startListening (google-voice-service.ts:199:13)
+    at use-voice-commands.ts:369:32
+    at handleClick (VoiceControlButton.tsx:126:15)
+use-voice-commands.ts:382 Failed to start voice commands: InvalidStateError: Failed to execute 'start' on 'SpeechRecognition': recognition has already started.
+    at google-voice-service.ts:229:28
+    at new Promise (<anonymous>)
+    at GoogleVoiceService.startListening (google-voice-service.ts:199:13)
+    at use-voice-commands.ts:369:32
+    at handleClick (VoiceControlButton.tsx:126:15)
+VoiceControlButton.tsx:133 Voice control error: InvalidStateError: Failed to execute 'start' on 'SpeechRecognition': recognition has already started.
+    at google-voice-service.ts:229:28
+    at new Promise (<anonymous>)
+    at GoogleVoiceService.startListening (google-voice-service.ts:199:13)
+    at use-voice-commands.ts:369:32
+    at handleClick (VoiceControlButton.tsx:126:15)
+voice-synthesis.ts:215 Audio playback completed successfully
+voice-synthesis.ts:194 Cleaning up audio resources...
+use-voice-commands.ts:357 Initializing voice recognition...
+use-voice-commands.ts:43 Validating voice command dependencies: 
+{drinks: true, handlers: {…}}
+use-voice-commands.ts:368 Starting voice recognition...
+google-voice-service.ts:179 Starting voice recognition...
+google-voice-service.ts:238 Error starting voice recognition: InvalidStateError: Failed to execute 'start' on 'SpeechRecognition': recognition has already started.
+    at google-voice-service.ts:229:28
+    at new Promise (<anonymous>)
+    at GoogleVoiceService.startListening (google-voice-service.ts:199:13)
+    at use-voice-commands.ts:369:32
+    at handleClick (VoiceControlButton.tsx:126:15)
+use-voice-commands.ts:382 Failed to start voice commands: InvalidStateError: Failed to execute 'start' on 'SpeechRecognition': recognition has already started.
+    at google-voice-service.ts:229:28
+    at new Promise (<anonymous>)
+    at GoogleVoiceService.startListening (google-voice-service.ts:199:13)
+    at use-voice-commands.ts:369:32
+    at handleClick (VoiceControlButton.tsx:126:15)
+VoiceControlButton.tsx:133 Voice control error: InvalidStateError: Failed to execute 'start' on 'SpeechRecognition': recognition has already started.
+    at google-voice-service.ts:229:28
+    at new Promise (<anonymous>)
+    at GoogleVoiceService.startListening (google-voice-service.ts:199:13)
+    at use-voice-commands.ts:369:32
+    at handleClick (VoiceControlButton.tsx:126:15)
+

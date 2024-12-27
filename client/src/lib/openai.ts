@@ -1,4 +1,6 @@
 import OpenAI from "openai";
+import { recommendationService } from './recommendation-service';
+import { conversationState } from "./conversation-state";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 let openai: OpenAI | null = null;
@@ -8,7 +10,7 @@ export async function getOpenAIClient(): Promise<OpenAI> {
     try {
       console.log('Initializing OpenAI client...');
       const response = await fetch('/api/config');
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Config API error:', response.status, errorText);
@@ -27,10 +29,11 @@ export async function getOpenAIClient(): Promise<OpenAI> {
       });
 
       // Test the client with a simple request
-      const testResponse = await openai.chat.completions.create({
+      await openai.chat.completions.create({
         model: "gpt-4o",
-        messages: [{ role: "system", content: "Test connection" }],
-        max_tokens: 5
+        messages: [{ role: "user", content: "Test connection" }],
+        max_tokens: 5,
+        response_format: { type: "json_object" }
       });
 
       console.log('OpenAI client initialized and tested successfully');
@@ -94,25 +97,23 @@ export interface BaseIntent {
   conversational_response: string;
 }
 
-export type Intent = (OrderIntent | IncompleteOrderIntent | QueryIntent | GreetingIntent | CompleteTransactionIntent | ShutdownIntent | CancelIntent) & BaseIntent;
+export interface RecommendationIntent extends BaseIntent {
+  type: "recommendation";
+  category?: string;
+  preferences?: string[];
+  context?: string;
+}
 
-import { conversationState } from "./conversation-state";
+export type Intent = (OrderIntent | IncompleteOrderIntent | QueryIntent | GreetingIntent | CompleteTransactionIntent | ShutdownIntent | CancelIntent | RecommendationIntent) & BaseIntent;
 
 // Store conversation history with improved context management
 const MAX_HISTORY_LENGTH = 6; // Keep last 3 exchanges
 let conversationHistory: Array<{ role: string, content: string }> = [];
 
-export async function processVoiceCommand(text: string): Promise<Intent> {
+export async function processVoiceCommand(text: string, sessionId: string): Promise<Intent> {
   try {
-    // Get OpenAI client
-    const client = await getOpenAIClient().catch(error => {
-      console.error('Failed to initialize OpenAI client:', error);
-      throw new Error('OpenAI client initialization failed');
-    });
+    const client = await getOpenAIClient();
 
-    console.log('Processing voice command:', text);
-    
-    // Validate input
     if (!text || text.trim().length === 0) {
       throw new Error('Empty voice command received');
     }
@@ -124,7 +125,26 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
 
     // Get relevant context from conversation state
     const relevantContext = conversationState.getRelevantContext();
-    
+
+    // Get personalized recommendations if needed
+    let recommendationContext = null;
+    if (text.toLowerCase().includes('recommend') || text.toLowerCase().includes('suggestion')) {
+      const currentTime = new Date().getHours();
+      const timeOfDay = currentTime < 12 ? 'morning' : currentTime < 17 ? 'afternoon' : 'evening';
+      const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+
+      const recommendations = await recommendationService.getRecommendations({
+        timeOfDay,
+        dayOfWeek,
+        sessionId,
+        currentOrder: conversationState.getCurrentOrder() || []
+      });
+
+      if (recommendations.length > 0) {
+        recommendationContext = await recommendationService.generateRecommendationResponse(recommendations);
+      }
+    }
+
     // Add context and user's message to history
     if (relevantContext) {
       conversationHistory.push({ 
@@ -132,129 +152,45 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
         content: `Previous context: ${relevantContext}`
       });
     }
-    
+
+    if (recommendationContext) {
+      conversationHistory.push({
+        role: "system",
+        content: `Recommendation context: ${recommendationContext}`
+      });
+    }
+
     conversationHistory.push({ role: "user", content: text });
-    
-    console.log('Processing command with context:', {
-      text,
-      relevantContext,
-      historyLength: conversationHistory.length
-    });
 
     const response = await client.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: `You are a knowledgeable and helpful AI bartender with emotional intelligence.
-          Analyze both intent and emotional sentiment in each interaction.
-          You are a knowledgeable and helpful AI bartender. Your tasks:
-          1. Remember context from previous exchanges
-          2. Parse drink orders and queries accurately with exact quantities
-          3. Answer questions about drinks and menu items
-          4. Maintain conversation flow
-          5. Format responses as JSON
-          
-          Important: Always parse exact quantities from user input. Default to 1 only when no quantity is specified.
-          
-          Handle follow-up questions naturally while maintaining context.
-          For example:
-          User: "What beers do you have?"
-          Assistant: { "type": "query", "category": "Beer", "conversational_response": "We have several beers including Bud Light, Coors Light, and craft options." }
-          User: "How much are they?"
-          Assistant: { "type": "query", "category": "Beer", "attribute": "price", "conversational_response": "Our domestic beers like Bud Light and Coors Light are $5, while craft beers are $6." }
-          
-          Response types remain consistent:
-          1. Parse drink orders and queries
-          2. Extract details
-          3. Give brief responses
-          4. Format as JSON
-          
-          Response types:
-          - "order": Complete orders
-          - "incomplete_order": Missing info
-          - "query": Drink questions
-          - "greeting": Quick greetings
-          - "complete_transaction": Finish and process the order
-          - "shutdown": Completely turn off voice commands
-          - "cancel": Cancel current order or operation
-          
-          Order flow:
-          1. Stay in order mode until transaction is complete or cancelled
-          2. Process "complete_transaction" intent when user says things like:
-             - "that's all"
-             - "complete my order"
-             - "finish order"
-             - "process payment"
-             - "check out"
-             - "place order"
-             - "submit order"
-             - "complete purchase"
-             - "pay for order"
-             - "finalize order"
-          3. Handle "shutdown" intent for commands like:
-             - "shut down"
-             - "turn off"
-             - "power off"
-             - "exit system"
-          
-          Keep responses short and clear.
-          
-          Examples:
-          User: "two beers"
-          Response: {
-            "type": "order",
-            "items": [{"name": "beer", "quantity": 2}],
-            "conversational_response": "Adding two beers to your order."
-          }
+          content: `You are a knowledgeable and helpful AI bartender with emotional intelligence and agentic capabilities.
+          You should be proactive in offering recommendations and assistance.
+          Your voice should be pleasant, upbeat, and feminine.
+          Use natural, conversational language while maintaining professionalism.
 
-          User: "one corona"
-          Response: {
-            "type": "order",
-            "items": [{"name": "corona", "quantity": 1}],
-            "conversational_response": "Adding one Corona to your order."
-          }
-          
-          User: "add three"
-          Response: {
-            "type": "incomplete_order",
-            "missing": "drink_type",
-            "quantity": 3,
-            "conversational_response": "Which drink?"
-          }
-          
-          User: "some beers"
-          Response: {
-            "type": "incomplete_order",
-            "missing": "quantity",
-            "drink_type": "beer",
-            "conversational_response": "How many?"
-          }
-          
-          User: "What wines?"
-          Response: {
-            "type": "query",
-            "category": "Wine",
-            "conversational_response": "We have reds, whites, and sparkling."
-          }
-          
-          User: "hey"
-          Response: {
-            "type": "greeting",
-            "conversational_response": "What would you like?"
-          }`
+          Response types:
+          - "order": Complete orders with suggestions
+          - "incomplete_order": Ask clarifying questions
+          - "query": Answer questions about drinks
+          - "recommendation": Provide personalized recommendations
+          - "greeting": Friendly welcome with context-aware suggestions
+          - "complete_transaction": Process order with final recommendations
+          - "shutdown": Turn off voice commands
+          - "cancel": Cancel current operation
+
+          Always maintain a helpful, proactive, and friendly tone.
+          Always include a sentiment field in the response.`
         },
-        {
-          role: "user",
-          content: text
-        }
+        ...conversationHistory
       ],
-      temperature: 0.3, // Lower temperature for more consistent responses
+      temperature: 0.7,
       max_tokens: 150,
       response_format: { type: "json_object" }
     });
-
-    console.log('OpenAI response:', response.choices[0]?.message?.content);
 
     const content = response.choices[0]?.message?.content;
     if (!content) {
@@ -262,17 +198,6 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
     }
 
     const parsed = JSON.parse(content);
-    
-    // Validate response format
-    if (!parsed.type || !parsed.conversational_response) {
-      console.error('Invalid response format:', parsed);
-      throw new Error("Invalid response format from OpenAI");
-    }
-
-    if (parsed.type === 'order' && (!Array.isArray(parsed.items) || parsed.items.length === 0)) {
-      console.error('Invalid order format:', parsed);
-      throw new Error("Invalid order format from OpenAI");
-    }
 
     // Update conversation state and history
     conversationState.updateContext(parsed, text);
@@ -280,13 +205,11 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
       role: "assistant", 
       content: JSON.stringify(parsed)
     });
-    
+
     return parsed;
   } catch (error: any) {
     console.error("Failed to process voice command:", error);
-    console.log("Current conversation history:", conversationHistory);
-    
-    // Provide more specific error messages
+
     if (error.message.includes('fetch')) {
       throw new Error("Could not connect to the AI service. Please try again.");
     } else if (error.message.includes('JSON')) {

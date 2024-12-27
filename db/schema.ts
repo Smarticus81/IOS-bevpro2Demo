@@ -11,6 +11,51 @@ export const drinks = pgTable("drinks", {
   inventory: integer("inventory").notNull(),
   image: text("image").notNull(),
   sales: integer("sales").default(0),
+  // New fields for enhanced recommendations
+  popular_pairings: jsonb("popular_pairings").$type<number[]>(),
+  peak_hours: jsonb("peak_hours").$type<string[]>(),
+  taste_profile: jsonb("taste_profile").$type<{
+    sweet: number;
+    bitter: number;
+    strong: number;
+    refreshing: number;
+  }>(),
+  dietary_info: jsonb("dietary_info").$type<string[]>(),
+  seasonal_availability: jsonb("seasonal_availability").$type<string[]>(),
+  last_recommended: timestamp("last_recommended"),
+  recommendation_score: real("recommendation_score").default(0),
+});
+
+// Customer preferences for personalized recommendations
+export const customerPreferences = pgTable("customer_preferences", {
+  id: serial("id").primaryKey(),
+  session_id: text("session_id").notNull(),
+  favorite_categories: jsonb("favorite_categories").$type<string[]>(),
+  taste_preferences: jsonb("taste_preferences").$type<{
+    sweet: number;
+    bitter: number;
+    strong: number;
+    refreshing: number;
+  }>(),
+  dietary_restrictions: jsonb("dietary_restrictions").$type<string[]>(),
+  last_orders: jsonb("last_orders").$type<number[]>(),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at"),
+});
+
+// Order history for recommendation analytics
+export const orderHistory = pgTable("order_history", {
+  id: serial("id").primaryKey(),
+  session_id: text("session_id").notNull(),
+  items: jsonb("items").notNull(),
+  order_time: timestamp("order_time").defaultNow(),
+  total: integer("total").notNull(),
+  context: jsonb("context").$type<{
+    time_of_day: string;
+    day_of_week: string;
+    weather: string;
+    special_occasion: boolean;
+  }>(),
 });
 
 export const orders = pgTable("orders", {
@@ -22,6 +67,7 @@ export const orders = pgTable("orders", {
   completed_at: timestamp("completed_at"),
   payment_status: text("payment_status").default("pending"),
   tab_id: integer("tab_id").references(() => tabs.id),
+  session_id: text("session_id"), // Added for tracking customer sessions
 });
 
 export const orderItems = pgTable("order_items", {
@@ -117,6 +163,15 @@ export const tabRelations = relations(tabs, ({ many, one }) => ({
   }),
 }));
 
+export const customerPreferencesRelations = relations(customerPreferences, ({ many }) => ({
+  orderHistory: many(orderHistory),
+}));
+
+export const orderHistoryRelations = relations(orderHistory, ({ many }) => ({
+  drinks: many(drinks),
+}));
+
+
 // Types
 export type Drink = typeof drinks.$inferSelect;
 export type Order = typeof orders.$inferSelect;
@@ -126,6 +181,8 @@ export type Transaction = typeof transactions.$inferSelect;
 export type Tab = typeof tabs.$inferSelect;
 export type SplitPayment = typeof splitPayments.$inferSelect;
 export type EventPackage = typeof eventPackages.$inferSelect;
+export type CustomerPreference = typeof customerPreferences.$inferSelect;
+export type OrderHistory = typeof orderHistory.$inferSelect;
 
 // Schemas
 export const insertDrinkSchema = createInsertSchema(drinks);
@@ -142,3 +199,7 @@ export const insertSplitPaymentSchema = createInsertSchema(splitPayments);
 export const selectSplitPaymentSchema = createSelectSchema(splitPayments);
 export const insertEventPackageSchema = createInsertSchema(eventPackages);
 export const selectEventPackageSchema = createSelectSchema(eventPackages);
+export const insertCustomerPreferenceSchema = createInsertSchema(customerPreferences);
+export const selectCustomerPreferenceSchema = createSelectSchema(customerPreferences);
+export const insertOrderHistorySchema = createInsertSchema(orderHistory);
+export const selectOrderHistorySchema = createSelectSchema(orderHistory);

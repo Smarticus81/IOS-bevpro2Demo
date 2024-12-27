@@ -2,7 +2,24 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { googleVoiceService } from '@/lib/google-voice-service';
 import { useToast } from '@/hooks/use-toast';
 import { voiceSynthesis } from '@/lib/voice-synthesis';
-import type { DrinkItem, CartItem, AddToCartAction, VoiceResponse } from '@/types/speech';
+import type { DrinkItem, CartItem, AddToCartAction, VoiceResponse, SessionContext } from '@/types/speech';
+import { recommendationService } from '@/lib/recommendation-service';
+import type { Drink } from '@db/schema';
+import { conversationState } from '@/lib/conversation-state';
+
+// Convert DrinkItem to proper Drink type for recommendation service
+function convertToFullDrink(item: DrinkItem): Drink {
+  return {
+    ...item,
+    popular_pairings: null,
+    peak_hours: null,
+    taste_profile: null,
+    dietary_info: null,
+    seasonal_availability: null,
+    last_recommended: null,
+    recommendation_score: null
+  };
+}
 
 interface VoiceCommandsProps {
   drinks: DrinkItem[];
@@ -11,6 +28,16 @@ interface VoiceCommandsProps {
   onRemoveItem?: (drinkId: number) => void;
   onPlaceOrder?: () => Promise<void>;
   onProcessingStateChange?: (isProcessing: boolean) => void;
+}
+
+// Generate a session ID if not present
+function getOrCreateSessionId(): string {
+  let sessionId = sessionStorage.getItem('voice_session_id');
+  if (!sessionId) {
+    sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    sessionStorage.setItem('voice_session_id', sessionId);
+  }
+  return sessionId;
 }
 
 export function useVoiceCommands({
@@ -28,26 +55,23 @@ export function useVoiceCommands({
   const responseQueueRef = useRef<VoiceResponse[]>([]);
   const isProcessingResponseRef = useRef(false);
   const COMMAND_DEBOUNCE_MS = 1000;
+  const sessionId = getOrCreateSessionId();
 
   // Update parent component with processing state
   useEffect(() => {
     onProcessingStateChange(isProcessing);
   }, [isProcessing, onProcessingStateChange]);
 
+  // Update conversation state when cart changes
+  useEffect(() => {
+    conversationState.setCurrentOrder(cart);
+  }, [cart]);
+
   const validateDependencies = useCallback((): boolean => {
     const isValid = drinks.length > 0 && 
                    typeof onAddToCart === 'function' &&
                    typeof onRemoveItem === 'function' &&
                    typeof onPlaceOrder === 'function';
-
-    console.log('Validating voice command dependencies:', {
-      drinks: drinks.length > 0,
-      handlers: {
-        addToCart: typeof onAddToCart === 'function',
-        removeItem: typeof onRemoveItem === 'function',
-        placeOrder: typeof onPlaceOrder === 'function'
-      }
-    });
 
     return isValid;
   }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder]);
@@ -88,23 +112,6 @@ export function useVoiceCommands({
     processResponseQueue();
   }, [processResponseQueue]);
 
-  const stopListening = useCallback(async () => {
-    console.log('Attempting to stop voice recognition...');
-    if (!isListening) {
-      console.log('Not listening, no need to stop');
-      return;
-    }
-
-    try {
-      await googleVoiceService.stopListening();
-      setIsListening(false);
-      console.log('Voice commands stopped successfully');
-    } catch (error) {
-      console.error('Failed to stop voice commands:', error);
-      setIsListening(false);
-    }
-  }, [isListening]);
-
   const processOrder = useCallback(async () => {
     if (isProcessing) {
       queueResponse({
@@ -130,9 +137,7 @@ export function useVoiceCommands({
       return false;
     }
 
-    const total = cart.reduce((sum, item) => 
-      sum + (item.drink.price * item.quantity), 0
-    );
+    const total = cart.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
 
     try {
       setIsProcessing(true);
@@ -153,6 +158,13 @@ export function useVoiceCommands({
 
       await onPlaceOrder();
 
+      // Record order context for recommendations
+      await recommendationService.recordOrderContext(
+        sessionId,
+        cart.map(item => ({ drink: convertToFullDrink(item.drink), quantity: item.quantity })),
+        total
+      );
+
       queueResponse({
         text: "Your order has been processed successfully! Your drinks will be ready shortly. Would you like to order anything else?",
         emotion: "excited",
@@ -167,6 +179,9 @@ export function useVoiceCommands({
         title: "Order Complete",
         description: `Successfully processed order for $${total.toFixed(2)}`,
       });
+
+      // Clear conversation state after successful order
+      conversationState.clearContext();
 
       // Resume voice recognition after successful order
       await googleVoiceService.resumeListening();
@@ -196,162 +211,7 @@ export function useVoiceCommands({
     } finally {
       setIsProcessing(false);
     }
-  }, [cart, onPlaceOrder, queueResponse, toast]);
-
-  const handleVoiceCommand = useCallback(async (text: string) => {
-    if (!text) return;
-
-    const command = text.toLowerCase().trim();
-    const now = Date.now();
-
-    // Debounce handling
-    if (command === lastCommandRef.current.text && 
-        now - lastCommandRef.current.timestamp < COMMAND_DEBOUNCE_MS) {
-      console.log('Debouncing duplicate command:', command);
-      return;
-    }
-
-    lastCommandRef.current = { text: command, timestamp: now };
-    console.log('Processing voice command:', command);
-
-    try {
-      setIsProcessing(true); // Added this line
-
-      if (/(?:complete|finish|process|submit|confirm|checkout|pay for|place)\s+(?:the\s+)?order/.test(command) ||
-          /(?:i(?:\'m|\s+am)\s+(?:done|finished|ready))|(?:that(?:\'s|\s+is)\s+all)/.test(command)) {
-        await processOrder();
-        return;
-      }
-
-      // Enhanced order patterns
-      const orderPatterns = [
-        /(?:get|order|give|i want|i'll have|i would like|i'll take)\s+(?:a |an |some )?(.+)/i,
-        /(?:bring|fetch|grab)\s+(?:me )?(?:a |an |some )?(.+)/i,
-        /(?:add|put)\s+(?:a |an |some )?(.+)(?:\s+to\s+(?:my\s+)?(?:order|cart))?/i
-      ];
-
-      let orderMatch = null;
-      for (const pattern of orderPatterns) {
-        orderMatch = command.match(pattern);
-        if (orderMatch) break;
-      }
-
-      if (orderMatch) {
-        const orderText = orderMatch[1];
-        const items = orderText.split(/\s+and\s+|\s*,\s*|\s+with\s+|\s+plus\s+/);
-        let addedItems = [];
-
-        for (const item of items) {
-          const quantityMatch = item.match(/(\d+|a|one|two|three|four|five|six|seven|eight|nine|ten)\s+(.+)/i);
-          let quantity = 1;
-          let drinkName = item;
-
-          if (quantityMatch) {
-            const [_, qStr, dName] = quantityMatch;
-            const numberWords: { [key: string]: number } = {
-              'a': 1, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
-              'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10
-            };
-            quantity = parseInt(qStr) || numberWords[qStr.toLowerCase()] || 1;
-            drinkName = dName;
-          }
-
-          console.log('Searching for drink:', drinkName);
-          const matchedDrink = drinks.find(d => {
-            const isMatch = d.name.toLowerCase().includes(drinkName.toLowerCase()) ||
-                          drinkName.toLowerCase().includes(d.name.toLowerCase());
-            console.log('Checking drink:', d.name, 'Match:', isMatch);
-            return isMatch;
-          });
-
-          if (matchedDrink) {
-            console.log('Adding to cart:', { drink: matchedDrink, quantity });
-            onAddToCart({ 
-              type: 'ADD_ITEM', 
-              drink: matchedDrink,
-              quantity 
-            });
-            addedItems.push(`${quantity} ${matchedDrink.name}`);
-          }
-        }
-
-        if (addedItems.length > 0) {
-          const itemsList = addedItems.join(' and ');
-          const currentTotal = cart.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
-
-          queueResponse({
-            text: `I've added ${itemsList} to your order. Your total is $${currentTotal.toFixed(2)}. Say 'complete order' when you're ready to finish.`,
-            emotion: "excited",
-            data: {
-              type: "cart_update",
-              items: cart,
-              total: currentTotal
-            }
-          });
-
-          toast({
-            title: "Added to Order",
-            description: `Added ${itemsList}`,
-          });
-        } else {
-          queueResponse({
-            text: "I couldn't find any matching drinks. Please try again or say 'help' for assistance.",
-            emotion: "apologetic",
-            data: {
-              type: "error",
-              error: "no_match"
-            }
-          });
-        }
-        return;
-      }
-
-      if (/help|what can i say|commands/.test(command)) {
-        const currentTotal = cart.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
-        queueResponse({
-          text: "You can order drinks by saying things like 'I want a Moscow Mule' or 'get me two beers'. Say 'complete order' or 'process order' to finalize your purchase. Your current total is $" + currentTotal.toFixed(2),
-          emotion: "excited",
-          data: {
-            type: "help",
-            suggestions: [
-              "I want a Moscow Mule",
-              "Get me two beers",
-              "Complete order"
-            ],
-            total: currentTotal
-          }
-        });
-        return;
-      }
-
-      if (/stop|end|quit|exit/.test(command)) {
-        await queueResponse({ text: "Voice commands deactivated.", emotion: "neutral" });
-        await stopListening();
-        return;
-      }
-
-      queueResponse({
-        text: `I heard you say: ${text}. I didn't quite understand that. Try saying 'help' to learn what I can do.`,
-        emotion: "apologetic",
-        data: {
-          type: "error",
-          error: "unrecognized_command"
-        }
-      });
-    } catch (error) {
-      console.error('Error processing voice command:', error);
-      queueResponse({
-        text: "I'm sorry, I had trouble processing that command. Please try again.",
-        emotion: "apologetic",
-        data: {
-          type: "error",
-          error: "processing_failed"
-        }
-      });
-    } finally {
-      setIsProcessing(false); // Added this line
-    }
-  }, [drinks, onAddToCart, queueResponse, stopListening, toast, processOrder, cart]);
+  }, [cart, onPlaceOrder, queueResponse, toast, sessionId]);
 
   const startListening = useCallback(async () => {
     console.log('Initializing voice recognition...');
@@ -366,9 +226,57 @@ export function useVoiceCommands({
       }
 
       console.log('Starting voice recognition...');
-      await googleVoiceService.startListening(handleVoiceCommand);
-      setIsListening(true);
+      await googleVoiceService.startListening(async (text) => {
+        try {
+          const response = await fetch('/api/voice-command', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, sessionId })
+          });
 
+          if (!response.ok) {
+            throw new Error('Failed to process voice command');
+          }
+
+          const result = await response.json();
+          queueResponse({
+            text: result.conversational_response,
+            emotion: result.sentiment || "neutral",
+            data: result
+          });
+
+          // Update UI based on command type
+          switch (result.type) {
+            case 'order':
+              result.items.forEach((item: { name: string; quantity: number }) => {
+                const matchedDrink = drinks.find(d => 
+                  d.name.toLowerCase().includes(item.name.toLowerCase())
+                );
+                if (matchedDrink) {
+                  onAddToCart({
+                    type: 'ADD_ITEM',
+                    drink: matchedDrink,
+                    quantity: item.quantity
+                  });
+                }
+              });
+              break;
+            case 'complete_transaction':
+              await processOrder();
+              break;
+            // Add other command types as needed
+          }
+        } catch (error) {
+          console.error('Error processing voice command:', error);
+          queueResponse({
+            text: "I'm sorry, I couldn't process that command. Please try again.",
+            emotion: "apologetic",
+            data: { type: "error", error: "processing_failed" }
+          });
+        }
+      });
+
+      setIsListening(true);
       queueResponse({
         text: "Voice commands activated. I'm listening and ready to help! Say 'help' to learn what I can do.",
         emotion: "excited"
@@ -383,7 +291,24 @@ export function useVoiceCommands({
       setIsListening(false);
       throw error;
     }
-  }, [handleVoiceCommand, queueResponse, toast, validateDependencies]);
+  }, [processOrder, drinks, onAddToCart, queueResponse, toast, validateDependencies, sessionId]);
+
+  const stopListening = useCallback(async () => {
+    console.log('Attempting to stop voice recognition...');
+    if (!isListening) {
+      console.log('Not listening, no need to stop');
+      return;
+    }
+
+    try {
+      await googleVoiceService.stopListening();
+      setIsListening(false);
+      console.log('Voice commands stopped successfully');
+    } catch (error) {
+      console.error('Failed to stop voice commands:', error);
+      setIsListening(false);
+    }
+  }, [isListening]);
 
   // Cleanup effect
   useEffect(() => {

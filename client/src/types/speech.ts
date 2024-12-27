@@ -1,9 +1,8 @@
 // Common interfaces for voice interactions
-export interface DrinkItem {
-  id: number;
-  name: string;
-  price: number;
-  category: string;
+import type { Drink } from "@db/schema";
+
+export interface DrinkItem extends Pick<Drink, "id" | "name" | "price" | "category" | "subcategory" | "image" | "inventory"> {
+  sales: number;
 }
 
 export interface CartItem {
@@ -60,4 +59,19 @@ export interface VoiceResponse {
     suggestions?: string[];
   };
   emotion: keyof VoiceEmotions;
+}
+
+// Session types for recommendations
+export interface SessionContext {
+  id: string;
+  preferences?: {
+    categories?: string[];
+    tasteProfile?: {
+      sweet: number;
+      bitter: number;
+      strong: number;
+      refreshing: number;
+    };
+  };
+  orderHistory?: CartItem[];
 }
