@@ -11,21 +11,21 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import type { DrinkItem, CartItem, AddToCartAction } from "@/types/speech";
 
 interface VoiceControlButtonProps {
-  onAddToCart?: (action: AddToCartAction) => void;
-  onRemoveItem?: (drinkId: number) => void;
-  onPlaceOrder?: () => Promise<void>;
-  cart?: CartItem[];
+  onAddToCart: (action: AddToCartAction) => void;
+  onRemoveItem: (drinkId: number) => void;
+  onPlaceOrder: () => Promise<void>;
+  cart: CartItem[];
 }
 
 export function VoiceControlButton({ 
   onAddToCart,
   onRemoveItem,
   onPlaceOrder,
-  cart = []
+  cart 
 }: VoiceControlButtonProps) {
   const { toast } = useToast();
   const [showDialog, setShowDialog] = useState(false);
@@ -37,6 +37,37 @@ export function VoiceControlButton({
     staleTime: 30000, // Cache for 30 seconds
   });
 
+  // Cart handling callbacks
+  const handleAddToCart = useCallback((action: AddToCartAction) => {
+    try {
+      onAddToCart(action);
+      return true;
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      return false;
+    }
+  }, [onAddToCart]);
+
+  const handleRemoveItem = useCallback((drinkId: number) => {
+    try {
+      onRemoveItem(drinkId);
+      return true;
+    } catch (error) {
+      console.error('Error removing item:', error);
+      return false;
+    }
+  }, [onRemoveItem]);
+
+  const handlePlaceOrder = useCallback(async () => {
+    try {
+      await onPlaceOrder();
+      return true;
+    } catch (error) {
+      console.error('Error placing order:', error);
+      return false;
+    }
+  }, [onPlaceOrder]);
+
   // Initialize voice commands with proper dependency checks
   const { 
     isListening, 
@@ -47,13 +78,13 @@ export function VoiceControlButton({
   } = useVoiceCommands({
     drinks,
     cart,
-    onAddToCart,
-    onRemoveItem,
-    onPlaceOrder
+    onAddToCart: handleAddToCart,
+    onRemoveItem: handleRemoveItem,
+    onPlaceOrder: handlePlaceOrder
   });
 
   // Handle button click with proper error handling
-  const handleClick = () => {
+  const handleClick = async () => {
     try {
       if (!isSupported) {
         setShowDialog(true);
@@ -61,17 +92,23 @@ export function VoiceControlButton({
       }
 
       if (isListening) {
-        stopListening();
+        await stopListening();
         toast({
           title: "Voice Control",
-          description: "Voice commands stopped",
+          description: JSON.stringify({
+            status: "stopped",
+            message: "Voice commands stopped"
+          }),
           duration: 2000,
         });
       } else {
-        startListening();
+        await startListening();
         toast({
           title: "Voice Control",
-          description: "Say 'help' to learn available commands",
+          description: JSON.stringify({
+            status: "started",
+            message: "Say 'help' to learn available commands"
+          }),
           duration: 2000,
         });
       }
@@ -79,7 +116,10 @@ export function VoiceControlButton({
       console.error('Voice control error:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to process voice command",
+        description: JSON.stringify({
+          status: "error",
+          message: error instanceof Error ? error.message : "Failed to process voice command"
+        }),
         variant: "destructive",
       });
     }
