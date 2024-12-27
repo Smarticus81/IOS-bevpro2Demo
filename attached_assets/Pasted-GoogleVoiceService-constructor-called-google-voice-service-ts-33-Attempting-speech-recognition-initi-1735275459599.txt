@@ -1,0 +1,36 @@
+GoogleVoiceService constructor called
+google-voice-service.ts:33 Attempting speech recognition initialization (attempt 1)
+google-voice-service.ts:52 Speech recognition initialized successfully
+voice-synthesis.ts:66 Creating new VoiceSynthesis instance
+voice-synthesis.ts:18 VoiceSynthesis constructor called
+voice-synthesis.ts:23 Setting up voice synthesis initialization...
+7The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. <URL>Understand this warningAI
+sound-effects.ts:43 Audio context initialized successfully
+2use-voice-commands.ts:380 Cleaning up voice commands...
+voice-synthesis.ts:33 Attempting audio initialization...
+voice-synthesis.ts:73 Initializing AudioContext... {isInitialized: false, currentState: undefined}
+voice-synthesis.ts:81 New AudioContext created
+voice-synthesis.ts:95 Audio context fully initialized and running
+voice-synthesis.ts:48 Audio initialization successful
+use-voice-commands.ts:346 Initializing voice recognition...
+use-voice-commands.ts:33 Validating voice command dependencies: {drinks: true, handlers: {…}}
+use-voice-commands.ts:357 Starting voice recognition...
+google-voice-service.ts:179 Starting voice recognition...
+google-voice-service.ts:236 Started listening for voice commands
+use-voice-commands.ts:67 Preparing voice response: {text: "Voice commands activated. I'm listening and ready ...", emotion: 'excited', data: undefined}
+voice-synthesis.ts:255 Voice synthesis ready state: {initialized: true, contextExists: true, contextState: 'running', ready: true}
+voice-synthesis.ts:126 Voice synthesis state before speaking: {isInitialized: true, contextState: 'running', isSpeaking: false}
+voice-synthesis.ts:138 Attempting to speak: {text: "Voice commands activated. I'm listening and ready ...", emotion: 'excited', data: undefined}
+voice-synthesis.ts:172 Generating speech with OpenAI... {voice: 'fable', speed: 1.15}
+openai.ts:9 Initializing OpenAI client...
+use-voice-commands.ts:380 Cleaning up voice commands...
+google-voice-service.ts:124 Audio capturing started
+openai.ts:36 OpenAI client initialized and tested successfully
+voice-synthesis.ts:182 Speech generated successfully, preparing for playback
+voice-synthesis.ts:190 Setting up audio playback...
+voice-synthesis.ts:229 Starting audio playback...
+voice-synthesis.ts:215 Audio playback completed successfully
+voice-synthesis.ts:194 Cleaning up audio resources...
+google-voice-service.ts:125 Audio capturing ended
+google-voice-service.ts:84 Speech recognition ended
+google-voice-service.ts:113 Not restarting recognition: {isListening: false, isManualStop: false, isPaused: false}
