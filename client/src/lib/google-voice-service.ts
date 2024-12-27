@@ -17,37 +17,30 @@ class GoogleVoiceService {
       this.initializeSpeechRecognition();
     }
   }
-
   private initializeSpeechRecognition() {
     if (this.isInitialized) {
       console.log('Speech recognition already initialized');
       return;
     }
-
     if (this.initializationAttempts >= this.MAX_INIT_ATTEMPTS) {
       console.warn('Maximum initialization attempts reached');
       return;
     }
-
     this.initializationAttempts++;
     console.log(`Attempting speech recognition initialization (attempt ${this.initializationAttempts})`);
-
     try {
       if (typeof window === 'undefined') {
         console.warn('Speech recognition is only available in browser environments');
         return;
       }
-
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
         console.error('Speech recognition not supported in this browser');
         return;
       }
-
       this.recognition = new SpeechRecognition();
       this.setupRecognitionConfig();
       this.setupEventHandlers();
-
       this.isInitialized = true;
       console.log('Speech recognition initialized successfully');
     } catch (error) {

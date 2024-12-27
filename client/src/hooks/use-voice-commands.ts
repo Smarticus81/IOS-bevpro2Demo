@@ -20,8 +20,11 @@ export function useVoiceCommands({
   onPlaceOrder = async () => {}
 }: VoiceCommandsProps) {
   const [isListening, setIsListening] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const lastCommandRef = useRef<{ text: string; timestamp: number }>({ text: '', timestamp: 0 });
+  const responseQueueRef = useRef<VoiceResponse[]>([]);
+  const isProcessingResponseRef = useRef(false);
   const COMMAND_DEBOUNCE_MS = 1000;
 
   const validateDependencies = useCallback((): boolean => {
@@ -42,6 +45,42 @@ export function useVoiceCommands({
     return isValid;
   }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder]);
 
+  const processResponseQueue = useCallback(async () => {
+    if (isProcessingResponseRef.current || responseQueueRef.current.length === 0) {
+      return;
+    }
+
+    try {
+      isProcessingResponseRef.current = true;
+      const response = responseQueueRef.current[0];
+
+      await voiceSynthesis.speak(response);
+
+      // Show visual feedback
+      toast({
+        title: "Voice Response",
+        description: response.text,
+        duration: 5000,
+      });
+
+      // Remove processed response
+      responseQueueRef.current.shift();
+    } catch (error) {
+      console.error('Error processing voice response:', error);
+    } finally {
+      isProcessingResponseRef.current = false;
+      // Process next response if available
+      if (responseQueueRef.current.length > 0) {
+        processResponseQueue();
+      }
+    }
+  }, [toast]);
+
+  const queueResponse = useCallback((response: VoiceResponse) => {
+    responseQueueRef.current.push(response);
+    processResponseQueue();
+  }, [processResponseQueue]);
+
   const stopListening = useCallback(async () => {
     console.log('Attempting to stop voice recognition...');
     if (!isListening) {
@@ -59,42 +98,21 @@ export function useVoiceCommands({
     }
   }, [isListening]);
 
-  const respondWith = useCallback(async (messageOrResponse: string | VoiceResponse) => {
-    const response: VoiceResponse = typeof messageOrResponse === 'string' 
-      ? { text: messageOrResponse, emotion: 'neutral' }
-      : messageOrResponse;
-
-    console.log('Preparing voice response:', {
-      text: response.text.substring(0, 50) + '...',
-      emotion: response.emotion,
-      data: response.data
-    });
-
-    if (!voiceSynthesis.isReady()) {
-      console.warn('Voice synthesis not ready, displaying toast instead');
-      toast({
-        title: "Voice Response",
-        description: response.text,
-        duration: 5000,
-      });
-      return;
-    }
-
-    try {
-      await voiceSynthesis.speak(response);
-    } catch (error) {
-      console.error('Error speaking response:', error);
-      toast({
-        title: "Voice Response",
-        description: response.text,
-        duration: 5000,
-      });
-    }
-  }, [toast]);
-
   const processOrder = useCallback(async () => {
+    if (isProcessing) {
+      queueResponse({
+        text: "Please wait, I'm still processing your previous order.",
+        emotion: "apologetic",
+        data: {
+          type: "error",
+          error: "processing_in_progress"
+        }
+      });
+      return false;
+    }
+
     if (!cart.length) {
-      await respondWith({
+      queueResponse({
         text: "Your cart is empty. Would you like to order some drinks first?",
         emotion: "apologetic",
         data: {
@@ -110,10 +128,12 @@ export function useVoiceCommands({
     );
 
     try {
+      setIsProcessing(true);
+
       // Temporarily pause voice recognition during payment processing
       await googleVoiceService.pauseListening();
 
-      await respondWith({
+      queueResponse({
         text: `Processing your order for ${cart.length} items, total $${total.toFixed(2)}...`,
         emotion: "excited",
         data: {
@@ -145,7 +165,7 @@ export function useVoiceCommands({
 
       await onPlaceOrder();
 
-      await respondWith({
+      queueResponse({
         text: "Your order has been processed successfully! Your drinks will be ready shortly. Would you like to order anything else?",
         emotion: "excited",
         data: {
@@ -166,7 +186,7 @@ export function useVoiceCommands({
     } catch (error) {
       console.error('Error processing order:', error);
 
-      await respondWith({
+      queueResponse({
         text: "I apologize, but there was an error processing your order. Please try again or ask for assistance.",
         emotion: "apologetic",
         data: {
@@ -185,8 +205,10 @@ export function useVoiceCommands({
       // Resume voice recognition after error
       await googleVoiceService.resumeListening();
       return false;
+    } finally {
+      setIsProcessing(false);
     }
-  }, [cart, onPlaceOrder, respondWith, toast]);
+  }, [cart, onPlaceOrder, queueResponse, toast]);
 
   const handleVoiceCommand = useCallback(async (text: string) => {
     if (!text) return;
@@ -211,9 +233,11 @@ export function useVoiceCommands({
         return;
       }
 
+      // Enhanced order patterns
       const orderPatterns = [
         /(?:get|order|give|i want|i'll have|i would like|i'll take)\s+(?:a |an |some )?(.+)/i,
-        /(?:bring|fetch|grab)\s+(?:me )?(?:a |an |some )?(.+)/i
+        /(?:bring|fetch|grab)\s+(?:me )?(?:a |an |some )?(.+)/i,
+        /(?:add|put)\s+(?:a |an |some )?(.+)(?:\s+to\s+(?:my\s+)?(?:order|cart))?/i
       ];
 
       let orderMatch = null;
@@ -254,12 +278,7 @@ export function useVoiceCommands({
             console.log('Adding to cart:', { drink: matchedDrink, quantity });
             onAddToCart({ 
               type: 'ADD_ITEM', 
-              drink: { 
-                id: matchedDrink.id,
-                name: matchedDrink.name,
-                price: matchedDrink.price,
-                category: matchedDrink.category
-              }, 
+              drink: matchedDrink,
               quantity 
             });
             addedItems.push(`${quantity} ${matchedDrink.name}`);
@@ -270,7 +289,7 @@ export function useVoiceCommands({
           const itemsList = addedItems.join(' and ');
           const currentTotal = cart.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
 
-          await respondWith({
+          queueResponse({
             text: `I've added ${itemsList} to your order. Your total is $${currentTotal.toFixed(2)}. Say 'complete order' when you're ready to finish.`,
             emotion: "excited",
             data: {
@@ -285,7 +304,7 @@ export function useVoiceCommands({
             description: `Added ${itemsList}`,
           });
         } else {
-          await respondWith({
+          queueResponse({
             text: "I couldn't find any matching drinks. Please try again or say 'help' for assistance.",
             emotion: "apologetic",
             data: {
@@ -299,7 +318,7 @@ export function useVoiceCommands({
 
       if (/help|what can i say|commands/.test(command)) {
         const currentTotal = cart.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
-        await respondWith({
+        queueResponse({
           text: "You can order drinks by saying things like 'I want a Moscow Mule' or 'get me two beers'. Say 'complete order' or 'process order' to finalize your purchase. Your current total is $" + currentTotal.toFixed(2),
           emotion: "excited",
           data: {
@@ -316,12 +335,12 @@ export function useVoiceCommands({
       }
 
       if (/stop|end|quit|exit/.test(command)) {
-        await respondWith({ text: "Voice commands deactivated.", emotion: "neutral" });
+        await queueResponse({ text: "Voice commands deactivated.", emotion: "neutral" });
         await stopListening();
         return;
       }
 
-      await respondWith({
+      queueResponse({
         text: `I heard you say: ${text}. I didn't quite understand that. Try saying 'help' to learn what I can do.`,
         emotion: "apologetic",
         data: {
@@ -331,7 +350,7 @@ export function useVoiceCommands({
       });
     } catch (error) {
       console.error('Error processing voice command:', error);
-      await respondWith({
+      queueResponse({
         text: "I'm sorry, I had trouble processing that command. Please try again.",
         emotion: "apologetic",
         data: {
@@ -340,7 +359,7 @@ export function useVoiceCommands({
         }
       });
     }
-  }, [drinks, onAddToCart, respondWith, stopListening, toast, processOrder, cart]);
+  }, [drinks, onAddToCart, queueResponse, stopListening, toast, processOrder, cart]);
 
   const startListening = useCallback(async () => {
     console.log('Initializing voice recognition...');
@@ -358,7 +377,7 @@ export function useVoiceCommands({
       await googleVoiceService.startListening(handleVoiceCommand);
       setIsListening(true);
 
-      await respondWith({
+      queueResponse({
         text: "Voice commands activated. I'm listening and ready to help! Say 'help' to learn what I can do.",
         emotion: "excited"
       });
@@ -372,7 +391,7 @@ export function useVoiceCommands({
       setIsListening(false);
       throw error;
     }
-  }, [handleVoiceCommand, respondWith, toast, validateDependencies]);
+  }, [handleVoiceCommand, queueResponse, toast, validateDependencies]);
 
   // Cleanup effect
   useEffect(() => {
@@ -381,11 +400,15 @@ export function useVoiceCommands({
       if (isListening) {
         googleVoiceService.stopListening().catch(console.error);
       }
+      // Clear any pending responses
+      responseQueueRef.current = [];
+      isProcessingResponseRef.current = false;
     };
   }, [isListening]);
 
   return {
     isListening,
+    isProcessing,
     startListening,
     stopListening,
     isSupported: googleVoiceService.isSupported()
