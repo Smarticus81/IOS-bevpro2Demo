@@ -7,12 +7,65 @@ import { Dashboard } from "@/pages/Dashboard";
 import { PaymentConfirmation } from "@/pages/PaymentConfirmation";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { SplashScreen } from "@/components/SplashScreen";
 import { VoiceControlButton } from "@/components/VoiceControlButton";
+import type { CartItem, AddToCartAction } from "@/types/speech";
+import { useToast } from "@/hooks/use-toast";
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const { toast } = useToast();
+
+  // Cart management functions
+  const handleAddToCart = useCallback((action: AddToCartAction) => {
+    setCart(currentCart => {
+      const existingItem = currentCart.find(item => item.drink.id === action.drink.id);
+      if (existingItem) {
+        return currentCart.map(item =>
+          item.drink.id === action.drink.id
+            ? { ...item, quantity: item.quantity + action.quantity }
+            : item
+        );
+      }
+      return [...currentCart, { drink: action.drink, quantity: action.quantity }];
+    });
+  }, []);
+
+  const handleRemoveItem = useCallback((drinkId: number) => {
+    setCart(currentCart => currentCart.filter(item => item.drink.id !== drinkId));
+  }, []);
+
+  const handlePlaceOrder = useCallback(async () => {
+    try {
+      // Implement actual order processing logic here
+      const total = cart.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
+
+      // For now, just clear cart and show success message
+      setCart([]);
+      toast({
+        title: "Order Complete",
+        description: JSON.stringify({
+          status: "success",
+          total: `$${total.toFixed(2)}`,
+          items: cart.length
+        }),
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error placing order:', error);
+      toast({
+        title: "Order Failed",
+        description: JSON.stringify({
+          status: "error",
+          message: error instanceof Error ? error.message : "Failed to process order"
+        }),
+        variant: "destructive",
+      });
+      throw error;
+    }
+  }, [cart, toast]);
 
   if (showSplash) {
     return <SplashScreen onComplete={() => setShowSplash(false)} />;
@@ -29,7 +82,12 @@ function App() {
         <Route path="/payment-confirmation" component={PaymentConfirmation} />
         <Route component={NotFound} />
       </Switch>
-      <VoiceControlButton />
+      <VoiceControlButton 
+        onAddToCart={handleAddToCart}
+        onRemoveItem={handleRemoveItem}
+        onPlaceOrder={handlePlaceOrder}
+        cart={cart}
+      />
     </>
   );
 }
@@ -43,7 +101,6 @@ function NotFound() {
             <AlertCircle className="h-8 w-8 text-red-500" />
             <h1 className="text-2xl font-bold text-gray-900">404 Page Not Found</h1>
           </div>
-
           <p className="mt-4 text-sm text-gray-600">
             The page you're looking for doesn't exist.
           </p>
