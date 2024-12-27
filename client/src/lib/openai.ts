@@ -2,24 +2,6 @@ import OpenAI from "openai";
 import { recommendationService } from './recommendation-service';
 import { conversationState } from "./conversation-state";
 
-// Browser-safe base64 utilities using native browser APIs
-function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  const binaryString = atob(base64.replace(/^data:.*;base64,/, ''));
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes.buffer;
-}
-
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  const binaryString = Array.from(bytes)
-    .map(byte => String.fromCharCode(byte))
-    .join('');
-  return btoa(binaryString);
-}
-
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 let openai: OpenAI | null = null;
 
@@ -103,7 +85,7 @@ export interface RecommendationIntent extends BaseIntent {
 }
 
 export type Intent = OrderIntent | IncompleteOrderIntent | QueryIntent | GreetingIntent |
-                    CompleteTransactionIntent | ShutdownIntent | CancelIntent | RecommendationIntent;
+                     CompleteTransactionIntent | ShutdownIntent | CancelIntent | RecommendationIntent;
 
 const MAX_HISTORY_LENGTH = 6;
 let conversationHistory: Array<{ role: "system" | "user" | "assistant"; content: string }> = [];
@@ -136,7 +118,16 @@ export async function processVoiceCommand(text: string, sessionId: string): Prom
         dayOfWeek,
         sessionId,
         currentOrder: conversationState.getCurrentOrder()?.map(item => ({
-          drink: item.drink,
+          drink: {
+            ...item.drink,
+            popular_pairings: null,
+            peak_hours: null,
+            taste_profile: null,
+            dietary_info: null,
+            seasonal_availability: null,
+            last_recommended: null,
+            recommendation_score: 0
+          },
           quantity: item.quantity
         }))
       });
@@ -177,7 +168,7 @@ export async function processVoiceCommand(text: string, sessionId: string): Prom
       });
     }
 
-    messages.push({ role: "user", content: text });
+    messages.push({ role: "user" as const, content: text });
 
     const response = await client.chat.completions.create({
       model: "gpt-4o",
@@ -197,7 +188,7 @@ export async function processVoiceCommand(text: string, sessionId: string): Prom
     // Update conversation state and history
     conversationState.updateContext(parsed, text);
     conversationHistory.push({ 
-      role: "assistant", 
+      role: "assistant" as const, 
       content: content
     });
 

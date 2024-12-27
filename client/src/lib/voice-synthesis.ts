@@ -18,6 +18,13 @@ class VoiceSynthesis {
     this.setupInitialization();
   }
 
+  public static getInstance(): VoiceSynthesis {
+    if (!VoiceSynthesis.instance) {
+      VoiceSynthesis.instance = new VoiceSynthesis();
+    }
+    return VoiceSynthesis.instance;
+  }
+
   private setupInitialization() {
     this.initializationPromise = new Promise((resolve) => {
       const initializeAudio = async () => {
@@ -34,7 +41,6 @@ class VoiceSynthesis {
           this.initializationAttempts++;
           await this.initializeAudioContext();
 
-          // Remove event listeners only after successful initialization
           ['click', 'touchstart', 'keydown'].forEach(type => {
             document.removeEventListener(type, initializeAudio);
           });
@@ -47,18 +53,10 @@ class VoiceSynthesis {
         }
       };
 
-      // Add event listeners for user interaction
       ['click', 'touchstart', 'keydown'].forEach(type => {
         document.addEventListener(type, initializeAudio, { once: true });
       });
     });
-  }
-
-  static getInstance(): VoiceSynthesis {
-    if (!VoiceSynthesis.instance) {
-      VoiceSynthesis.instance = new VoiceSynthesis();
-    }
-    return VoiceSynthesis.instance;
   }
 
   private async initializeAudioContext(): Promise<void> {
@@ -92,7 +90,6 @@ class VoiceSynthesis {
       return;
     }
 
-
     if (this.isSpeaking) {
       this.stop();
     }
@@ -100,7 +97,6 @@ class VoiceSynthesis {
     try {
       await this.waitForInitialization();
 
-      // Store current recognition state
       const wasListening = googleVoiceService.isActive();
       if (wasListening) {
         await googleVoiceService.pauseListening();
@@ -108,7 +104,6 @@ class VoiceSynthesis {
 
       this.isSpeaking = true;
 
-      // Configure voice based on emotion
       let speechSpeed = 1.0;
       let voiceSelection: VoiceId = 'alloy';
 
@@ -133,8 +128,9 @@ class VoiceSynthesis {
         speed: speechSpeed
       });
 
+      // Convert the audio response to a Blob using browser APIs
       const arrayBuffer = await audioResponse.arrayBuffer();
-      const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+      const blob = new Blob([new Uint8Array(arrayBuffer)], { type: 'audio/mpeg' });
       const url = URL.createObjectURL(blob);
 
       this.stop();
@@ -151,7 +147,6 @@ class VoiceSynthesis {
           }
           this.isSpeaking = false;
 
-          // Resume speech recognition if it was active before
           if (wasListening) {
             try {
               await googleVoiceService.resumeListening();
