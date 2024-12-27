@@ -17,81 +17,67 @@ try {
   console.error('Failed to initialize OpenAI client:', error);
 }
 
-interface VoiceOrderResult {
-  success: boolean;
-  order?: {
-    items: Array<{
-      name: string;
-      quantity: number;
-      customizations?: string[];
-    }>;
-    specialInstructions?: string;
-  };
-  error?: string;
-  isShutdown?: boolean;
+interface OrderItem {
+  name: string;
+  quantity: number;
+  customizations?: string[];
 }
 
-async function processTranscription(text: string): Promise<VoiceOrderResult['order']> {
-  if (!openai) throw new Error('Voice processing service is not configured');
+interface OrderDetails {
+  items: OrderItem[];
+  specialInstructions?: string;
+}
 
-  // Check for completion commands first
-  const completionCommands = ['complete', 'finish', 'done', 'checkout', 'pay', 'confirm', 'process', 'submit'];
-  const normalizedText = text.toLowerCase().trim();
-  const words = normalizedText.split(/\s+/);
+interface VoiceOrderResult {
+  success: boolean;
+  order?: OrderDetails;
+  error?: string;
+}
 
-  // Check for completion phrases
-  const isCompletionCommand = completionCommands.some(cmd => {
-    return words.some(word => {
-      const match = word === cmd || 
-                   (word.includes(cmd) && word.length <= cmd.length + 2) ||
-                   (cmd === 'complete' && word === 'completing') ||
-                   (cmd === 'finish' && word === 'finishing');
-      if (match) {
-        console.log('Detected completion command:', {
-          command: cmd,
-          matchedWord: word,
-          fullText: normalizedText
-        });
-      }
-      return match;
-    });
-  });
+// Local command processing for better latency
+function processSimpleCommands(text: string): OrderDetails | null {
+  const command = text.toLowerCase().trim();
 
-  if (isCompletionCommand) {
+  // Process completion commands
+  if (/^(complete|finish|done|checkout|pay|confirm|process|submit)(\s+order)?$/.test(command)) {
     return {
       items: [],
       specialInstructions: 'complete_order'
     };
   }
 
-  // Check for shutdown commands
-  const shutdownCommands = ['stop', 'shutdown', 'quit', 'exit', 'end'];
-  if (shutdownCommands.some(cmd => text.toLowerCase().includes(cmd))) {
+  // Process help commands
+  if (/^(help|commands|what can (i|you) do)$/.test(command)) {
     return {
       items: [],
-      specialInstructions: 'shutdown_requested'
+      specialInstructions: 'help_requested'
     };
   }
 
-  // Process order commands with GPT-4
+  // Process stop commands
+  if (/^(stop|end|quit|exit)$/.test(command)) {
+    return {
+      items: [],
+      specialInstructions: 'stop_requested'
+    };
+  }
+
+  return null;
+}
+
+async function processComplexOrder(text: string): Promise<OrderDetails> {
+  if (!openai) throw new Error('Voice processing service is not configured');
+
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o", // Using the latest model for faster processing
+    model: "gpt-4o", // Using latest model for faster processing
     messages: [
       {
         role: "system",
-        content: `You are a beverage order processing assistant. Extract order details from customer voice commands.
-          Return a JSON object with the following structure:
-          {
-            "items": [
-              {
-                "name": "drink name",
-                "quantity": number,
-                "customizations": ["customization1", "customization2"]
-              }
-            ],
-            "specialInstructions": "any special instructions"
+        content: `Extract order details from customer voice commands.
+          Return a JSON object with: {
+            "items": [{ "name": string, "quantity": number }],
+            "specialInstructions": string
           }
-
           Keep responses concise and focused on order details only.`
       },
       {
@@ -116,17 +102,22 @@ export async function processVoiceOrder(text: string): Promise<VoiceOrderResult>
   }
 
   try {
-    const orderDetails = await processTranscription(text);
-
-    if (!orderDetails) {
-      throw new Error('Failed to process voice command');
+    // First try processing simple commands locally for better latency
+    const simpleOrder = processSimpleCommands(text);
+    if (simpleOrder) {
+      return {
+        success: true,
+        order: simpleOrder
+      };
     }
 
+    // Fall back to AI processing for complex orders
+    const orderDetails = await processComplexOrder(text);
     return {
       success: true,
-      order: orderDetails,
-      isShutdown: orderDetails.specialInstructions === 'shutdown_requested'
+      order: orderDetails
     };
+
   } catch (error) {
     console.error('Error processing voice order:', error);
     return {
