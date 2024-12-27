@@ -2,6 +2,7 @@ import type { VoiceError } from "@/types/speech";
 import { getOpenAIClient } from "./openai";
 import { googleVoiceService } from "./google-voice-service";
 import type { VoiceResponse, VoiceId } from "@/types/speech";
+import { BufferUtils } from "./buffer-utils";
 
 class VoiceSynthesis {
   private static instance: VoiceSynthesis;
@@ -13,6 +14,7 @@ class VoiceSynthesis {
   private readonly MAX_INIT_ATTEMPTS = 3;
   private isSpeaking: boolean = false;
   private isInitializing: boolean = false;
+  private activeBlobs: string[] = [];
 
   private constructor() {
     this.setupInitialization();
@@ -128,18 +130,17 @@ class VoiceSynthesis {
         speed: speechSpeed
       });
 
-      // Convert the audio response to a Blob using browser APIs
       const arrayBuffer = await audioResponse.arrayBuffer();
-      const blob = new Blob([new Uint8Array(arrayBuffer)], { type: 'audio/mpeg' });
-      const url = URL.createObjectURL(blob);
-
-      this.stop();
+      const blobUrl = BufferUtils.createBlobUrl(arrayBuffer, 'audio/mpeg');
+      this.activeBlobs.push(blobUrl);
 
       return new Promise<void>((resolve, reject) => {
-        this.currentAudio = new Audio(url);
+        this.currentAudio = new Audio(blobUrl);
 
         const cleanup = async () => {
-          URL.revokeObjectURL(url);
+          BufferUtils.releaseBlobUrl(blobUrl);
+          this.activeBlobs = this.activeBlobs.filter(url => url !== blobUrl);
+
           if (this.currentAudio) {
             this.currentAudio.removeEventListener('ended', onEnded);
             this.currentAudio.removeEventListener('error', onError);
@@ -187,6 +188,11 @@ class VoiceSynthesis {
       this.currentAudio.currentTime = 0;
       this.currentAudio = null;
     }
+
+    // Clean up any remaining blob URLs
+    this.activeBlobs.forEach(url => BufferUtils.releaseBlobUrl(url));
+    this.activeBlobs = [];
+
     this.isSpeaking = false;
   }
 

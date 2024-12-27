@@ -54,11 +54,9 @@ async function transcribeAudio(audioBlob: Blob): Promise<string> {
   if (!openai) throw new Error('Voice processing service is not configured');
 
   try {
-    // Convert the audio blob to an array buffer
+    // Handle audio data using browser-safe methods
     const arrayBuffer = await audioBlob.arrayBuffer();
-
-    // Create a new blob with the correct audio format
-    const audioData = new Blob([arrayBuffer], { type: 'audio/wav' });
+    const audioData = new Blob([new Uint8Array(arrayBuffer)], { type: 'audio/wav' });
 
     const formData = new FormData();
     formData.append('file', audioData, 'voice-order.wav');
@@ -217,10 +215,9 @@ export async function synthesizeOrderConfirmation(order: VoiceOrderResult['order
         input: generateConfirmationMessage(order),
       });
 
-      // Convert the audio response to a URL using browser APIs
-      const audioBuffer = await response.arrayBuffer();
-      const audioBlob = new Blob([new Uint8Array(audioBuffer)], { type: 'audio/mpeg' });
-      return URL.createObjectURL(audioBlob);
+      // Convert the audio response to a URL using browser-safe methods
+      const arrayBuffer = await response.arrayBuffer();
+      return BufferUtils.createBlobUrl(arrayBuffer, 'audio/mpeg');
     });
   } catch (error) {
     console.error('Error synthesizing order confirmation:', error);
