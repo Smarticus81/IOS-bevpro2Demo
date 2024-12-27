@@ -30,16 +30,17 @@ export function VoiceControlButton({
   const { toast } = useToast();
   const [showDialog, setShowDialog] = useState(false);
 
-  // Fetch drinks data
+  // Fetch drinks data with optimized caching
   const { data: drinks = [] } = useQuery<DrinkItem[]>({
     queryKey: ["/api/drinks"],
     retry: 1,
-    staleTime: 30000,
+    staleTime: 30000, // Cache for 30 seconds
   });
 
   // Initialize voice commands with proper dependency checks
   const { 
     isListening, 
+    isProcessing,
     startListening, 
     stopListening, 
     isSupported 
@@ -64,12 +65,14 @@ export function VoiceControlButton({
         toast({
           title: "Voice Control",
           description: "Voice commands stopped",
+          duration: 2000,
         });
       } else {
         startListening();
         toast({
           title: "Voice Control",
-          description: "Listening for commands... Try saying 'help' to learn what I can do",
+          description: "Say 'help' to learn available commands",
+          duration: 2000,
         });
       }
     } catch (error) {
@@ -97,8 +100,9 @@ export function VoiceControlButton({
             ${isListening 
               ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
               : 'bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black'
-            }`}
-          disabled={!isSupported}
+            }
+            ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={!isSupported || isProcessing}
           aria-label={isListening ? "Stop voice commands" : "Start voice commands"}
         >
           {isListening ? (

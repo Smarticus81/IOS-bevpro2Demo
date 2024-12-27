@@ -26,38 +26,10 @@ export interface VoiceError extends Error {
   name: string;
 }
 
-export type VoiceId = "alloy" | "echo" | "fable" | "onyx" | "shimmer";
+// Only keeping essential types for voice recognition
+export type ErrorType = 'network' | 'recognition' | 'processing';
 
-export interface VoiceEmotions {
-  neutral: {
-    speed: number;
-    voice: VoiceId;
-  };
-  excited: {
-    speed: number;
-    voice: VoiceId;
-  };
-  apologetic: {
-    speed: number;
-    voice: VoiceId;
-  };
-}
-
-export interface VoiceSynthesisOptions {
-  voice?: VoiceId;
-  emotion?: keyof VoiceEmotions;
-  speed?: number;
-}
-
-export interface VoiceResponse {
-  text: string;
-  data?: {
-    type: 'order_update' | 'confirmation' | 'error' | 'help' | 'cart_update';
-    items?: CartItem[] | string[];
-    total?: number;
-    status?: string;
-    error?: string;
-    suggestions?: string[];
-  };
-  emotion: keyof VoiceEmotions;
+export interface RecognitionError {
+  type: ErrorType;
+  message: string;
 }
