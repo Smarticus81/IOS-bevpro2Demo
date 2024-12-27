@@ -10,6 +10,7 @@ interface VoiceCommandsProps {
   onAddToCart?: (action: AddToCartAction) => void;
   onRemoveItem?: (drinkId: number) => void;
   onPlaceOrder?: () => Promise<void>;
+  onProcessingStateChange?: (isProcessing: boolean) => void;
 }
 
 export function useVoiceCommands({
@@ -17,7 +18,8 @@ export function useVoiceCommands({
   cart = [],
   onAddToCart = () => {},
   onRemoveItem = () => {},
-  onPlaceOrder = async () => {}
+  onPlaceOrder = async () => {},
+  onProcessingStateChange = () => {}
 }: VoiceCommandsProps) {
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -26,6 +28,11 @@ export function useVoiceCommands({
   const responseQueueRef = useRef<VoiceResponse[]>([]);
   const isProcessingResponseRef = useRef(false);
   const COMMAND_DEBOUNCE_MS = 1000;
+
+  // Update parent component with processing state
+  useEffect(() => {
+    onProcessingStateChange(isProcessing);
+  }, [isProcessing, onProcessingStateChange]);
 
   const validateDependencies = useCallback((): boolean => {
     const isValid = drinks.length > 0 && 
@@ -144,25 +151,6 @@ export function useVoiceCommands({
         }
       });
 
-      const response = await fetch('/api/payment/process', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: total * 100, // Convert to cents for Stripe
-          items: cart.map(item => ({
-            id: item.drink.id,
-            quantity: item.quantity,
-            price: item.drink.price
-          }))
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-
       await onPlaceOrder();
 
       queueResponse({
@@ -227,6 +215,8 @@ export function useVoiceCommands({
     console.log('Processing voice command:', command);
 
     try {
+      setIsProcessing(true); // Added this line
+
       if (/(?:complete|finish|process|submit|confirm|checkout|pay for|place)\s+(?:the\s+)?order/.test(command) ||
           /(?:i(?:\'m|\s+am)\s+(?:done|finished|ready))|(?:that(?:\'s|\s+is)\s+all)/.test(command)) {
         await processOrder();
@@ -358,6 +348,8 @@ export function useVoiceCommands({
           error: "processing_failed"
         }
       });
+    } finally {
+      setIsProcessing(false); // Added this line
     }
   }, [drinks, onAddToCart, queueResponse, stopListening, toast, processOrder, cart]);
 
