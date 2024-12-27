@@ -6,9 +6,9 @@ import type { DrinkItem, CartItem, AddToCartAction } from '@/types/speech';
 interface VoiceCommandsProps {
   drinks: DrinkItem[];
   cart: CartItem[];
-  onAddToCart?: (action: AddToCartAction) => void;
-  onRemoveItem?: (drinkId: number) => void;
-  onPlaceOrder?: () => Promise<void>;
+  onAddToCart: (action: AddToCartAction) => Promise<void>;
+  onRemoveItem: (drinkId: number) => Promise<void>;
+  onPlaceOrder: () => Promise<void>;
 }
 
 export function useVoiceCommands({
@@ -40,7 +40,10 @@ export function useVoiceCommands({
   const showFeedback = useCallback((title: string, message: string, type: 'default' | 'destructive' = 'default') => {
     toast({
       title,
-      description: message,
+      description: JSON.stringify({
+        status: type === 'default' ? 'success' : 'error',
+        message
+      }),
       variant: type,
       duration: 2000,
     });
@@ -79,6 +82,7 @@ export function useVoiceCommands({
     const command = text.toLowerCase().trim();
     const now = Date.now();
 
+    // Debounce similar commands
     if (command === lastCommandRef.current.text && 
         now - lastCommandRef.current.timestamp < COMMAND_DEBOUNCE_MS) {
       return;
@@ -88,6 +92,8 @@ export function useVoiceCommands({
     console.log('Processing voice command:', command);
 
     try {
+      setIsProcessing(true);
+
       // Process complete order commands
       if (/(?:complete|finish|process|submit|confirm|checkout|pay for|place)\s+(?:the\s+)?order/.test(command) ||
           /(?:i(?:\'m|\s+am)\s+(?:done|finished|ready))|(?:that(?:\'s|\s+is)\s+all)/.test(command)) {
@@ -114,7 +120,6 @@ export function useVoiceCommands({
         let addedItems = [];
 
         for (const item of items) {
-          console.log('Searching for drink:', item);
           const quantityMatch = item.match(/(\d+|a|one|two|three|four|five|six|seven|eight|nine|ten)\s+(.+)/i);
           let quantity = 1;
           let drinkName = item;
@@ -137,7 +142,7 @@ export function useVoiceCommands({
 
           if (matchedDrink) {
             console.log('Adding to cart:', { drink: matchedDrink.name, quantity });
-            onAddToCart({ 
+            await onAddToCart({ 
               type: 'ADD_ITEM', 
               drink: matchedDrink,
               quantity 
@@ -172,6 +177,8 @@ export function useVoiceCommands({
     } catch (error) {
       console.error('Error processing command:', error);
       showFeedback('Error', 'Failed to process command', 'destructive');
+    } finally {
+      setIsProcessing(false);
     }
   }, [drinks, onAddToCart, processOrder, cart, showFeedback]);
 

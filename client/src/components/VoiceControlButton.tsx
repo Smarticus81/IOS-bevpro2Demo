@@ -11,62 +11,21 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { useState, useCallback } from "react";
-import type { DrinkItem, CartItem, AddToCartAction } from "@/types/speech";
+import { useState } from "react";
+import type { DrinkItem } from "@/types/speech";
+import { useCart } from "@/contexts/CartContext";
 
-interface VoiceControlButtonProps {
-  onAddToCart: (action: AddToCartAction) => void;
-  onRemoveItem: (drinkId: number) => void;
-  onPlaceOrder: () => Promise<void>;
-  cart: CartItem[];
-}
-
-export function VoiceControlButton({ 
-  onAddToCart,
-  onRemoveItem,
-  onPlaceOrder,
-  cart 
-}: VoiceControlButtonProps) {
+export function VoiceControlButton() {
   const { toast } = useToast();
   const [showDialog, setShowDialog] = useState(false);
+  const { cart, addToCart, removeItem, placeOrder } = useCart();
 
   // Fetch drinks data with optimized caching
   const { data: drinks = [] } = useQuery<DrinkItem[]>({
     queryKey: ["/api/drinks"],
     retry: 1,
-    staleTime: 30000, // Cache for 30 seconds
+    staleTime: 30000,
   });
-
-  // Cart handling callbacks
-  const handleAddToCart = useCallback((action: AddToCartAction) => {
-    try {
-      onAddToCart(action);
-      return true;
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      return false;
-    }
-  }, [onAddToCart]);
-
-  const handleRemoveItem = useCallback((drinkId: number) => {
-    try {
-      onRemoveItem(drinkId);
-      return true;
-    } catch (error) {
-      console.error('Error removing item:', error);
-      return false;
-    }
-  }, [onRemoveItem]);
-
-  const handlePlaceOrder = useCallback(async () => {
-    try {
-      await onPlaceOrder();
-      return true;
-    } catch (error) {
-      console.error('Error placing order:', error);
-      return false;
-    }
-  }, [onPlaceOrder]);
 
   // Initialize voice commands with proper dependency checks
   const { 
@@ -77,10 +36,10 @@ export function VoiceControlButton({
     isSupported 
   } = useVoiceCommands({
     drinks,
-    cart,
-    onAddToCart: handleAddToCart,
-    onRemoveItem: handleRemoveItem,
-    onPlaceOrder: handlePlaceOrder
+    cart: cart.items,
+    onAddToCart: addToCart,
+    onRemoveItem: removeItem,
+    onPlaceOrder: placeOrder
   });
 
   // Handle button click with proper error handling
@@ -141,8 +100,8 @@ export function VoiceControlButton({
               ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
               : 'bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black'
             }
-            ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-          disabled={!isSupported || isProcessing}
+            ${isProcessing || cart.isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={!isSupported || isProcessing || cart.isProcessing}
           aria-label={isListening ? "Stop voice commands" : "Start voice commands"}
         >
           {isListening ? (
