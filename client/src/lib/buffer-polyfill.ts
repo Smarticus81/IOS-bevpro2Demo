@@ -52,6 +52,41 @@ const safeBuffer = {
       const buf = new Uint8Array(size);
       // Add write methods to the buffer instance
       Object.defineProperties(buf, {
+        write: {
+          value: function(string: string, offset?: number, length?: number, encoding: string = 'utf8'): number {
+            try {
+              offset = offset >>> 0;
+              const remaining = this.length - offset;
+              if (!length) {
+                length = remaining;
+              }
+              let strLen;
+              if (encoding === 'utf8') {
+                strLen = this.constructor.byteLengthUtf8(string);
+                if (length > remaining) length = remaining;
+                const bytes = new TextEncoder().encode(string);
+                this.set(bytes.slice(0, length), offset);
+                return Math.min(length, strLen);
+              } else if (encoding === 'ascii') {
+                strLen = string.length;
+                if (length > remaining) length = remaining;
+                for (let i = 0; i < length; ++i) {
+                  this[offset + i] = string.charCodeAt(i) & 0xFF;
+                }
+                return Math.min(length, strLen);
+              } else if (encoding === 'base64') {
+                const bytes = this.constructor.from(string, 'base64');
+                if (length > remaining) length = remaining;
+                this.set(bytes.slice(0, length), offset);
+                return length;
+              }
+              return 0;
+            } catch (error) {
+              console.error('write failed:', error);
+              return 0;
+            }
+          }
+        },
         writeUInt32BE: {
           value: function(value: number, offset: number = 0): number {
             if (offset + 4 > this.length) {
@@ -80,10 +115,36 @@ const safeBuffer = {
         },
         toString: {
           value: function(encoding?: string, start?: number, end?: number): string {
-            if (encoding === 'base64') {
-              return btoa(String.fromCharCode.apply(null, Array.from(this.slice(start, end))));
+            try {
+              const slice = this.slice(start, end);
+              if (encoding === 'base64') {
+                const chars = Array.from(slice);
+                return btoa(String.fromCharCode.apply(null, chars));
+              }
+              return new TextDecoder().decode(slice);
+            } catch (error) {
+              console.error('toString failed:', error);
+              return '';
             }
-            return new TextDecoder().decode(this.slice(start, end));
+          }
+        },
+        readUInt32BE: {
+          value: function(offset: number = 0): number {
+            if (offset + 4 > this.length) {
+              throw new Error('Reading beyond buffer bounds');
+            }
+            return (this[offset] << 24) |
+                   (this[offset + 1] << 16) |
+                   (this[offset + 2] << 8) |
+                   this[offset + 3];
+          }
+        },
+        readUInt8: {
+          value: function(offset: number = 0): number {
+            if (offset >= this.length) {
+              throw new Error('Reading beyond buffer bounds');
+            }
+            return this[offset];
           }
         }
       });
