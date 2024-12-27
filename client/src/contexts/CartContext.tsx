@@ -59,6 +59,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addToCart = useCallback(async (action: AddToCartAction) => {
     try {
+      if (cart.isProcessing) return;
       dispatch({ type: 'SET_PROCESSING', isProcessing: true });
       dispatch(action);
 

@@ -30,7 +30,6 @@ export function VoiceControlButton() {
   // Initialize voice commands with proper dependency checks
   const { 
     isListening, 
-    isProcessing,
     startListening, 
     stopListening, 
     isSupported 

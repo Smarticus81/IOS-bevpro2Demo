@@ -214,6 +214,6 @@ export function useVoiceCommands({
     isListening,
     startListening,
     stopListening,
-    isSupported: googleVoiceService.isSupported()
+    isSupported: googleVoiceService.isSupported(),
   };
 }
