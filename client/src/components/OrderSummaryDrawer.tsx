@@ -18,6 +18,10 @@ interface OrderSummaryDrawerProps {
 }
 
 export default function OrderSummaryDrawer(props: OrderSummaryDrawerProps) {
+  console.log('OrderSummaryDrawer render:', { 
+    cartItems: props.cart.length,
+    itemCount: props.cart.reduce((sum, item) => sum + item.quantity, 0)
+  });
   const itemCount = props.cart.reduce((sum, item) => sum + item.quantity, 0);
   
   return (

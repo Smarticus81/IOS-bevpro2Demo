@@ -63,6 +63,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const addToCart = useCallback(async (action: AddToCartAction) => {
     try {
       if (cart.isProcessing) return;
+      console.log('CartContext - addToCart called:', { 
+        type: action.type,
+        drink: action.drink.name,
+        quantity: action.quantity
+      });
       console.log('Cart before action:', cart);
       dispatch({ type: 'SET_PROCESSING', isProcessing: true });
       
