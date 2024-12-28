@@ -230,6 +230,7 @@ export function Home() {
           {/* Order Summary - Desktop */}
           <div className="hidden lg:block">
             <div className="sticky top-24">
+              {console.log('Home component cart state:', cart)}
               <Card className="glass-effect premium-shadow">
                 <CardContent className="p-6">
                   <OrderSummary
