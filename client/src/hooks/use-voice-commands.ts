@@ -1,3 +1,5 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+
 export function useVoiceCommands({
   drinks = [],
   cart = { items: [], isProcessing: false }, // Default cart
