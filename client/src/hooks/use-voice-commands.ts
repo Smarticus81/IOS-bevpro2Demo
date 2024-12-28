@@ -1,17 +1,3 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { googleVoiceService } from '@/lib/google-voice-service';
-import { useToast } from '@/hooks/use-toast';
-import type { DrinkItem, CartItem } from '@/types/speech';
-import type { CartState, AddToCartAction } from '@/types/cart';
-
-interface VoiceCommandsProps {
-  drinks: DrinkItem[];
-  cart: CartState;
-  onAddToCart: (action: AddToCartAction) => Promise<void>;
-  onRemoveItem: (drinkId: number) => Promise<void>;
-  onPlaceOrder: () => Promise<void>;
-}
-
 export function useVoiceCommands({
   drinks = [],
   cart = { items: [], isProcessing: false }, // Default cart
@@ -42,6 +28,31 @@ export function useVoiceCommands({
     toast({ title, description: message, variant: type });
     console.log(`${title}: ${message}`);
   }, [toast]);
+
+  const matchDrink = (command: string): { drink: DrinkItem | null; quantity: number } => {
+    const quantityMatch = command.match(/(\d+|a|one|two|three|four|five|six|seven|eight|nine|ten)\s+/i);
+    const quantityMap: Record<string, number> = {
+      a: 1,
+      one: 1,
+      two: 2,
+      three: 3,
+      four: 4,
+      five: 5,
+      six: 6,
+      seven: 7,
+      eight: 8,
+      nine: 9,
+      ten: 10,
+    };
+    const quantity = quantityMatch
+      ? parseInt(quantityMatch[1]) || quantityMap[quantityMatch[1].toLowerCase()] || 1
+      : 1;
+
+    const drinkName = command.replace(quantityMatch?.[0] || '', '').trim();
+    const matchedDrink = drinks.find(d => drinkName.toLowerCase().includes(d.name.toLowerCase()));
+
+    return { drink: matchedDrink || null, quantity };
+  };
 
   const processOrder = useCallback(async () => {
     if (!cart || !cart.items.length) {
@@ -93,6 +104,18 @@ export function useVoiceCommands({
           'Voice Commands',
           'Try commands like "Add a Moscow Mule" or "Complete my order".',
         );
+        return;
+      }
+
+      const orderPatterns = /add|order|want|get|have/i;
+      if (orderPatterns.test(command)) {
+        const { drink, quantity } = matchDrink(command);
+        if (drink) {
+          await onAddToCart({ type: 'ADD_ITEM', drink, quantity });
+          showFeedback('Added to Cart', `Added ${quantity} ${drink.name}(s) to your cart.`);
+        } else {
+          showFeedback('Drink Not Found', 'Could not find the requested drink. Try again.', 'destructive');
+        }
         return;
       }
 
