@@ -14,10 +14,10 @@ interface VoiceCommandsProps {
 
 export function useVoiceCommands({
   drinks = [],
-  cart,
+  cart = { items: [], isProcessing: false }, // Default cart
   onAddToCart,
   onRemoveItem,
-  onPlaceOrder
+  onPlaceOrder,
 }: VoiceCommandsProps) {
   const [isListening, setIsListening] = useState(false);
   const { toast } = useToast();
@@ -39,8 +39,9 @@ export function useVoiceCommands({
   }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder, cart]);
 
   const showFeedback = useCallback((title: string, message: string, type: 'default' | 'destructive' = 'default') => {
+    toast({ title, description: message, variant: type });
     console.log(`${title}: ${message}`);
-  }, []);
+  }, [toast]);
 
   const processOrder = useCallback(async () => {
     if (!cart || !cart.items.length) {
@@ -82,94 +83,22 @@ export function useVoiceCommands({
     console.log('Processing voice command:', command);
 
     try {
-      // Process complete order commands
-      if (/(?:complete|finish|process|submit|confirm|checkout|pay for|place)\s+(?:the\s+)?order/.test(command) ||
-          /(?:i(?:\'m|\s+am)\s+(?:done|finished|ready))|(?:that(?:\'s|\s+is)\s+all)/.test(command)) {
+      if (/complete|checkout|finish/.test(command)) {
         await processOrder();
         return;
       }
 
-      // Process add to cart commands with improved pattern matching
-      const orderPatterns = [
-        /(?:get|order|add|want|have)\s+(?:a |an |some |the )?(.+)/i,
-        /(?:bring|fetch|grab)\s+(?:me )?(?:a |an |some |the )?(.+)/i,
-        /(?:put)\s+(?:a |an |some |the )?(.+)(?:\s+(?:in|to)\s+(?:my\s+)?(?:order|cart))?/i
-      ];
-
-      let orderMatch = null;
-      for (const pattern of orderPatterns) {
-        orderMatch = command.match(pattern);
-        if (orderMatch) break;
-      }
-
-      if (orderMatch) {
-        const orderText = orderMatch[1];
-        const items = orderText.split(/\s+and\s+|\s*,\s*|\s+with\s+|\s+plus\s+/);
-        let addedItems = [];
-
-        for (const item of items) {
-          const quantityMatch = item.match(/(\d+|a|one|two|three|four|five|six|seven|eight|nine|ten)\s+(.+)/i);
-          let quantity = 1;
-          let drinkName = item;
-
-          if (quantityMatch) {
-            const [_, qStr, dName] = quantityMatch;
-            const numberWords: { [key: string]: number } = {
-              'a': 1, 'one': 1, 'two': 2, 'three': 3, 'four': 4,
-              'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10
-            };
-            quantity = parseInt(qStr) || numberWords[qStr.toLowerCase()] || 1;
-            drinkName = dName;
-          }
-
-          const matchedDrink = drinks.find(d => {
-            const drinkLower = d.name.toLowerCase();
-            const searchLower = drinkName.toLowerCase();
-            return drinkLower.includes(searchLower) || searchLower.includes(drinkLower);
-          });
-
-          if (matchedDrink) {
-            console.log('Adding to cart:', { drink: matchedDrink.name, quantity });
-            await onAddToCart({ 
-              type: 'ADD_ITEM', 
-              drink: matchedDrink,
-              quantity 
-            });
-            addedItems.push(`${quantity} ${matchedDrink.name}`);
-          }
-        }
-
-        if (addedItems.length > 0) {
-          const itemsList = addedItems.join(' and ');
-          const currentTotal = cart.items.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
-          showFeedback('Added to Cart', `Added ${itemsList}. Total: $${currentTotal.toFixed(2)}`);
-        } else {
-          showFeedback('Not Found', 'Could not find drink. Try again', 'destructive');
-        }
-        return;
-      }
-
-      if (/help|what can i say|commands/.test(command)) {
+      if (/help/.test(command)) {
         showFeedback(
           'Voice Commands',
-          'Try: "I want a Moscow Mule" or "add two beers". Say "complete order" to finish.'
+          'Try commands like "Add a Moscow Mule" or "Complete my order".',
         );
         return;
       }
 
-      showFeedback(
-        'Not Understood',
-        'Try saying "help" for commands',
-        'destructive'
-      );
+      showFeedback('Not Understood', 'Command not recognized. Say "help" for a list of commands.', 'destructive');
     } catch (error) {
-      const errorDetails = {
-        command: text,
-        timestamp: new Date().toISOString(),
-        cartState: { itemCount: cart.items.length, isProcessing: cart.isProcessing },
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-      console.error('Voice command processing error:', errorDetails);
+      console.error('Voice command processing error:', error);
       showFeedback('Error', 'Failed to process command', 'destructive');
     }
   }, [drinks, onAddToCart, processOrder, cart, showFeedback]);
