@@ -150,7 +150,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       dispatch({ type: 'SET_PROCESSING', isProcessing: false });
     }
-  }, [cart.items, toast]);
+  }, [cart.items, cart.isProcessing, toast]);
 
   return (
     <CartContext.Provider value={{ cart, addToCart, removeItem, placeOrder }}>
