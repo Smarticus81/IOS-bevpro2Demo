@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { Mic, MicOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,7 @@ import { useCart } from "@/contexts/CartContext";
 export function VoiceControlButton() {
   const { toast } = useToast();
   const [showDialog, setShowDialog] = useState(false);
-  const { cart, addToCart, removeItem, placeOrder } = useCart();
+  const { cart, addToCart, removeItem, placeOrder, isProcessing } = useCart();
 
   // Fetch drinks data with optimized caching
   const { data: drinks = [] } = useQuery<DrinkItem[]>({
@@ -100,8 +99,8 @@ export function VoiceControlButton() {
               ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
               : 'bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black'
             }
-            ${cart.isProcessing ? 'opacity-50' : ''}`}
-          disabled={!isSupported || (cart.isProcessing && !isListening)}
+            ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={!isSupported || isProcessing}
           aria-label={isListening ? "Stop voice commands" : "Start voice commands"}
         >
           {isListening ? (

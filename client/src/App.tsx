@@ -11,6 +11,7 @@ import { useState } from "react";
 import { SplashScreen } from "@/components/SplashScreen";
 import { VoiceControlButton } from "@/components/VoiceControlButton";
 import { CartProvider } from "@/contexts/CartContext";
+import { OrderSummaryDrawer } from "@/components/OrderSummaryDrawer";
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -30,6 +31,7 @@ function App() {
         <Route path="/payment-confirmation" component={PaymentConfirmation} />
         <Route component={NotFound} />
       </Switch>
+      <OrderSummaryDrawer />
       <VoiceControlButton />
     </CartProvider>
   );

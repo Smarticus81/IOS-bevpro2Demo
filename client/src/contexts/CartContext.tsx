@@ -11,8 +11,6 @@ type CartAction =
   | { type: 'SET_PROCESSING'; isProcessing: boolean };
 
 function cartReducer(state: CartState, action: CartAction): CartState {
-  console.log('CartReducer - Current state:', state);
-  console.log('CartReducer - Action:', action);
   switch (action.type) {
     case 'ADD_ITEM': {
       const existingItem = state.items.find(item => item.drink.id === action.drink.id);
@@ -53,7 +51,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [cart, dispatch] = useReducer(cartReducer, {
+  const [state, dispatch] = useReducer(cartReducer, {
     items: [],
     isProcessing: false
   });
@@ -62,98 +60,93 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addToCart = useCallback(async (action: AddToCartAction) => {
     try {
-      if (cart.isProcessing) return;
-      console.log('CartContext - addToCart called:', { 
-        type: action.type,
-        drink: action.drink.name,
-        quantity: action.quantity
-      });
-      console.log('Cart before action:', cart);
+      if (state.isProcessing) return;
+
       dispatch({ type: 'SET_PROCESSING', isProcessing: true });
-      
-      // Apply the action to get the new state
-      const newState = cartReducer(cart, action);
       dispatch(action);
-      console.log('Cart after action:', cart, 'New state:', newState);
 
-      // Calculate total based on new state
-      const total = newState.items.reduce((sum, item) => 
-        sum + (item.drink.price * item.quantity), 0);
-      console.log('Cart total:', total);
-
-      // Toast notifications disabled
     } catch (error) {
-      const errorDetails = {
-        action: 'ADD_ITEM',
-        itemDetails: { drink: action.drink, quantity: action.quantity },
-        currentCartState: { itemCount: cart.items.length, isProcessing: cart.isProcessing },
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
-      };
-      console.error('Cart operation error:', errorDetails);
+      console.error('Cart operation error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add item to cart",
+        variant: "destructive",
+      });
       throw error;
     } finally {
       dispatch({ type: 'SET_PROCESSING', isProcessing: false });
     }
-  }, [cart.items, toast]);
+  }, [state.isProcessing, toast]);
 
   const removeItem = useCallback(async (drinkId: number) => {
     try {
+      if (state.isProcessing) return;
+
       dispatch({ type: 'SET_PROCESSING', isProcessing: true });
       dispatch({ type: 'REMOVE_ITEM', drinkId });
+
     } catch (error) {
-      const errorDetails = {
-        action: 'REMOVE_ITEM',
-        itemDetails: { drinkId },
-        currentCartState: { itemCount: cart.items.length, isProcessing: cart.isProcessing },
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
-      };
-      console.error('Cart operation error:', errorDetails);
+      console.error('Cart operation error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove item from cart",
+        variant: "destructive",
+      });
       throw error;
     } finally {
       dispatch({ type: 'SET_PROCESSING', isProcessing: false });
     }
-  }, [toast]);
+  }, [state.isProcessing, toast]);
 
   const placeOrder = useCallback(async () => {
     try {
+      if (state.isProcessing) return;
+      if (state.items.length === 0) {
+        toast({
+          title: "Error",
+          description: "Cart is empty",
+          variant: "destructive",
+        });
+        return;
+      }
+
       dispatch({ type: 'SET_PROCESSING', isProcessing: true });
 
-      // Calculate total before clearing cart
-      const total = cart.items.reduce((sum, item) => 
+      // Calculate total
+      const total = state.items.reduce((sum, item) => 
         sum + (item.drink.price * item.quantity), 0);
 
-      // Clear the cart
+      // Clear the cart after successful order
       dispatch({ type: 'CLEAR_CART' });
 
       toast({
-        title: 'Order Complete',
-        description: JSON.stringify({
-          status: 'success',
-          total: `$${total.toFixed(2)}`,
-          items: cart.items.length
-        }),
+        title: "Order Placed",
+        description: `Total: $${total.toFixed(2)}`,
       });
+
     } catch (error) {
-      const errorDetails = {
-        action: 'PLACE_ORDER',
-        orderDetails: { 
-          itemCount: cart.items.length,
-          total: cart.items.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0)
-        },
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
-      };
-      console.error('Order placement error:', errorDetails);
+      console.error('Order placement error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to place order",
+        variant: "destructive",
+      });
       throw error;
     } finally {
       dispatch({ type: 'SET_PROCESSING', isProcessing: false });
     }
-  }, [cart.items, cart.isProcessing, toast]);
+  }, [state.items, state.isProcessing, toast]);
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeItem, placeOrder }}>
+    <CartContext.Provider 
+      value={{ 
+        cart: state.items,
+        isProcessing: state.isProcessing,
+        addToCart,
+        removeItem,
+        placeOrder
+      }}
+    >
       {children}
     </CartContext.Provider>
   );

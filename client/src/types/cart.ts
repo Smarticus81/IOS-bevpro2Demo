@@ -17,7 +17,8 @@ export interface AddToCartAction {
 }
 
 export interface CartContextType {
-  cart: CartState;
+  cart: CartItem[];
+  isProcessing: boolean;
   addToCart: (action: AddToCartAction) => Promise<void>;
   removeItem: (drinkId: number) => Promise<void>;
   placeOrder: () => Promise<void>;

@@ -6,31 +6,13 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { OrderSummary } from "./OrderSummary";
-import type { Drink } from "@db/schema";
+import { useCart } from "@/contexts/CartContext";
 
-interface OrderSummaryDrawerProps {
-  cart: Array<{ drink: Drink; quantity: number }>;
-  onRemoveItem: (drinkId: number) => void;
-  onPlaceOrder: () => void;
-  isLoading: boolean;
-  drinks: Drink[];
-  onAddToCart: (action: { type: 'ADD_ITEM'; drink: Drink; quantity: number }) => void;
-}
+export function OrderSummaryDrawer() {
+  const { cart, removeItem: onRemoveItem, placeOrder, isProcessing } = useCart();
 
-export default function OrderSummaryDrawer(props: OrderSummaryDrawerProps) {
-  console.log('OrderSummaryDrawer complete cart prop:', props.cart);
-  console.log('OrderSummaryDrawer render:', { 
-    cartItems: props.cart.length,
-    itemCount: props.cart.reduce((sum, item) => sum + item.quantity, 0),
-    isProcessing: props.isLoading,
-    cartContents: props.cart.map(item => ({
-      id: item.drink.id,
-      name: item.drink.name,
-      quantity: item.quantity
-    }))
-  });
-  const itemCount = props.cart.reduce((sum, item) => sum + item.quantity, 0);
-  
+  const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
     <Drawer>
       <DrawerTrigger asChild>
@@ -44,7 +26,12 @@ export default function OrderSummaryDrawer(props: OrderSummaryDrawerProps) {
       </DrawerTrigger>
       <DrawerContent>
         <div className="p-4 max-h-[80vh] overflow-auto">
-          <OrderSummary {...props} />
+          <OrderSummary 
+            cart={cart}
+            onRemoveItem={onRemoveItem}
+            onPlaceOrder={placeOrder}
+            isLoading={isProcessing}
+          />
         </div>
       </DrawerContent>
     </Drawer>
