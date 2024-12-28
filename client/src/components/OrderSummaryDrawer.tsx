@@ -19,7 +19,20 @@ interface OrderSummaryDrawerProps {
 }
 
 export function OrderSummaryDrawer(props: OrderSummaryDrawerProps) {
-  console.log('OrderSummaryDrawer complete cart prop:', props.cart);
+  const { data: drinks } = useQuery({
+    queryKey: ['/api/drinks'],
+    staleTime: 30000,
+  });
+
+  logger.debug('OrderSummaryDrawer render', {
+    cartItems: props.cart.length,
+    availableDrinks: drinks?.length,
+    cartContents: props.cart.map(item => ({
+      id: item.drink.id,
+      name: item.drink.name,
+      quantity: item.quantity
+    }))
+  });
   console.log('OrderSummaryDrawer render:', { 
     cartItems: props.cart.length,
     itemCount: props.cart.reduce((sum, item) => sum + item.quantity, 0),

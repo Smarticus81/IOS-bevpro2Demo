@@ -1,6 +1,8 @@
 import { createContext, useContext, useReducer, useCallback } from 'react';
 import type { CartState, CartContextType, AddToCartAction } from '@/types/cart';
 import { useToast } from '@/hooks/use-toast';
+import { useMutation, useQueryClient } from '@tanstack/react-query'; // Added import for React Query
+
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
@@ -57,6 +59,60 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   });
 
   const { toast } = useToast();
+  const queryClient = useQueryClient(); // Added for React Query invalidation
+  const logger = null; // Placeholder for centralized logger - needs implementation
+
+  const orderMutation = useMutation({
+    mutationFn: async (cartItems: typeof state.items) => {
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: cartItems }),
+      });
+      if (!response.ok) throw new Error('Failed to place order');
+      return response.json();
+    },
+    onSuccess: () => {
+      dispatch({ type: 'CLEAR_CART' });
+      queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
+      window.location.href = '/payment-confirmation';
+    },
+    onError: (error) => {
+      logger.error('Order placement failed', { error }); // Assuming logger is available
+      toast({
+        title: "Error",
+        description: "Failed to place order",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const placeOrder = useCallback(async () => {
+    try {
+      if (state.isProcessing) return;
+      if (state.items.length === 0) {
+        toast({
+          title: "Error",
+          description: "Cart is empty",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      dispatch({ type: 'SET_PROCESSING', isProcessing: true });
+      await orderMutation.mutateAsync(state.items);
+    } catch (error) {
+      console.error('Order placement error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to place order",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      dispatch({ type: 'SET_PROCESSING', isProcessing: false });
+    }
+  }, [state.items, state.isProcessing, toast, orderMutation.mutateAsync]);
 
   const addToCart = useCallback(async (action: AddToCartAction) => {
     try {
@@ -98,44 +154,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.isProcessing, toast]);
 
-  const placeOrder = useCallback(async () => {
-    try {
-      if (state.isProcessing) return;
-      if (state.items.length === 0) {
-        toast({
-          title: "Error",
-          description: "Cart is empty",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      dispatch({ type: 'SET_PROCESSING', isProcessing: true });
-
-      // Calculate total
-      const total = state.items.reduce((sum, item) => 
-        sum + (item.drink.price * item.quantity), 0);
-
-      // Clear the cart after successful order
-      dispatch({ type: 'CLEAR_CART' });
-
-      toast({
-        title: "Order Placed",
-        description: `Total: $${total.toFixed(2)}`,
-      });
-
-    } catch (error) {
-      console.error('Order placement error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to place order",
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      dispatch({ type: 'SET_PROCESSING', isProcessing: false });
-    }
-  }, [state.items, state.isProcessing, toast]);
 
   return (
     <CartContext.Provider 

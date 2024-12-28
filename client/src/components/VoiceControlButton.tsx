@@ -45,6 +45,13 @@ export function VoiceControlButton() {
   const handleClick = async () => {
     try {
       if (!isSupported) {
+        logger.error('Voice control not supported', { 
+          browser: navigator.userAgent,
+          features: {
+            speechRecognition: 'SpeechRecognition' in window,
+            webkitSpeechRecognition: 'webkitSpeechRecognition' in window
+          }
+        });
         setShowDialog(true);
         return;
       }
