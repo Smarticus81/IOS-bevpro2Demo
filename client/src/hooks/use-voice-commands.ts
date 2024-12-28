@@ -25,17 +25,18 @@ export function useVoiceCommands({
   const COMMAND_DEBOUNCE_MS = 500;
 
   const validateDependencies = useCallback((): boolean => {
-    if (!drinks.length || !onAddToCart || !onRemoveItem || !onPlaceOrder) {
+    if (!drinks.length || !onAddToCart || !onRemoveItem || !onPlaceOrder || !cart) {
       console.error('Missing dependencies:', {
         drinks: !!drinks.length,
         onAddToCart: !!onAddToCart,
         onRemoveItem: !!onRemoveItem,
-        onPlaceOrder: !!onPlaceOrder
+        onPlaceOrder: !!onPlaceOrder,
+        cart: !!cart,
       });
       return false;
     }
     return true;
-  }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder]);
+  }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder, cart]);
 
   const showFeedback = useCallback((title: string, message: string, type: 'default' | 'destructive' = 'default') => {
     toast({
@@ -50,7 +51,7 @@ export function useVoiceCommands({
   }, [toast]);
 
   const processOrder = useCallback(async () => {
-    if (!cart.items.length) {
+    if (!cart || !cart.items.length) {
       showFeedback('Empty Cart', 'Your cart is empty', 'destructive');
       return false;
     }
