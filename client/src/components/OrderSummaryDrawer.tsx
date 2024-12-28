@@ -1,3 +1,4 @@
+
 import { ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -6,13 +7,31 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { OrderSummary } from "./OrderSummary";
-import { useCart } from "@/contexts/CartContext";
+import type { Drink } from "@db/schema";
 
-export function OrderSummaryDrawer() {
-  const { cart, removeItem: onRemoveItem, placeOrder, isProcessing } = useCart();
+interface OrderSummaryDrawerProps {
+  cart: Array<{ drink: Drink; quantity: number }>;
+  onRemoveItem: (drinkId: number) => void;
+  onPlaceOrder: () => void;
+  isLoading: boolean;
+  drinks: Drink[];
+  onAddToCart: (action: { type: 'ADD_ITEM'; drink: Drink; quantity: number }) => void;
+}
 
-  const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-
+export function OrderSummaryDrawer(props: OrderSummaryDrawerProps) {
+  console.log('OrderSummaryDrawer complete cart prop:', props.cart);
+  console.log('OrderSummaryDrawer render:', { 
+    cartItems: props.cart.length,
+    itemCount: props.cart.reduce((sum, item) => sum + item.quantity, 0),
+    isProcessing: props.isLoading,
+    cartContents: props.cart.map(item => ({
+      id: item.drink.id,
+      name: item.drink.name,
+      quantity: item.quantity
+    }))
+  });
+  const itemCount = props.cart.reduce((sum, item) => sum + item.quantity, 0);
+  
   return (
     <Drawer>
       <DrawerTrigger asChild>
@@ -26,12 +45,7 @@ export function OrderSummaryDrawer() {
       </DrawerTrigger>
       <DrawerContent>
         <div className="p-4 max-h-[80vh] overflow-auto">
-          <OrderSummary 
-            cart={cart}
-            onRemoveItem={onRemoveItem}
-            onPlaceOrder={placeOrder}
-            isLoading={isProcessing}
-          />
+          <OrderSummary {...props} />
         </div>
       </DrawerContent>
     </Drawer>
