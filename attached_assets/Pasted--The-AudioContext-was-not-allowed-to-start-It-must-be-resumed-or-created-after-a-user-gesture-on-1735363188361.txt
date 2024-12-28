@@ -1,0 +1,48 @@
+
+The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. <URL>
+
+sound-effects.ts:43 Audio context initialized successfully
+Home.tsx:233 Home component cart state: 
+[]
+Home.tsx:233 Home component cart state: 
+[]
+OrderSummaryDrawer.tsx:22 OrderSummaryDrawer complete cart prop: 
+[]
+OrderSummaryDrawer.tsx:23 OrderSummaryDrawer render: 
+{cartItems: 0, itemCount: 0, isProcessing: false, cartContents: Array(0)}
+OrderSummaryDrawer.tsx:22 OrderSummaryDrawer complete cart prop: 
+[]
+OrderSummaryDrawer.tsx:23 OrderSummaryDrawer render: 
+{cartItems: 0, itemCount: 0, isProcessing: false, cartContents: Array(0)}
+OrderSummaryDrawer.tsx:22 OrderSummaryDrawer complete cart prop: undefined
+OrderSummaryDrawer.tsx:22 OrderSummaryDrawer complete cart prop: undefined
+OrderSummaryDrawer.tsx:24 Uncaught TypeError: Cannot read properties of undefined (reading 'length')
+    at OrderSummaryDrawer (OrderSummaryDrawer.tsx:24:27)
+Home.tsx:233 Home component cart state: 
+[]
+Home.tsx:233 Home component cart state: 
+[]
+OrderSummaryDrawer.tsx:22 OrderSummaryDrawer complete cart prop: 
+[]
+OrderSummaryDrawer.tsx:23 OrderSummaryDrawer render: 
+{cartItems: 0, itemCount: 0, isProcessing: false, cartContents: Array(0)}
+OrderSummaryDrawer.tsx:22 OrderSummaryDrawer complete cart prop: 
+[]
+OrderSummaryDrawer.tsx:23 OrderSummaryDrawer render: 
+{cartItems: 0, itemCount: 0, isProcessing: false, cartContents: Array(0)}
+OrderSummaryDrawer.tsx:22 OrderSummaryDrawer complete cart prop: undefined
+OrderSummaryDrawer.tsx:22 OrderSummaryDrawer complete cart prop: undefined
+OrderSummaryDrawer.tsx:24 Uncaught TypeError: Cannot read properties of undefined (reading 'length')
+    at OrderSummaryDrawer (OrderSummaryDrawer.tsx:24:27)
+hook.js:608 The above error occurred in the <OrderSummaryDrawer> component:
+
+    at OrderSummaryDrawer (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/src/components/OrderSummaryDrawer.tsx:26:63)
+    at CartProvider (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/src/contexts/CartContext.tsx:58:32)
+    at App (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.dev/src/App.tsx:34:39)
+    at QueryClientProvider (https://50568024-f267-4c08-b7d4-b65e4e851d79-00-18mrbwepgxih2.spock.replit.…-bevpro/node_modules/.vite/deps/@tanstack_react-query.js?v=75758f43:2805:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=75758f43:9129 Uncaught TypeError: Cannot read properties of undefined (reading 'length')
+    at OrderSummaryDrawer (OrderSummaryDrawer.tsx:24:27)
+
