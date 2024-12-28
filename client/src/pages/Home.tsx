@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { VoiceControlButton } from "@/components/VoiceControlButton";
 import { VoiceControl } from "@/components/VoiceControl";
 import { OrderSummary } from "@/components/OrderSummary";
-import OrderSummaryDrawer from "@/components/OrderSummaryDrawer";
+import { OrderSummaryDrawer } from "@/components/OrderSummaryDrawer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { NavBar } from "@/components/NavBar";
