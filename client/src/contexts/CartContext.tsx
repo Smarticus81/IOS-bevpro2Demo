@@ -100,15 +100,33 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Add to Cart
   const addToCart = useCallback(async (action: AddToCartAction) => {
     try {
+      logger.info('Adding item to cart', {
+        drinkId: action.drink.id,
+        drinkName: action.drink.name,
+        quantity: action.quantity,
+        currentCartSize: state.items.length
+      });
+
       dispatch({ type: 'SET_PROCESSING', isProcessing: true });
       dispatch(action);
+
+      logger.info('Item added to cart successfully', {
+        drinkId: action.drink.id,
+        cartSize: state.items.length + 1
+      });
+
       toast({
         title: 'Added to Cart',
         description: `${action.quantity} ${action.drink.name}(s) added to your cart.`,
         variant: 'default',
       });
     } catch (error) {
-      console.error('Error adding to cart:', error);
+      logger.error('Failed to add item to cart', {
+        error,
+        drinkId: action.drink.id,
+        drinkName: action.drink.name
+      });
+      
       toast({
         title: 'Error',
         description: 'Failed to add item to cart.',
@@ -118,7 +136,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       dispatch({ type: 'SET_PROCESSING', isProcessing: false });
     }
-  }, [toast]);
+  }, [toast, state.items.length]);
 
   // Remove from Cart
   const removeItem = useCallback(async (drinkId: number) => {
