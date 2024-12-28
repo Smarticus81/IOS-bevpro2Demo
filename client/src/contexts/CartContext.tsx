@@ -15,11 +15,12 @@ function cartReducer(state: CartState, action: CartAction): CartState {
     case 'ADD_ITEM': {
       const existingItem = state.items.find(item => item.drink.id === action.drink.id);
       if (existingItem) {
+        const newQuantity = Math.max(0, Math.min(99, existingItem.quantity + action.quantity));
         return {
           ...state,
           items: state.items.map(item =>
             item.drink.id === action.drink.id
-              ? { ...item, quantity: item.quantity + action.quantity }
+              ? { ...item, quantity: newQuantity }
               : item
           )
         };
