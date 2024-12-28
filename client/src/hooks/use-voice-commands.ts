@@ -9,8 +9,8 @@ interface VoiceCommandsProps {
     items: CartItem[];
     isProcessing: boolean;
   };
-  onAddToCart: (action: AddToCartAction) => void;
-  onRemoveItem: (drinkId: number) => void;
+  onAddToCart: (action: AddToCartAction) => Promise<void>;
+  onRemoveItem: (drinkId: number) => Promise<void>;
   onPlaceOrder: () => Promise<void>;
 }
 
@@ -40,10 +40,13 @@ export function useVoiceCommands({
     return true;
   }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder, cart]);
 
-  const showFeedback = useCallback((title: string, message: string, type: 'default' | 'destructive' = 'default') => {
-    toast({ title, description: message, variant: type });
-    console.log(`${title}: ${message}`);
-  }, [toast]);
+  const showFeedback = useCallback(
+    (title: string, message: string, type: 'default' | 'destructive' = 'default') => {
+      toast({ title, description: message, variant: type });
+      console.log(`${title}: ${message}`);
+    },
+    [toast]
+  );
 
   const matchDrink = (command: string): { drink: DrinkItem | null; quantity: number } => {
     const quantityMatch = command.match(/(\d+|a|one|two|three|four|five|six|seven|eight|nine|ten)\s+/i);
@@ -65,7 +68,9 @@ export function useVoiceCommands({
       : 1;
 
     const drinkName = command.replace(quantityMatch?.[0] || '', '').trim();
-    const matchedDrink = drinks.find(d => drinkName.toLowerCase().includes(d.name.toLowerCase()));
+    const matchedDrink = drinks.find((d) =>
+      drinkName.toLowerCase().includes(d.name.toLowerCase())
+    );
 
     return { drink: matchedDrink || null, quantity };
   };
@@ -82,7 +87,7 @@ export function useVoiceCommands({
     }
 
     try {
-      const total = cart.items.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
+      const total = cart.items.reduce((sum, item) => sum + item.drink.price * item.quantity, 0);
       showFeedback('Processing Order', `Total: $${total.toFixed(2)}`);
       await onPlaceOrder();
       showFeedback('Success', 'Order complete!');
@@ -94,53 +99,66 @@ export function useVoiceCommands({
     }
   }, [cart, onPlaceOrder, showFeedback]);
 
-  const handleVoiceCommand = useCallback(async (text: string) => {
-    if (!text?.trim()) return;
+  const handleVoiceCommand = useCallback(
+    async (text: string) => {
+      if (!text?.trim()) return;
 
-    const command = text.toLowerCase().trim();
-    const now = Date.now();
+      const command = text.toLowerCase().trim();
+      const now = Date.now();
 
-    // Debounce similar commands
-    if (command === lastCommandRef.current.text && 
-        now - lastCommandRef.current.timestamp < COMMAND_DEBOUNCE_MS) {
-      return;
-    }
-
-    lastCommandRef.current = { text: command, timestamp: now };
-    console.log('Processing voice command:', command);
-
-    try {
-      if (/complete|checkout|finish/.test(command)) {
-        await processOrder();
+      // Debounce similar commands
+      if (
+        command === lastCommandRef.current.text &&
+        now - lastCommandRef.current.timestamp < COMMAND_DEBOUNCE_MS
+      ) {
         return;
       }
 
-      if (/help/.test(command)) {
-        showFeedback(
-          'Voice Commands',
-          'Try commands like "Add a Moscow Mule" or "Complete my order".',
-        );
-        return;
-      }
+      lastCommandRef.current = { text: command, timestamp: now };
+      console.log('Processing voice command:', command);
 
-      const orderPatterns = /add|order|want|get|have/i;
-      if (orderPatterns.test(command)) {
-        const { drink, quantity } = matchDrink(command);
-        if (drink) {
-          await onAddToCart({ type: 'ADD_ITEM', drink, quantity });
-          showFeedback('Added to Cart', `Added ${quantity} ${drink.name}(s) to your cart.`);
-        } else {
-          showFeedback('Drink Not Found', 'Could not find the requested drink. Try again.', 'destructive');
+      try {
+        if (/complete|checkout|finish/.test(command)) {
+          await processOrder();
+          return;
         }
-        return;
-      }
 
-      showFeedback('Not Understood', 'Command not recognized. Say "help" for a list of commands.', 'destructive');
-    } catch (error) {
-      console.error('Voice command processing error:', error);
-      showFeedback('Error', 'Failed to process command', 'destructive');
-    }
-  }, [drinks, onAddToCart, processOrder, cart, showFeedback]);
+        if (/help/.test(command)) {
+          showFeedback(
+            'Voice Commands',
+            'Try commands like "Add a Moscow Mule" or "Complete my order".'
+          );
+          return;
+        }
+
+        const orderPatterns = /add|order|want|get|have/i;
+        if (orderPatterns.test(command)) {
+          const { drink, quantity } = matchDrink(command);
+          if (drink) {
+            await onAddToCart({ type: 'ADD_ITEM', drink, quantity });
+            showFeedback('Added to Cart', `Added ${quantity} ${drink.name}(s) to your cart.`);
+          } else {
+            showFeedback(
+              'Drink Not Found',
+              'Could not find the requested drink. Try again.',
+              'destructive'
+            );
+          }
+          return;
+        }
+
+        showFeedback(
+          'Not Understood',
+          'Command not recognized. Say "help" for a list of commands.',
+          'destructive'
+        );
+      } catch (error) {
+        console.error('Voice command processing error:', error);
+        showFeedback('Error', 'Failed to process command', 'destructive');
+      }
+    },
+    [drinks, onAddToCart, processOrder, cart, showFeedback]
+  );
 
   const stopListening = useCallback(async () => {
     if (!isListening) return;

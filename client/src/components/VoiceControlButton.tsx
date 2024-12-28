@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useVoiceCommands } from "@/hooks/use-voice-commands";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
-import { 
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -28,29 +28,25 @@ export function VoiceControlButton() {
   });
 
   // Initialize voice commands with proper cart state
-  const { 
-    isListening, 
-    startListening, 
-    stopListening, 
-    isSupported 
-  } = useVoiceCommands({
-    drinks,
-    cart,
-    onAddToCart: addToCart,
-    onRemoveItem: removeItem,
-    onPlaceOrder: placeOrder
-  });
+  const { isListening, startListening, stopListening, isSupported } =
+    useVoiceCommands({
+      drinks,
+      cart,
+      onAddToCart: addToCart,
+      onRemoveItem: removeItem,
+      onPlaceOrder: placeOrder,
+    });
 
   // Handle button click with proper error handling
   const handleClick = async () => {
     try {
       if (!isSupported) {
-        logger.error('Voice control not supported', { 
+        logger.error("Voice control not supported", {
           browser: navigator.userAgent,
           features: {
-            speechRecognition: 'SpeechRecognition' in window,
-            webkitSpeechRecognition: 'webkitSpeechRecognition' in window
-          }
+            speechRecognition: "SpeechRecognition" in window,
+            webkitSpeechRecognition: "webkitSpeechRecognition" in window,
+          },
         });
         setShowDialog(true);
         return;
@@ -62,7 +58,7 @@ export function VoiceControlButton() {
           title: "Voice Control",
           description: JSON.stringify({
             status: "stopped",
-            message: "Voice commands stopped"
+            message: "Voice commands stopped",
           }),
           duration: 2000,
         });
@@ -72,18 +68,21 @@ export function VoiceControlButton() {
           title: "Voice Control",
           description: JSON.stringify({
             status: "started",
-            message: "Say 'help' to learn available commands"
+            message: "Say 'help' to learn available commands",
           }),
           duration: 2000,
         });
       }
     } catch (error) {
-      console.error('Voice control error:', error);
+      console.error("Voice control error:", error);
       toast({
         title: "Error",
         description: JSON.stringify({
           status: "error",
-          message: error instanceof Error ? error.message : "Failed to process voice command"
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to process voice command",
         }),
         variant: "destructive",
       });
@@ -102,13 +101,16 @@ export function VoiceControlButton() {
           onClick={handleClick}
           size="lg"
           className={`rounded-full p-6 shadow-lg transition-all duration-300
-            ${isListening 
-              ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
-              : 'bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black'
+            ${
+              isListening
+                ? "bg-red-500 hover:bg-red-600 animate-pulse"
+                : "bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black"
             }
-            ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+            ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
           disabled={!isSupported || isProcessing}
-          aria-label={isListening ? "Stop voice commands" : "Start voice commands"}
+          aria-label={
+            isListening ? "Stop voice commands" : "Start voice commands"
+          }
         >
           {isListening ? (
             <MicOff className="h-6 w-6" />
@@ -123,7 +125,8 @@ export function VoiceControlButton() {
           <DialogHeader>
             <DialogTitle>Voice Commands Not Supported</DialogTitle>
             <DialogDescription>
-              Voice commands are not supported in your browser. Please try using a modern browser like Chrome, Edge, or Safari.
+              Voice commands are not supported in your browser. Please try using
+              a modern browser like Chrome, Edge, or Safari.
             </DialogDescription>
           </DialogHeader>
         </DialogContent>
