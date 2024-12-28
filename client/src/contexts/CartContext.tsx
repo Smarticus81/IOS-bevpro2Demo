@@ -64,9 +64,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'SET_PROCESSING', isProcessing: true });
       dispatch(action);
 
-      // Calculate total after the new item is added
-      const updatedCart = cartReducer(cart, action);
-      const total = updatedCart.items.reduce((sum, item) => 
+      // Calculate total based on current cart state
+      const total = cart.items.reduce((sum, item) => 
         sum + (item.drink.price * item.quantity), 0);
 
       // Toast notifications disabled
