@@ -67,15 +67,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const total = cart.items.reduce((sum, item) => 
         sum + (item.drink.price * item.quantity), 0);
 
-      toast({
-        title: 'Added to Cart',
-        description: JSON.stringify({
-          status: 'success',
-          item: action.drink.name,
-          quantity: action.quantity,
-          total: `$${total.toFixed(2)}`
-        }),
-      });
+      // Toast notifications disabled
     } catch (error) {
       console.error('Error adding to cart:', error);
       toast({

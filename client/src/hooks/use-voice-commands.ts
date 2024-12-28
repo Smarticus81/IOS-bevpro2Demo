@@ -39,16 +39,8 @@ export function useVoiceCommands({
   }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder, cart]);
 
   const showFeedback = useCallback((title: string, message: string, type: 'default' | 'destructive' = 'default') => {
-    toast({
-      title,
-      description: JSON.stringify({
-        status: type === 'default' ? 'success' : 'error',
-        message
-      }),
-      variant: type,
-      duration: 2000,
-    });
-  }, [toast]);
+    console.log(`${title}: ${message}`);
+  }, []);
 
   const processOrder = useCallback(async () => {
     if (!cart || !cart.items.length) {
