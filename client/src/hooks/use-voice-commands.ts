@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 export function useVoiceCommands({
   drinks = [],
