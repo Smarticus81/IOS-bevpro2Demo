@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logger } from "@/lib/logger";
@@ -8,52 +7,19 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { OrderSummary } from "./OrderSummary";
-import type { Drink } from "@db/schema";
+import { useCart } from "@/contexts/CartContext";
 
-interface OrderSummaryDrawerProps {
-  drinks: Drink[]; // Only need drinks from props now
-}
-
-export function OrderSummaryDrawer({ drinks }: OrderSummaryDrawerProps) {
-  const { cart, removeItem: onRemoveItem, placeOrder: onPlaceOrder, isProcessing, addToCart } = useCart();
-
-  // Fetch drinks data with React Query
-  const { data: drinks = [] } = useQuery({
-    queryKey: ['/api/drinks'],
-    queryFn: async () => {
-      const response = await fetch('/api/drinks');
-      if (!response.ok) {
-        throw new Error('Failed to fetch drinks');
-      }
-      return response.json();
-    },
-    staleTime: 30000,
-  });
-
-  // Logging for debugging purposes
-  logger.debug('OrderSummaryDrawer render', {
-    cartItems: cart.length,
-    availableDrinks: drinks.length,
-    cartContents: cart.map(item => ({
-      id: item.drink.id,
-      name: item.drink.name,
-      quantity: item.quantity,
-    })),
-  });
-
-  console.log('OrderSummaryDrawer render:', {
-    cartItems: cart.length,
-    itemCount: cart.reduce((sum, item) => sum + item.quantity, 0),
-    isProcessing: props.isLoading,
-    cartContents: cart.map(item => ({
-      id: item.drink.id,
-      name: item.drink.name,
-      quantity: item.quantity,
-    })),
-  });
+export function OrderSummaryDrawer() {
+  const { cart, removeItem: onRemoveItem, placeOrder: onPlaceOrder, isProcessing } = useCart();
 
   // Calculate total item count
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  logger.debug('OrderSummaryDrawer render', {
+    cartItems: cart.length,
+    itemCount,
+    isProcessing,
+  });
 
   return (
     <Drawer>
@@ -68,7 +34,12 @@ export function OrderSummaryDrawer({ drinks }: OrderSummaryDrawerProps) {
       </DrawerTrigger>
       <DrawerContent>
         <div className="p-4 max-h-[80vh] overflow-auto">
-          <OrderSummary {...props} />
+          <OrderSummary
+            cart={cart}
+            onRemoveItem={onRemoveItem}
+            onPlaceOrder={onPlaceOrder}
+            isLoading={isProcessing}
+          />
         </div>
       </DrawerContent>
     </Drawer>

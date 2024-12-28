@@ -1,26 +1,20 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { DrinkCard } from "@/components/DrinkCard";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { VoiceControlButton } from "@/components/VoiceControlButton";
-import { VoiceControl } from "@/components/VoiceControl";
 import { OrderSummary } from "@/components/OrderSummary";
 import { OrderSummaryDrawer } from "@/components/OrderSummaryDrawer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { NavBar } from "@/components/NavBar";
-import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Drink } from "@db/schema";
-
-type CartAction = 
-  | { type: 'ADD_ITEM'; drink: Drink; quantity: number }
-  | { type: 'COMPLETE_TRANSACTION' };
+import { useCart } from "@/contexts/CartContext";
 
 export function Home() {
   const { cart, addToCart, removeItem: removeFromCart, placeOrder, isProcessing } = useCart();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isOrderSummaryCollapsed, setIsOrderSummaryCollapsed] = useState(false);
-  const { toast } = useToast();
 
   const { data: drinks = [] } = useQuery<Drink[]>({
     queryKey: ["/api/drinks"],
@@ -36,116 +30,11 @@ export function Home() {
     [drinks, selectedCategory]
   );
 
-  const orderMutation = useMutation({
-    mutationFn: async (orderData: any) => {
-      const response = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(orderData)
-      });
-      if (!response.ok) throw new Error("Failed to create order");
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Order placed successfully",
-        description: "Your order has been placed successfully"
-      });
-      setCart([]);
-    },
-    onError: () => {
-      toast({
-        title: "Failed to place order",
-        variant: "destructive"
-      });
-    }
-  });
-
-  const addToCart = useCallback((action: CartAction) => {
-    console.log('Adding to cart:', action);
-    if (action.type === 'ADD_ITEM') {
-      const { drink, quantity } = action;
-      setCart(prev => {
-        const existing = prev.find(item => item.drink.id === drink.id);
-        if (existing) {
-          return prev.map(item => 
-            item.drink.id === drink.id 
-              ? { ...item, quantity: item.quantity + quantity }
-              : item
-          );
-        }
-        return [...prev, { drink, quantity }];
-      });
-    } else if (action.type === 'COMPLETE_TRANSACTION') {
-      // We'll handle this in placeOrder
-      placeOrder();
-    }
-  }, [setCart]); // Remove placeOrder dependency
-
-  const removeFromCart = useCallback((drinkId: number) => {
-    console.log('Removing from cart:', drinkId);
-    setCart(prev => prev.filter(item => item.drink.id !== drinkId));
-  }, [setCart]);
-
-  const placeOrder = useCallback(async () => {
-    if (cart.length === 0) {
-      console.log('Attempted to place empty order');
-      toast({
-        title: "Empty Order",
-        description: "Please add items to your cart first",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    console.log('Initiating order placement:', {
-      cartItems: cart.length,
-      timestamp: new Date().toISOString()
-    });
-
-    const total = cart.reduce((sum, item) => {
-      const itemPrice = Number(item.drink.price);
-      return sum + (itemPrice * item.quantity);
-    }, 0);
-
-    const items = cart.map(item => ({
-      id: item.drink.id,
-      quantity: item.quantity,
-      price: Number(item.drink.price)
-    }));
-
-    try {
-      console.log('Submitting order to backend...');
-      await orderMutation.mutateAsync({ items, total });
-      console.log('Order submitted successfully');
-      
-      setCart([]);
-      console.log('Cart cleared');
-      
-      toast({
-        title: "Order Completed",
-        description: "Your order has been placed successfully!",
-      });
-    } catch (error) {
-      console.error('Order placement failed:', error);
-      
-      toast({
-        title: "Failed to place order",
-        description: "There was an error processing your order. Please try again.",
-        variant: "destructive"
-      });
-    }
-  }, [cart, orderMutation, setCart, toast]);
-
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-50 via-pearl-light to-pearl-dark">
-      <NavBar drinks={drinks} />
-      <VoiceControlButton 
-        onAddToCart={addToCart}
-        onRemoveItem={removeFromCart}
-        onPlaceOrder={placeOrder}
-        cart={cart}
-      />
+      <NavBar />
+      <VoiceControlButton />
+
       <main className="px-4 pt-4 pb-8 sm:px-6 lg:px-8">
         {/* Category Selector */}
         <div className="flex overflow-x-auto gap-2 py-2 mb-4 -mx-4 px-4 scrollbar-hide">
@@ -170,7 +59,7 @@ export function Home() {
             <span className="text-xs font-medium">All</span>
           </motion.button>
 
-          {categories.map((category: string) => (
+          {categories.map((category) => (
             <motion.button
               key={category}
               onClick={() => setSelectedCategory(category)}
@@ -230,14 +119,13 @@ export function Home() {
           {/* Order Summary - Desktop */}
           <div className="hidden lg:block">
             <div className="sticky top-24">
-              {console.log('Home component cart state:', cart)}
               <Card className="glass-effect premium-shadow">
                 <CardContent className="p-6">
                   <OrderSummary
                     cart={cart}
                     onRemoveItem={removeFromCart}
                     onPlaceOrder={placeOrder}
-                    isLoading={orderMutation.isPending}
+                    isLoading={isProcessing}
                   />
                 </CardContent>
               </Card>
@@ -249,14 +137,7 @@ export function Home() {
             <div className="container mx-auto px-4 pb-safe">
               <Card className="glass-morphism border-white/20 shadow-lg">
                 <CardContent className="p-4">
-                  <OrderSummaryDrawer
-                    cart={cart}
-                    onRemoveItem={removeFromCart}
-                    onPlaceOrder={placeOrder}
-                    isLoading={orderMutation.isPending}
-                    drinks={drinks}
-                    onAddToCart={addToCart}
-                  />
+                  <OrderSummaryDrawer />
                 </CardContent>
               </Card>
             </div>
