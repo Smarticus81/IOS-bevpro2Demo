@@ -163,7 +163,13 @@ export function useVoiceCommands({
         'destructive'
       );
     } catch (error) {
-      console.error('Error processing command:', error);
+      const errorDetails = {
+        command: text,
+        timestamp: new Date().toISOString(),
+        cartState: { itemCount: cart.items.length, isProcessing: cart.isProcessing },
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+      console.error('Voice command processing error:', errorDetails);
       showFeedback('Error', 'Failed to process command', 'destructive');
     }
   }, [drinks, onAddToCart, processOrder, cart, showFeedback]);

@@ -69,15 +69,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       // Toast notifications disabled
     } catch (error) {
-      console.error('Error adding to cart:', error);
-      toast({
-        title: 'Error',
-        description: JSON.stringify({
-          status: 'error',
-          message: error instanceof Error ? error.message : 'Failed to add item to cart'
-        }),
-        variant: 'destructive',
-      });
+      const errorDetails = {
+        action: 'ADD_ITEM',
+        itemDetails: { drink: action.drink, quantity: action.quantity },
+        currentCartState: { itemCount: cart.items.length, isProcessing: cart.isProcessing },
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      };
+      console.error('Cart operation error:', errorDetails);
       throw error;
     } finally {
       dispatch({ type: 'SET_PROCESSING', isProcessing: false });
@@ -89,15 +88,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'SET_PROCESSING', isProcessing: true });
       dispatch({ type: 'REMOVE_ITEM', drinkId });
     } catch (error) {
-      console.error('Error removing item:', error);
-      toast({
-        title: 'Error',
-        description: JSON.stringify({
-          status: 'error',
-          message: error instanceof Error ? error.message : 'Failed to remove item'
-        }),
-        variant: 'destructive',
-      });
+      const errorDetails = {
+        action: 'REMOVE_ITEM',
+        itemDetails: { drinkId },
+        currentCartState: { itemCount: cart.items.length, isProcessing: cart.isProcessing },
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      };
+      console.error('Cart operation error:', errorDetails);
       throw error;
     } finally {
       dispatch({ type: 'SET_PROCESSING', isProcessing: false });
@@ -124,15 +122,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }),
       });
     } catch (error) {
-      console.error('Error placing order:', error);
-      toast({
-        title: 'Error',
-        description: JSON.stringify({
-          status: 'error',
-          message: error instanceof Error ? error.message : 'Failed to place order'
-        }),
-        variant: 'destructive',
-      });
+      const errorDetails = {
+        action: 'PLACE_ORDER',
+        orderDetails: { 
+          itemCount: cart.items.length,
+          total: cart.items.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0)
+        },
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      };
+      console.error('Order placement error:', errorDetails);
       throw error;
     } finally {
       dispatch({ type: 'SET_PROCESSING', isProcessing: false });
