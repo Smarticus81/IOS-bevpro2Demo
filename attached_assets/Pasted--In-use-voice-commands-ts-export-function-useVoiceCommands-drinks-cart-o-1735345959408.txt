@@ -1,0 +1,60 @@
+// In use-voice-commands.ts
+
+export function useVoiceCommands({
+  drinks = [],
+  cart = [],
+  onAddToCart,
+  onRemoveItem,
+  onPlaceOrder
+}: VoiceCommandsProps) {
+    // ...
+    const validateDependencies = useCallback((): boolean => {
+        if (!drinks.length || !onAddToCart || !onRemoveItem || !onPlaceOrder || !cart) {
+        console.error('Missing dependencies:', {
+          drinks: !!drinks.length,
+          onAddToCart: !!onAddToCart,
+          onRemoveItem: !!onRemoveItem,
+          onPlaceOrder: !!onPlaceOrder,
+          cart: !!cart,
+        });
+        return false;
+      }
+      return true;
+    }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder, cart]);
+
+    const processOrder = useCallback(async () => {
+        if (!cart || !cart.length) { // Add null check
+          showFeedback('Empty Cart', 'Your cart is empty', 'destructive');
+          return false;
+        }
+
+        try {
+          const total = cart.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
+          showFeedback('Processing Order', `Total: $${total.toFixed(2)}`);
+          await onPlaceOrder();
+          showFeedback('Success', 'Order complete!');
+          return true;
+        } catch (error) {
+            console.error('Error processing order:', error);
+            showFeedback('Error', 'Failed to process order', 'destructive');
+            return false;
+        }
+      }, [cart, onPlaceOrder, showFeedback]);
+
+    const handleVoiceCommand = useCallback(async (text: string) => {
+        //...
+         if (orderMatch) {
+           //...
+            if (addedItems.length > 0 && cart) { // add null check here as well
+                const itemsList = addedItems.join(' and ');
+                const currentTotal = cart.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0);
+                showFeedback('Added to Cart', `Added ${itemsList}. Total: $${currentTotal.toFixed(2)}`);
+            } else {
+                showFeedback('Not Found', 'Could not find drink. Try again', 'destructive');
+            }
+          return;
+       }
+    //...
+      }, [drinks, onAddToCart, processOrder, cart, showFeedback]);
+//...
+}
