@@ -62,10 +62,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try {
       if (cart.isProcessing) return;
       dispatch({ type: 'SET_PROCESSING', isProcessing: true });
+      
+      // Apply the action to get the new state
+      const newState = cartReducer(cart, action);
       dispatch(action);
 
-      // Calculate total based on current cart state
-      const total = cart.items.reduce((sum, item) => 
+      // Calculate total based on new state
+      const total = newState.items.reduce((sum, item) => 
         sum + (item.drink.price * item.quantity), 0);
 
       // Toast notifications disabled
@@ -108,9 +111,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'SET_PROCESSING', isProcessing: true });
 
       // Calculate total before clearing cart
-      // Calculate total after the new item is added
-      const updatedCart = cartReducer(cart, action);
-      const total = updatedCart.items.reduce((sum, item) => 
+      const total = cart.items.reduce((sum, item) => 
         sum + (item.drink.price * item.quantity), 0);
 
       // Clear the cart

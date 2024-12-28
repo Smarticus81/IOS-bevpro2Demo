@@ -25,8 +25,9 @@ export function OrderSummary({
   onToggleCollapse
 }: OrderSummaryProps) {
   const total = cart.reduce((sum, item) => {
-    const itemPrice = Number(item.drink.price);
-    return sum + (itemPrice * item.quantity);
+    const itemPrice = Number(item.drink.price) || 0;
+    const quantity = Number(item.quantity) || 0;
+    return sum + (itemPrice * quantity);
   }, 0);
 
   return (
