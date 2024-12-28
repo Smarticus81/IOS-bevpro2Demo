@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { DrinkItem, CartItem, AddToCartAction } from '@/types/speech';
+import { googleVoiceService } from '@/lib/google-voice-service';
 
 interface VoiceCommandsProps {
   drinks: DrinkItem[];
