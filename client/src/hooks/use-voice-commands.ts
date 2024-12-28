@@ -1,5 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import type { DrinkItem, CartItem, AddToCartAction } from '@/types/speech';
+
+interface VoiceCommandsProps {
+  drinks: DrinkItem[];
+  cart: {
+    items: CartItem[];
+    isProcessing: boolean;
+  };
+  onAddToCart: (action: AddToCartAction) => void;
+  onRemoveItem: (drinkId: number) => void;
+  onPlaceOrder: () => Promise<void>;
+}
 
 export function useVoiceCommands({
   drinks = [],
