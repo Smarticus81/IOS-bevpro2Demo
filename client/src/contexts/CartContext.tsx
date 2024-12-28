@@ -11,6 +11,8 @@ type CartAction =
   | { type: 'SET_PROCESSING'; isProcessing: boolean };
 
 function cartReducer(state: CartState, action: CartAction): CartState {
+  console.log('CartReducer - Current state:', state);
+  console.log('CartReducer - Action:', action);
   switch (action.type) {
     case 'ADD_ITEM': {
       const existingItem = state.items.find(item => item.drink.id === action.drink.id);
@@ -61,15 +63,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const addToCart = useCallback(async (action: AddToCartAction) => {
     try {
       if (cart.isProcessing) return;
+      console.log('Cart before action:', cart);
       dispatch({ type: 'SET_PROCESSING', isProcessing: true });
       
       // Apply the action to get the new state
       const newState = cartReducer(cart, action);
       dispatch(action);
+      console.log('Cart after action:', cart, 'New state:', newState);
 
       // Calculate total based on new state
       const total = newState.items.reduce((sum, item) => 
         sum + (item.drink.price * item.quantity), 0);
+      console.log('Cart total:', total);
 
       // Toast notifications disabled
     } catch (error) {
