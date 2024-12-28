@@ -11,17 +11,11 @@ import { OrderSummary } from "./OrderSummary";
 import type { Drink } from "@db/schema";
 
 interface OrderSummaryDrawerProps {
-  cart: Array<{ drink: Drink; quantity: number }> | undefined; // Allow undefined cart
-  onRemoveItem: (drinkId: number) => void;
-  onPlaceOrder: () => void;
-  isLoading: boolean;
-  drinks: Drink[]; // Assuming drinks data is managed externally
-  onAddToCart: (action: { type: 'ADD_ITEM'; drink: Drink; quantity: number }) => void;
+  drinks: Drink[]; // Only need drinks from props now
 }
 
-export function OrderSummaryDrawer(props: OrderSummaryDrawerProps) {
-  // Ensure cart defaults to an empty array if undefined
-  const cart = props.cart || [];
+export function OrderSummaryDrawer({ drinks }: OrderSummaryDrawerProps) {
+  const { cart, removeItem: onRemoveItem, placeOrder: onPlaceOrder, isProcessing, addToCart } = useCart();
 
   // Fetch drinks data with React Query
   const { data: drinks = [] } = useQuery({

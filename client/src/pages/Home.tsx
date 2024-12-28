@@ -17,7 +17,7 @@ type CartAction =
   | { type: 'COMPLETE_TRANSACTION' };
 
 export function Home() {
-  const [cart, setCart] = useState<Array<{ drink: Drink; quantity: number }>>([]);
+  const { cart, addToCart, removeItem: removeFromCart, placeOrder, isProcessing } = useCart();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isOrderSummaryCollapsed, setIsOrderSummaryCollapsed] = useState(false);
   const { toast } = useToast();
