@@ -48,6 +48,12 @@ export function registerRoutes(app: Express): Server {
     try {
       const { items, total } = req.body;
 
+      if (!items?.length || typeof total !== 'number' || total <= 0) {
+        return res.status(400).json({ 
+          error: "Invalid order data. Must include items array and valid total." 
+        });
+      }
+
       // Create order
       const [order] = await db
         .insert(orders)
@@ -57,9 +63,9 @@ export function registerRoutes(app: Express): Server {
       // Create order items
       const orderItemsData = items.map((item: any) => ({
         order_id: order.id,
-        drink_id: item.id,
+        drink_id: item.drink.id,
         quantity: item.quantity,
-        price: item.price
+        price: item.drink.price
       }));
 
       await db.insert(orderItems).values(orderItemsData);
@@ -72,7 +78,7 @@ export function registerRoutes(app: Express): Server {
             inventory: sql`${drinks.inventory} - ${item.quantity}`,
             sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
           })
-          .where(eq(drinks.id, item.id));
+          .where(eq(drinks.id, item.drink.id));
       }
 
       res.json(order);

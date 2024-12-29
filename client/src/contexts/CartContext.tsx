@@ -68,14 +68,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Place Order Mutation
   const orderMutation = useMutation({
     mutationFn: async (cartItems: typeof state.items) => {
+      // Calculate total before making the request
+      const total = cartItems.reduce((sum, item) => {
+        return sum + (Number(item.drink.price) * item.quantity);
+      }, 0);
+
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: cartItems }),
+        body: JSON.stringify({ 
+          items: cartItems,
+          total, // Include total in the request
+          status: 'pending'
+        }),
       });
+
       if (!response.ok) {
-        throw new Error('Failed to place order');
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to place order');
       }
+
       return response.json();
     },
     onSuccess: () => {
@@ -86,13 +98,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         description: 'Order placed successfully!',
         variant: 'default',
       });
+      // Navigate to confirmation page after successful order
       window.location.href = '/payment-confirmation';
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error('Order placement failed:', error);
       toast({
         title: 'Error',
-        description: 'Failed to place order. Try again later.',
+        description: error.message || 'Failed to place order. Try again later.',
         variant: 'destructive',
       });
     },
@@ -127,7 +140,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         drinkId: action.drink.id,
         drinkName: action.drink.name
       });
-      
+
       toast({
         title: 'Error',
         description: 'Failed to add item to cart.',
@@ -173,6 +186,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         });
         return;
       }
+
       if (state.items.length === 0) {
         toast({
           title: 'Error',
@@ -188,10 +202,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       console.error('Error placing order:', error);
       toast({
         title: 'Error',
-        description: 'Failed to place order.',
+        description: error instanceof Error ? error.message : 'Failed to place order.',
         variant: 'destructive',
       });
-      throw error;
     } finally {
       dispatch({ type: 'SET_PROCESSING', isProcessing: false });
     }
