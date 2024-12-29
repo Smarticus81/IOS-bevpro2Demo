@@ -3,6 +3,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { DrinkItem, AddToCartAction } from '@/types/speech';
 import { googleVoiceService } from '@/lib/google-voice-service';
 import type { CartItem } from '@/types/cart';
+import { logger } from '@/lib/logger';
 
 interface VoiceCommandsProps {
   drinks: DrinkItem[];
@@ -27,73 +28,57 @@ export function useVoiceCommands({
   const COMMAND_DEBOUNCE_MS = 500;
 
   const validateDependencies = useCallback((): boolean => {
-    if (!drinks.length || !onAddToCart || !onRemoveItem || !onPlaceOrder) {
-      console.error('Missing dependencies:', {
-        drinks: !!drinks.length,
-        onAddToCart: !!onAddToCart,
-        onRemoveItem: !!onRemoveItem,
-        onPlaceOrder: !!onPlaceOrder,
-      });
-      return false;
+    const dependencies = {
+      drinks: !!drinks.length,
+      onAddToCart: !!onAddToCart,
+      onRemoveItem: !!onRemoveItem,
+      onPlaceOrder: !!onPlaceOrder,
+    };
+
+    const isValid = Object.values(dependencies).every(Boolean);
+
+    if (!isValid) {
+      logger.error('Missing dependencies:', dependencies);
     }
-    return true;
+
+    return isValid;
   }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder]);
 
   const showFeedback = useCallback(
     (title: string, message: string, type: 'default' | 'destructive' = 'default') => {
       toast({ title, description: message, variant: type });
-      console.log(`${title}: ${message}`);
+      logger.info(`${title}: ${message}`);
     },
     [toast]
   );
 
-  const matchDrink = (command: string): { drink: DrinkItem | null; quantity: number } => {
-    const quantityMatch = command.match(/(\d+|a|one|two|three|four|five|six|seven|eight|nine|ten)\s+/i);
-    const quantityMap: Record<string, number> = {
-      a: 1,
-      one: 1,
-      two: 2,
-      three: 3,
-      four: 4,
-      five: 5,
-      six: 6,
-      seven: 7,
-      eight: 8,
-      nine: 9,
-      ten: 10,
-    };
-    const quantity = quantityMatch
-      ? parseInt(quantityMatch[1]) || quantityMap[quantityMatch[1].toLowerCase()] || 1
-      : 1;
-
-    const drinkName = command.replace(quantityMatch?.[0] || '', '').trim();
-    const matchedDrink = drinks.find((d) =>
-      drinkName.toLowerCase().includes(d.name.toLowerCase())
-    );
-
-    return { drink: matchedDrink || null, quantity };
-  };
-
   const processOrder = useCallback(async () => {
-    if (!cart || !cart.length) {
-      showFeedback('Empty Cart', 'Your cart is empty', 'destructive');
-      return false;
-    }
-
-    if (isProcessing) {
-      showFeedback('Processing', 'Please wait while we process your order...', 'default');
-      return false;
-    }
-
     try {
+      logger.info('Processing order request', {
+        cartSize: cart.length,
+        isProcessing,
+        hasItems: cart.length > 0
+      });
+
+      if (!cart || !cart.length) {
+        showFeedback('Empty Cart', 'Your cart is empty', 'destructive');
+        return false;
+      }
+
+      if (isProcessing) {
+        showFeedback('Processing', 'Please wait while we process your order...', 'default');
+        return false;
+      }
+
       const total = cart.reduce((sum, item) => sum + item.drink.price * item.quantity, 0);
       showFeedback('Processing Order', `Total: $${total.toFixed(2)}`);
+
       await onPlaceOrder();
       showFeedback('Success', 'Order complete!');
       return true;
     } catch (error) {
-      console.error('Error processing order:', error);
-      showFeedback('Error', 'Failed to process order', 'destructive');
+      logger.error('Error processing order:', error);
+      showFeedback('Error', error instanceof Error ? error.message : 'Failed to process order', 'destructive');
       return false;
     }
   }, [cart, onPlaceOrder, isProcessing, showFeedback]);
@@ -105,6 +90,8 @@ export function useVoiceCommands({
       const command = text.toLowerCase().trim();
       const now = Date.now();
 
+      logger.info('Processing voice command:', command);
+
       // Debounce similar commands
       if (
         command === lastCommandRef.current.text &&
@@ -114,10 +101,9 @@ export function useVoiceCommands({
       }
 
       lastCommandRef.current = { text: command, timestamp: now };
-      console.log('Processing voice command:', command);
 
       try {
-        if (/complete|checkout|finish/.test(command)) {
+        if (/complete|checkout|finish|process/.test(command)) {
           await processOrder();
           return;
         }
@@ -152,7 +138,7 @@ export function useVoiceCommands({
           'destructive'
         );
       } catch (error) {
-        console.error('Voice command processing error:', error);
+        logger.error('Voice command processing error:', error);
         showFeedback('Error', 'Failed to process command', 'destructive');
       }
     },
@@ -206,4 +192,34 @@ export function useVoiceCommands({
     stopListening,
     isSupported: googleVoiceService.isSupported(),
   };
+}
+
+// Helper function to match drinks from voice input
+function matchDrink(command: string): { drink: DrinkItem | null; quantity: number } {
+  const quantityMatch = command.match(/(\d+|a|one|two|three|four|five)\s+(.+)/i);
+  const quantityMap: Record<string, number> = {
+    a: 1,
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+  };
+
+  let quantity = 1;
+  let drinkName = command;
+
+  if (quantityMatch) {
+    quantity = parseInt(quantityMatch[1]) || quantityMap[quantityMatch[1].toLowerCase()] || 1;
+    drinkName = quantityMatch[2];
+  }
+
+  logger.debug('Matching drink from command:', {
+    command,
+    quantity,
+    drinkName: drinkName.trim()
+  });
+
+  // The drink matching logic will be handled by the parent component
+  return { drink: null, quantity };
 }

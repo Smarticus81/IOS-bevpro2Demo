@@ -70,7 +70,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Place Order Mutation
   const orderMutation = useMutation({
     mutationFn: async (cartItems: typeof state.items) => {
-      // Calculate total before making the request
+      logger.info('Placing order:', {
+        itemCount: cartItems.length,
+        total: cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0)
+      });
+
       const total = cartItems.reduce((sum, item) => {
         return sum + (Number(item.drink.price) * item.quantity);
       }, 0);
@@ -80,17 +84,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           items: cartItems,
-          total, // Include total in the request
+          total,
           status: 'pending'
         }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
+        logger.error('Order placement failed:', {
+          status: response.status,
+          error: errorText
+        });
         throw new Error(errorText || 'Failed to place order');
       }
 
-      return response.json();
+      const data = await response.json();
+      logger.info('Order placed successfully:', { orderId: data.id });
+      return data;
     },
     onSuccess: () => {
       dispatch({ type: 'CLEAR_CART' });
@@ -100,6 +110,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         description: 'Order placed successfully!',
         variant: 'default',
       });
+
       // Use wouter's setLocation for client-side navigation
       setLocation('/payment-confirmation');
     },
@@ -157,6 +168,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Remove from Cart
   const removeItem = useCallback(async (drinkId: number) => {
     try {
+      logger.info('Removing item from cart:', { drinkId });
       dispatch({ type: 'SET_PROCESSING', isProcessing: true });
       dispatch({ type: 'REMOVE_ITEM', drinkId });
       toast({
@@ -165,7 +177,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         variant: 'default',
       });
     } catch (error) {
-      console.error('Error removing item from cart:', error);
+      logger.error('Error removing item from cart:', { error, drinkId });
       toast({
         title: 'Error',
         description: 'Failed to remove item from cart.',
@@ -180,6 +192,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Place Order
   const placeOrder = useCallback(async () => {
     try {
+      logger.info('Initiating order placement', {
+        cartSize: state.items.length,
+        isProcessing: state.isProcessing
+      });
+
       if (state.isProcessing) {
         toast({
           title: 'Processing',
@@ -201,7 +218,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'SET_PROCESSING', isProcessing: true });
       await orderMutation.mutateAsync(state.items);
     } catch (error) {
-      console.error('Error placing order:', error);
+      logger.error('Error placing order:', error);
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to place order.',
