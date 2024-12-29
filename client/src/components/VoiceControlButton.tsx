@@ -41,13 +41,6 @@ export function VoiceControlButton() {
   const handleClick = async () => {
     try {
       if (!isSupported) {
-        logger.error("Voice control not supported", {
-          browser: navigator.userAgent,
-          features: {
-            speechRecognition: "SpeechRecognition" in window,
-            webkitSpeechRecognition: "webkitSpeechRecognition" in window,
-          },
-        });
         setShowDialog(true);
         return;
       }
@@ -56,20 +49,14 @@ export function VoiceControlButton() {
         await stopListening();
         toast({
           title: "Voice Control",
-          description: JSON.stringify({
-            status: "stopped",
-            message: "Voice commands stopped",
-          }),
+          description: "Voice commands stopped",
           duration: 2000,
         });
       } else {
         await startListening();
         toast({
           title: "Voice Control",
-          description: JSON.stringify({
-            status: "started",
-            message: "Say 'help' to learn available commands",
-          }),
+          description: "Say 'help' to learn available commands",
           duration: 2000,
         });
       }
@@ -77,13 +64,7 @@ export function VoiceControlButton() {
       console.error("Voice control error:", error);
       toast({
         title: "Error",
-        description: JSON.stringify({
-          status: "error",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Failed to process voice command",
-        }),
+        description: error instanceof Error ? error.message : "Failed to process voice command",
         variant: "destructive",
       });
     }
@@ -108,9 +89,7 @@ export function VoiceControlButton() {
             }
             ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
           disabled={!isSupported || isProcessing}
-          aria-label={
-            isListening ? "Stop voice commands" : "Start voice commands"
-          }
+          aria-label={isListening ? "Stop voice commands" : "Start voice commands"}
         >
           {isListening ? (
             <MicOff className="h-6 w-6" />
