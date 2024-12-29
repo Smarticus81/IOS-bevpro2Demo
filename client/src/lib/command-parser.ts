@@ -1,4 +1,4 @@
-import type { Drink } from "@db/schema";
+import type { DrinkItem } from "@db/schema";
 
 type ParsedCommand = {
   type: 'order' | 'inquiry' | 'modify' | 'cancel' | 'system';
@@ -19,7 +19,7 @@ function normalizeText(text: string): string {
 }
 
 // Find best matching drink from inventory
-function findMatchingDrink(drinkName: string, availableDrinks: Drink[]): Drink | null {
+function findMatchingDrink(drinkName: string, availableDrinks: DrinkItem[]): DrinkItem | null {
   const normalizedInput = normalizeText(drinkName);
 
   // Try exact match first
@@ -60,7 +60,7 @@ function findMatchingDrink(drinkName: string, availableDrinks: Drink[]): Drink |
 }
 
 // Efficient command parser that integrates with inventory
-export function parseVoiceCommand(text: string, availableDrinks: Drink[]): ParsedCommand | null {
+export function parseVoiceCommand(text: string, availableDrinks: DrinkItem[]): ParsedCommand | null {
   if (!text || !availableDrinks?.length) {
     console.log('Invalid input:', { text: !!text, drinksAvailable: availableDrinks?.length });
     return null;

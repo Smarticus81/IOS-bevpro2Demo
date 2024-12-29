@@ -13,20 +13,6 @@ import {
 import { eq, sql } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
 
-// OpenAI Realtime API imports and types
-import OpenAI from "openai";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-interface RealtimeSession {
-  client_secret: {
-    value: string;
-    expires_at: number;
-  };
-}
-
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
   console.log('Setting up routes and realtime proxy...');
@@ -43,7 +29,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Create new order
+  // Create new order with improved validation and error handling
   app.post("/api/orders", async (req, res) => {
     try {
       const { items, total } = req.body;
@@ -54,13 +40,26 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
+      // Validate all items have required fields
+      const invalidItems = items.filter((item: any) => 
+        !item.drink?.id || 
+        typeof item.quantity !== 'number' || 
+        item.quantity <= 0
+      );
+
+      if (invalidItems.length > 0) {
+        return res.status(400).json({
+          error: "Invalid items in order. Each item must have a valid drink ID and quantity."
+        });
+      }
+
       // Create order
       const [order] = await db
         .insert(orders)
-        .values({ total, items })
+        .values({ total, items, status: 'pending' })
         .returning();
 
-      // Create order items
+      // Create order items with validation
       const orderItemsData = items.map((item: any) => ({
         order_id: order.id,
         drink_id: item.drink.id,
@@ -70,21 +69,29 @@ export function registerRoutes(app: Express): Server {
 
       await db.insert(orderItems).values(orderItemsData);
 
-      // Update inventory and sales
+      // Update inventory and sales with proper error handling
       for (const item of items) {
-        await db
+        const [updatedDrink] = await db
           .update(drinks)
           .set({ 
             inventory: sql`${drinks.inventory} - ${item.quantity}`,
             sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
           })
-          .where(eq(drinks.id, item.drink.id));
+          .where(eq(drinks.id, item.drink.id))
+          .returning();
+
+        if (!updatedDrink) {
+          throw new Error(`Failed to update inventory for drink ${item.drink.id}`);
+        }
       }
 
       res.json(order);
     } catch (error) {
       console.error("Error creating order:", error);
-      res.status(500).json({ error: "Failed to create order" });
+      res.status(500).json({ 
+        error: "Failed to create order",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
@@ -109,35 +116,59 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Simple payment processing endpoint
+  // Payment processing with improved error handling
   app.post("/api/payment/process", async (req, res) => {
     try {
       const { amount, orderId } = req.body;
 
-      // Simulate payment processing
+      if (typeof amount !== 'number' || amount <= 0) {
+        return res.status(400).json({ 
+          error: "Invalid payment amount" 
+        });
+      }
+
+      if (orderId && typeof orderId !== 'number') {
+        return res.status(400).json({ 
+          error: "Invalid order ID" 
+        });
+      }
+
+      // Simulate payment processing with better error handling
       const success = Math.random() > 0.1; // 90% success rate
 
       if (success) {
         // If we have an order ID, update its status
         if (orderId) {
-          await db
+          const [updatedOrder] = await db
             .update(orders)
-            .set({ status: 'paid' })
-            .where(eq(orders.id, orderId));
+            .set({ 
+              status: 'paid',
+              payment_status: 'completed',
+              completed_at: new Date()
+            })
+            .where(eq(orders.id, orderId))
+            .returning();
+
+          if (!updatedOrder) {
+            throw new Error(`Order ${orderId} not found`);
+          }
         }
 
         res.json({ 
           success: true,
-          message: `Payment of $${(amount / 100).toFixed(2)} processed successfully` 
+          message: `Payment of $${(amount / 100).toFixed(2)} processed successfully`,
+          orderId,
+          timestamp: new Date().toISOString()
         });
       } else {
-        throw new Error('Payment simulation failed');
+        throw new Error('Payment simulation failed - please try again');
       }
     } catch (error) {
       console.error("Error processing payment:", error);
       res.status(500).json({ 
         success: false,
-        error: error instanceof Error ? error.message : "Payment processing failed" 
+        error: error instanceof Error ? error.message : "Payment processing failed",
+        timestamp: new Date().toISOString()
       });
     }
   });
