@@ -160,6 +160,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Add to Cart
   const addToCart = useCallback(async (action: AddToCartAction) => {
+    if (state.isProcessing) {
+      logger.info('Cart is currently processing, ignoring add request');
+      return;
+    }
+
     try {
       logger.info('Adding item to cart', {
         drinkId: action.drink.id,
@@ -182,6 +187,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         drinkName: action.drink.name
       });
 
+      // Revert the add action on error
+      dispatch({ type: 'REMOVE_ITEM', drinkId: action.drink.id });
+      
       toast({
         title: 'Error',
         description: 'Failed to add item to cart.',
@@ -190,13 +198,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       dispatch({ type: 'SET_PROCESSING', isProcessing: false });
     }
-  }, [toast, state.items.length]);
+  }, [toast, state.items.length, state.isProcessing]);
 
   // Remove from Cart
   const removeItem = useCallback(async (drinkId: number) => {
+    if (state.isProcessing) {
+      logger.info('Cart is currently processing, ignoring remove request');
+      return;
+    }
+
     try {
       logger.info('Removing item from cart:', { drinkId });
       dispatch({ type: 'SET_PROCESSING', isProcessing: true });
+      const itemToRemove = state.items.find(item => item.drink.id === drinkId);
+      
+      if (!itemToRemove) {
+        logger.warn('Item not found in cart:', { drinkId });
+        return;
+      }
+
       dispatch({ type: 'REMOVE_ITEM', drinkId });
 
       toast({
@@ -214,7 +234,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       dispatch({ type: 'SET_PROCESSING', isProcessing: false });
     }
-  }, [toast]);
+  }, [toast, state.isProcessing, state.items]);
 
   // Place Order
   const placeOrder = useCallback(async () => {
