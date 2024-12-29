@@ -35,6 +35,7 @@ export function VoiceControlButton() {
       onAddToCart: addToCart,
       onRemoveItem: removeItem,
       onPlaceOrder: placeOrder,
+      isProcessing,
     });
 
   // Handle button click with proper error handling

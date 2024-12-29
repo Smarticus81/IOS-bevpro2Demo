@@ -1,25 +1,25 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import type { DrinkItem, CartItem, AddToCartAction } from '@/types/speech';
+import type { DrinkItem, AddToCartAction } from '@/types/speech';
 import { googleVoiceService } from '@/lib/google-voice-service';
+import type { CartItem } from '@/types/cart';
 
 interface VoiceCommandsProps {
   drinks: DrinkItem[];
-  cart: {
-    items: CartItem[];
-    isProcessing: boolean;
-  };
+  cart: CartItem[];
   onAddToCart: (action: AddToCartAction) => Promise<void>;
   onRemoveItem: (drinkId: number) => Promise<void>;
   onPlaceOrder: () => Promise<void>;
+  isProcessing: boolean;
 }
 
 export function useVoiceCommands({
   drinks = [],
-  cart = { items: [], isProcessing: false }, // Default cart
+  cart = [],
   onAddToCart,
   onRemoveItem,
   onPlaceOrder,
+  isProcessing = false,
 }: VoiceCommandsProps) {
   const [isListening, setIsListening] = useState(false);
   const { toast } = useToast();
@@ -27,18 +27,17 @@ export function useVoiceCommands({
   const COMMAND_DEBOUNCE_MS = 500;
 
   const validateDependencies = useCallback((): boolean => {
-    if (!drinks.length || !onAddToCart || !onRemoveItem || !onPlaceOrder || !cart) {
+    if (!drinks.length || !onAddToCart || !onRemoveItem || !onPlaceOrder) {
       console.error('Missing dependencies:', {
         drinks: !!drinks.length,
         onAddToCart: !!onAddToCart,
         onRemoveItem: !!onRemoveItem,
         onPlaceOrder: !!onPlaceOrder,
-        cart: !!cart,
       });
       return false;
     }
     return true;
-  }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder, cart]);
+  }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder]);
 
   const showFeedback = useCallback(
     (title: string, message: string, type: 'default' | 'destructive' = 'default') => {
@@ -76,18 +75,18 @@ export function useVoiceCommands({
   };
 
   const processOrder = useCallback(async () => {
-    if (!cart || !cart.items.length) {
+    if (!cart || !cart.length) {
       showFeedback('Empty Cart', 'Your cart is empty', 'destructive');
       return false;
     }
 
-    if (cart.isProcessing) {
+    if (isProcessing) {
       showFeedback('Processing', 'Please wait while we process your order...', 'default');
       return false;
     }
 
     try {
-      const total = cart.items.reduce((sum, item) => sum + item.drink.price * item.quantity, 0);
+      const total = cart.reduce((sum, item) => sum + item.drink.price * item.quantity, 0);
       showFeedback('Processing Order', `Total: $${total.toFixed(2)}`);
       await onPlaceOrder();
       showFeedback('Success', 'Order complete!');
@@ -97,7 +96,7 @@ export function useVoiceCommands({
       showFeedback('Error', 'Failed to process order', 'destructive');
       return false;
     }
-  }, [cart, onPlaceOrder, showFeedback]);
+  }, [cart, onPlaceOrder, isProcessing, showFeedback]);
 
   const handleVoiceCommand = useCallback(
     async (text: string) => {
@@ -157,7 +156,7 @@ export function useVoiceCommands({
         showFeedback('Error', 'Failed to process command', 'destructive');
       }
     },
-    [drinks, onAddToCart, processOrder, cart, showFeedback]
+    [drinks, onAddToCart, processOrder, showFeedback]
   );
 
   const stopListening = useCallback(async () => {
@@ -166,7 +165,7 @@ export function useVoiceCommands({
     try {
       await googleVoiceService.stopListening();
       setIsListening(false);
-      showFeedback('Voice Control', 'Stopped');
+      showFeedback('Voice Control', 'Stopped listening');
     } catch (error) {
       console.error('Failed to stop:', error);
       setIsListening(false);
@@ -179,7 +178,7 @@ export function useVoiceCommands({
         throw new Error('Speech recognition not supported');
       }
 
-      if (!validateDependencies() || cart.isProcessing) {
+      if (!validateDependencies() || isProcessing) {
         throw new Error('Required dependencies unavailable or cart is processing');
       }
 
@@ -191,7 +190,7 @@ export function useVoiceCommands({
       setIsListening(false);
       throw error;
     }
-  }, [handleVoiceCommand, showFeedback, validateDependencies, cart.isProcessing]);
+  }, [handleVoiceCommand, showFeedback, validateDependencies, isProcessing]);
 
   useEffect(() => {
     return () => {

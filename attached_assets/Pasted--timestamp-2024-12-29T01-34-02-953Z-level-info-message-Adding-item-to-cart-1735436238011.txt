@@ -1,0 +1,78 @@
+{
+  "timestamp": "2024-12-29T01:34:02.953Z",
+  "level": "info",
+  "message": "Adding item to cart",
+  "context": {
+    "drinkId": 39,
+    "drinkName": "Captain Morgan",
+    "quantity": 1,
+    "currentCartSize": 0
+  }
+}
+{
+  "timestamp": "2024-12-29T01:34:02.953Z",
+  "level": "info",
+  "message": "Item added to cart successfully",
+  "context": {
+    "drinkId": 39,
+    "cartSize": 1
+  }
+}
+Added to Cart: Added 1 Captain Morgan(s) to your cart.
+{
+  "timestamp": "2024-12-29T01:34:02.968Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-29T01:34:02.969Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+`DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
+
+If you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.
+
+For more information, see https://radix-ui.com/primitives/docs/components/dialog
+Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+`DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
+
+If you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.
+
+For more information, see https://radix-ui.com/primitives/docs/components/dialog
+Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+Processing voice command: complete order
+Voice command processing error: 
+TypeError {}
+
+Error: Failed to process command
+{
+  "timestamp": "2024-12-29T01:34:08.351Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-29T01:34:08.352Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
