@@ -3,6 +3,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import type { CartState, CartContextType, AddToCartAction } from '@/types/cart';
+import { useLocation } from 'wouter';
 
 // Define the context
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -64,6 +65,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   // Place Order Mutation
   const orderMutation = useMutation({
@@ -98,8 +100,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         description: 'Order placed successfully!',
         variant: 'default',
       });
-      // Navigate to confirmation page after successful order
-      window.location.href = '/payment-confirmation';
+      // Use wouter's setLocation for client-side navigation
+      setLocation('/payment-confirmation');
     },
     onError: (error: Error) => {
       console.error('Order placement failed:', error);
