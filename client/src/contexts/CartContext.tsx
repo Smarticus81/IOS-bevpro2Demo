@@ -75,52 +75,86 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         total: cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0)
       });
 
-      const total = cartItems.reduce((sum, item) => {
-        return sum + (Number(item.drink.price) * item.quantity);
-      }, 0);
-
-      const response = await fetch('/api/orders', {
+      // Step 1: Create the order
+      const orderResponse = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           items: cartItems,
-          total,
+          total: cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0),
           status: 'pending'
         }),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        logger.error('Order placement failed:', {
-          status: response.status,
+      if (!orderResponse.ok) {
+        const errorText = await orderResponse.text();
+        logger.error('Order creation failed:', {
+          status: orderResponse.status,
           error: errorText
         });
-        throw new Error(errorText || 'Failed to place order');
+        throw new Error(errorText || 'Failed to create order');
       }
 
-      const data = await response.json();
-      logger.info('Order placed successfully:', { orderId: data.id });
-      return data;
+      const orderData = await orderResponse.json();
+      logger.info('Order created successfully:', { orderId: orderData.id });
+
+      // Step 2: Process payment
+      const paymentResponse = await fetch('/api/payment/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0),
+          orderId: orderData.id
+        }),
+      });
+
+      if (!paymentResponse.ok) {
+        const errorText = await paymentResponse.text();
+        logger.error('Payment processing failed:', {
+          status: paymentResponse.status,
+          error: errorText,
+          orderId: orderData.id
+        });
+        throw new Error(errorText || 'Payment processing failed');
+      }
+
+      const paymentData = await paymentResponse.json();
+      if (!paymentData.success) {
+        logger.error('Payment unsuccessful:', paymentData);
+        throw new Error(paymentData.error || 'Payment was unsuccessful');
+      }
+
+      logger.info('Payment processed successfully:', {
+        orderId: orderData.id,
+        paymentId: paymentData.id
+      });
+
+      return { order: orderData, payment: paymentData };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       dispatch({ type: 'CLEAR_CART' });
       queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
+
       toast({
         title: 'Success',
-        description: 'Order placed successfully!',
+        description: 'Order placed and payment processed successfully!',
         variant: 'default',
       });
 
-      // Use wouter's setLocation for client-side navigation
+      // Navigate to success page
       setLocation('/payment-confirmation');
     },
     onError: (error: Error) => {
-      console.error('Order placement failed:', error);
+      logger.error('Order/payment failed:', error);
+
       toast({
         title: 'Error',
-        description: error.message || 'Failed to place order. Try again later.',
+        description: error.message || 'Failed to process order. Please try again.',
         variant: 'destructive',
       });
+
+      // Navigate to payment failure page
+      setLocation('/payment-failed');
     },
   });
 
@@ -129,7 +163,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try {
       logger.info('Adding item to cart', {
         drinkId: action.drink.id,
-        drinkName: action.drink.name,
         quantity: action.quantity,
         currentCartSize: state.items.length
       });
@@ -137,18 +170,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'SET_PROCESSING', isProcessing: true });
       dispatch(action);
 
-      logger.info('Item added to cart successfully', {
-        drinkId: action.drink.id,
-        cartSize: state.items.length + 1
-      });
-
       toast({
         title: 'Added to Cart',
         description: `${action.quantity} ${action.drink.name}(s) added to your cart.`,
         variant: 'default',
       });
     } catch (error) {
-      logger.error('Failed to add item to cart', {
+      logger.error('Failed to add item to cart:', {
         error,
         drinkId: action.drink.id,
         drinkName: action.drink.name
@@ -159,7 +187,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         description: 'Failed to add item to cart.',
         variant: 'destructive',
       });
-      throw error;
     } finally {
       dispatch({ type: 'SET_PROCESSING', isProcessing: false });
     }
@@ -171,6 +198,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       logger.info('Removing item from cart:', { drinkId });
       dispatch({ type: 'SET_PROCESSING', isProcessing: true });
       dispatch({ type: 'REMOVE_ITEM', drinkId });
+
       toast({
         title: 'Removed from Cart',
         description: 'Item removed successfully.',
@@ -183,7 +211,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         description: 'Failed to remove item from cart.',
         variant: 'destructive',
       });
-      throw error;
     } finally {
       dispatch({ type: 'SET_PROCESSING', isProcessing: false });
     }
