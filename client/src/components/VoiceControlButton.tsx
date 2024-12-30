@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { Mic, MicOff, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,14 +24,12 @@ export function VoiceControlButton() {
   const [showTutorial, setShowTutorial] = useState(false);
   const { cart, addToCart, removeItem, placeOrder, isProcessing } = useCart();
 
-  // Fetch drinks data with optimized caching
   const { data: drinks = [] } = useQuery<DrinkItem[]>({
     queryKey: ["/api/drinks"],
     retry: 1,
     staleTime: 30000,
   });
 
-  // Initialize voice commands with proper cart state
   const { isListening, startListening, stopListening, isSupported } =
     useVoiceCommands({
       drinks,
@@ -41,7 +40,6 @@ export function VoiceControlButton() {
       isProcessing,
     });
 
-  // Handle button click with proper error handling
   const handleClick = async () => {
     try {
       if (!isSupported) {
@@ -78,41 +76,49 @@ export function VoiceControlButton() {
 
   return (
     <>
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2"
-      >
-        <Button
-          onClick={() => setShowTutorial(true)}
-          size="icon"
-          variant="outline"
-          className="rounded-full shadow-lg"
-          aria-label="Show voice command tutorial"
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-4">
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="flex justify-end"
         >
-          <HelpCircle className="h-5 w-5" />
-        </Button>
-        <Button
-          onClick={handleClick}
-          size="lg"
-          className={`rounded-full p-6 shadow-lg transition-all duration-300
-            ${
-              isListening
-                ? "bg-red-500 hover:bg-red-600 animate-pulse"
-                : "bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black"
-            }
-            ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
-          disabled={!isSupported || isProcessing}
-          aria-label={isListening ? "Stop voice commands" : "Start voice commands"}
+          <Button
+            onClick={() => setShowTutorial(true)}
+            size="lg"
+            variant="outline"
+            className="rounded-full shadow-lg"
+            aria-label="Show voice command tutorial"
+          >
+            <HelpCircle className="h-5 w-5" />
+          </Button>
+        </motion.div>
+
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="flex justify-end"
         >
-          {isListening ? (
-            <MicOff className="h-6 w-6" />
-          ) : (
-            <Mic className="h-6 w-6" />
-          )}
-        </Button>
-      </motion.div>
+          <Button
+            onClick={handleClick}
+            size="lg"
+            className={`rounded-full p-6 shadow-lg transition-all duration-300
+              ${
+                isListening
+                  ? "bg-red-500 hover:bg-red-600 animate-pulse"
+                  : "bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black"
+              }
+              ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
+            disabled={!isSupported || isProcessing}
+            aria-label={isListening ? "Stop voice commands" : "Start voice commands"}
+          >
+            {isListening ? (
+              <MicOff className="h-6 w-6" />
+            ) : (
+              <Mic className="h-6 w-6" />
+            )}
+          </Button>
+        </motion.div>
+      </div>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent>
