@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { DrinkItem, AddToCartAction } from '@/types/speech';
-import { googleVoiceService } from '@/lib/google-voice-service';
+import { voiceRecognition } from '@/lib/voice';
 import type { CartItem } from '@/types/cart';
 import { logger } from '@/lib/logger';
 import { parseVoiceCommand } from '@/lib/command-parser';
@@ -85,101 +85,131 @@ export function useVoiceCommands({
     }
   }, [cart, onPlaceOrder, isProcessing, showFeedback]);
 
-  const handleVoiceCommand = useCallback(
-    async (text: string) => {
-      if (!text?.trim()) return;
+  const handleVoiceCommand = useCallback(async (text: string) => {
+    if (!text?.trim()) return;
 
-      const command = text.toLowerCase().trim();
-      const now = Date.now();
+    const command = text.toLowerCase().trim();
+    const now = Date.now();
 
-      logger.info('Processing voice command:', command);
+    logger.info('Processing voice command:', command);
 
-      // Debounce similar commands
-      if (
-        command === lastCommandRef.current.text &&
-        now - lastCommandRef.current.timestamp < COMMAND_DEBOUNCE_MS
-      ) {
+    // Debounce similar commands
+    if (
+      command === lastCommandRef.current.text &&
+      now - lastCommandRef.current.timestamp < COMMAND_DEBOUNCE_MS
+    ) {
+      return;
+    }
+
+    lastCommandRef.current = { text: command, timestamp: now };
+
+    try {
+      // Check for completion phrases first
+      const completionPhrases = [
+        'complete order',
+        'process order',
+        'finish order',
+        'place order',
+        'thats it',
+        "that's it",
+        'complete',
+        'process',
+        'finish',
+        'done',
+        'okay thats it',
+        'okay that\'s it'
+      ];
+
+      const isCompletionCommand = completionPhrases.some(phrase => 
+        command.includes(phrase)
+      );
+
+      if (isCompletionCommand) {
+        logger.info('Completion command detected:', command);
+        await processOrder();
         return;
       }
 
-      lastCommandRef.current = { text: command, timestamp: now };
-
-      try {
-        // Parse the command using the command parser
-        const parsedCommand = parseVoiceCommand(command, drinks);
-        if (!parsedCommand) {
-          showFeedback(
-            'Not Understood',
-            'Command not recognized. Say "help" for a list of commands.',
-            'destructive'
-          );
-          return;
-        }
-
-        switch (parsedCommand.type) {
-          case 'system':
-            if (parsedCommand.action === 'help') {
-              showFeedback(
-                'Voice Commands',
-                'Try commands like "Add a Moscow Mule" or "Complete my order".'
-              );
-            }
-            break;
-
-          case 'order':
-            if (!parsedCommand.items?.length) {
-              showFeedback('Error', 'No items specified in order', 'destructive');
-              return;
-            }
-
-            // Process each item in the order
-            for (const item of parsedCommand.items) {
-              const matchedDrink = drinks.find(
-                d => d.name.toLowerCase() === item.name.toLowerCase()
-              );
-
-              if (matchedDrink) {
-                await onAddToCart({
-                  type: 'ADD_ITEM',
-                  drink: matchedDrink,
-                  quantity: item.quantity
-                });
-                showFeedback(
-                  'Added to Cart',
-                  `Added ${item.quantity} ${matchedDrink.name}(s) to your cart.`
-                );
-              }
-            }
-            break;
-
-          case 'cancel':
-            // Handle order cancellation if implemented
-            break;
-
-          case 'modify':
-            // Handle order modification if implemented
-            break;
-
-          case 'inquiry':
-            // Handle inquiries if implemented
-            break;
-        }
-
-      } catch (error) {
-        logger.error('Voice command processing error:', error);
+      // Handle regular order items
+      const parsedCommand = parseVoiceCommand(command, drinks);
+      if (!parsedCommand) {
         showFeedback(
-          'Error',
-          error instanceof Error ? error.message : 'Failed to process command',
+          'Not Understood',
+          'Command not recognized. Say "help" for a list of commands.',
           'destructive'
         );
+        return;
       }
-    },
-    [drinks, onAddToCart, showFeedback]
-  );
+
+      switch (parsedCommand.type) {
+        case 'system':
+          if (parsedCommand.action === 'help') {
+            showFeedback(
+              'Voice Commands',
+              'Try commands like "Add a Moscow Mule" or "Complete my order".'
+            );
+          }
+          break;
+
+        case 'order':
+          if (!parsedCommand.items?.length) {
+            showFeedback('Error', 'No items specified in order', 'destructive');
+            return;
+          }
+
+          // Process each item in the order
+          for (const item of parsedCommand.items) {
+            const matchedDrink = drinks.find(
+              d => d.name.toLowerCase() === item.name.toLowerCase()
+            );
+
+            if (matchedDrink) {
+              await onAddToCart({
+                type: 'ADD_ITEM',
+                drink: matchedDrink,
+                quantity: item.quantity
+              });
+              showFeedback(
+                'Added to Cart',
+                `Added ${item.quantity} ${matchedDrink.name}(s) to your cart.`
+              );
+            }
+          }
+          break;
+      }
+
+    } catch (error) {
+      logger.error('Voice command processing error:', error);
+      showFeedback(
+        'Error',
+        error instanceof Error ? error.message : 'Failed to process command',
+        'destructive'
+      );
+    }
+  }, [drinks, onAddToCart, showFeedback, processOrder]);
+
+  const handleVoiceEvent = useCallback((event: any) => {
+    if (event.type === 'completion') {
+      logger.info('Received completion event:', event);
+      processOrder();
+    }
+  }, [processOrder]);
+
+  useEffect(() => {
+    if (isListening) {
+      voiceRecognition.on('speech', handleVoiceCommand);
+      voiceRecognition.on('completion', handleVoiceEvent);
+    }
+
+    return () => {
+      voiceRecognition.off('speech', handleVoiceCommand);
+      voiceRecognition.off('completion', handleVoiceEvent);
+    };
+  }, [isListening, handleVoiceCommand, handleVoiceEvent]);
 
   const stopListening = useCallback(async () => {
     try {
-      await googleVoiceService.stopListening();
+      await voiceRecognition.stop();
       setIsListening(false);
       showFeedback('Voice Control', 'Stopped listening');
     } catch (error) {
@@ -190,7 +220,7 @@ export function useVoiceCommands({
 
   const startListening = useCallback(async () => {
     try {
-      if (!googleVoiceService.isSupported()) {
+      if (!voiceRecognition.isSupported()) {
         throw new Error('Speech recognition not supported');
       }
 
@@ -198,7 +228,7 @@ export function useVoiceCommands({
         throw new Error('Required dependencies unavailable or cart is processing');
       }
 
-      await googleVoiceService.startListening(handleVoiceCommand);
+      await voiceRecognition.start();
       setIsListening(true);
       showFeedback('Voice Control', 'Listening... Say "help" for commands');
     } catch (error) {
@@ -206,20 +236,12 @@ export function useVoiceCommands({
       setIsListening(false);
       throw error;
     }
-  }, [handleVoiceCommand, showFeedback, validateDependencies, isProcessing]);
-
-  useEffect(() => {
-    return () => {
-      if (isListening) {
-        googleVoiceService.stopListening().catch(console.error);
-      }
-    };
-  }, [isListening]);
+  }, [showFeedback, validateDependencies, isProcessing]);
 
   return {
     isListening,
     startListening,
     stopListening,
-    isSupported: googleVoiceService.isSupported(),
+    isSupported: voiceRecognition.isSupported(),
   };
 }

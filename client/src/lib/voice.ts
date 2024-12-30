@@ -36,6 +36,20 @@ class VoiceRecognition extends EventHandler {
   private maxRetries = 3;
   private processingCommand = false;
 
+  // Add completion phrases
+  private completionPhrases = [
+    "complete order",
+    "process order",
+    "finish order",
+    "place order",
+    "that's it",
+    "thats it",
+    "complete",
+    "process",
+    "finish",
+    "done"
+  ];
+
   constructor() {
     super();
     try {
@@ -43,7 +57,7 @@ class VoiceRecognition extends EventHandler {
       if (!SpeechRecognition) {
         throw new Error('Speech recognition not supported in this browser');
       }
-      
+
       this.recognition = new SpeechRecognition();
       this.recognition.continuous = true;
       this.recognition.interimResults = false;
@@ -68,17 +82,28 @@ class VoiceRecognition extends EventHandler {
         const text = result[0].transcript.toLowerCase();
         console.log('Recognized text:', text);
 
+        // Check for completion phrases first
+        const isCompletionCommand = this.completionPhrases.some(phrase => 
+          text.toLowerCase().includes(phrase.toLowerCase())
+        );
+
+        if (isCompletionCommand) {
+          console.log('Completion command detected');
+          this.emit('completion', { type: 'complete_order' });
+          return;
+        }
+
         // Enhanced wake word detection with retry capability
-        // Case insensitive wake word detection
         const hasOrderWake = text.toLowerCase().includes(this.orderWakeWord);
         const hasInquiryWake = text.toLowerCase().includes(this.inquiryWakeWord);
         const hasRetryWake = text.toLowerCase().includes(this.retryWakeWord);
-        
+
         console.log('Wake word detection:', {
           text,
           hasOrderWake,
           hasInquiryWake,
           hasRetryWake,
+          isCompletionCommand,
           orderWakeWord: this.orderWakeWord,
           inquiryWakeWord: this.inquiryWakeWord,
           retryWakeWord: this.retryWakeWord
@@ -103,7 +128,6 @@ class VoiceRecognition extends EventHandler {
           detectedMode = 'retry';
           commandText = text.toLowerCase().replace(this.retryWakeWord, '').trim();
           this.emit('modeChange', { mode: 'retry', isActive: true });
-          // Reset retry counter when explicitly requesting retry
           this.retryCount = 0;
         }
 
@@ -111,8 +135,7 @@ class VoiceRecognition extends EventHandler {
           console.log('Wake word detected, emitting mode:', detectedMode);
           this.emit('wakeWord', { mode: detectedMode });
           this.retryCount = 0;
-          
-          // If there's a command after the wake word, emit it after a short delay
+
           if (commandText) {
             setTimeout(() => {
               console.log('Processing command after wake word:', commandText);
@@ -131,8 +154,7 @@ class VoiceRecognition extends EventHandler {
 
     this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error:', event.error, event.message);
-      
-      // Map Web Speech API error types to our error types
+
       const errorTypeMap: { [key: string]: ErrorType } = {
         'network': 'network',
         'no-speech': 'recognition',
@@ -142,10 +164,10 @@ class VoiceRecognition extends EventHandler {
         'bad-grammar': 'processing',
         'aborted': 'processing'
       };
-      
+
       const errorType = errorTypeMap[event.error] || 'processing';
       const errorMessage = event.message || `Recognition error: ${event.error}`;
-      
+
       this.emit('error', { type: errorType, message: errorMessage });
 
       if (errorType === 'network') {
@@ -153,7 +175,7 @@ class VoiceRecognition extends EventHandler {
         this.stop();
         return;
       }
-      
+
       if (this.isListening && this.retryCount < this.maxRetries) {
         this.retryCount++;
         console.log(`Retrying speech recognition (${this.retryCount}/${this.maxRetries})`);
