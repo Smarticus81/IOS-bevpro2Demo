@@ -17,6 +17,12 @@ import { useCart } from "@/contexts/CartContext";
 import { logger } from "@/lib/logger";
 import { voiceRecognition } from "@/lib/voice";
 import { SoundWaveVisualizer } from "./SoundWaveVisualizer";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function VoiceControlButton() {
   const { toast } = useToast();
@@ -33,7 +39,7 @@ export function VoiceControlButton() {
   });
 
   // Initialize voice commands with proper cart state
-  const { isListening, startListening, stopListening, isSupported } =
+  const { isListening, startListening, stopListening, isSupported, metrics } =
     useVoiceCommands({
       drinks,
       cart,
@@ -53,7 +59,7 @@ export function VoiceControlButton() {
     try {
       if (!isInitialized) {
         // Set up event listeners
-        const handleModeChange = (data: { mode: string, isActive: boolean }) => {
+        const handleModeChange = (data: { mode: string; isActive: boolean }) => {
           setMode(data.mode as 'wake_word' | 'command' | 'shutdown');
           toast({
             title: "Voice Control",
@@ -157,6 +163,11 @@ export function VoiceControlButton() {
     }
   };
 
+  // Format success rate for display
+  const formatSuccessRate = (rate: number) => {
+    return `${Math.round(rate)}%`;
+  };
+
   return (
     <>
       <motion.div
@@ -166,17 +177,34 @@ export function VoiceControlButton() {
         className="fixed bottom-6 right-6 z-50"
       >
         <div className="relative">
-          <Button
-            onClick={isInitialized ? handleShutdown : initializeVoiceControl}
-            size="lg"
-            className={`rounded-full p-6 shadow-lg transition-all duration-300
-              ${getButtonStyle()}
-              ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
-            disabled={!isSupported || isProcessing}
-            aria-label={!isInitialized ? "Initialize voice control" : mode === 'command' ? "Listening for commands" : "Listening for wake word"}
-          >
-            {getButtonIcon()}
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={isInitialized ? handleShutdown : initializeVoiceControl}
+                  size="lg"
+                  className={`rounded-full p-6 shadow-lg transition-all duration-300
+                    ${getButtonStyle()}
+                    ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
+                  disabled={!isSupported || isProcessing}
+                  aria-label={!isInitialized ? "Initialize voice control" : mode === 'command' ? "Listening for commands" : "Listening for wake word"}
+                >
+                  {getButtonIcon()}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left" align="center">
+                <div className="text-sm">
+                  <p className="font-semibold mb-1">Voice Command Success Rate</p>
+                  <p>Overall: {formatSuccessRate(metrics.overall)}</p>
+                  <div className="mt-1 space-y-0.5">
+                    <p>Orders: {formatSuccessRate(metrics.categories.drink_order.successRate)}</p>
+                    <p>System: {formatSuccessRate(metrics.categories.system_command.successRate)}</p>
+                    <p>Completion: {formatSuccessRate(metrics.categories.order_completion.successRate)}</p>
+                  </div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           <SoundWaveVisualizer
             isListening={isListening && isInitialized}

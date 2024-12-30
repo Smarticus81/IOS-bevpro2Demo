@@ -6,6 +6,7 @@ import type { CartItem } from '@/types/cart';
 import { logger } from '@/lib/logger';
 import { parseVoiceCommand } from '@/lib/command-parser';
 import { soundEffects } from '@/lib/sound-effects';
+import { voiceAnalytics } from '@/lib/analytics';
 
 interface VoiceCommandsProps {
   drinks: DrinkItem[];
@@ -60,12 +61,11 @@ export function useVoiceCommands({
     if (!text?.trim()) return;
 
     const command = text.toLowerCase().trim();
-    const now = Date.now(); // Fixed: Changed from Date.Now() to Date.now()
+    const now = Date.now();
 
     // Log incoming command
     logger.info('Processing voice command:', command);
 
-    // Debounce similar commands
     if (
       command === lastCommandRef.current.text &&
       now - lastCommandRef.current.timestamp < COMMAND_DEBOUNCE_MS
@@ -77,11 +77,14 @@ export function useVoiceCommands({
     lastCommandRef.current = { text: command, timestamp: now };
 
     try {
-      // Parse the command with available drinks
       const parsedCommand = parseVoiceCommand(command, drinks);
 
       if (!parsedCommand) {
         logger.info('Command not recognized:', command);
+        voiceAnalytics.trackCommand('system_command', false, {
+          command: text,
+          error: 'Command not recognized'
+        });
         showFeedback(
           'Not Understood',
           'Command not recognized. Say "help" for a list of commands.'
@@ -95,22 +98,31 @@ export function useVoiceCommands({
 
         switch (parsedCommand.action) {
           case 'complete_order':
-            logger.info('Completion command detected, checking cart state');
             if (!cart.length) {
+              voiceAnalytics.trackCommand('order_completion', false, {
+                command: text,
+                error: 'Empty cart'
+              });
               await soundEffects.playError();
               showFeedback('Empty Cart', 'Your cart is empty', 'destructive');
               return;
             }
             if (isProcessing) {
+              voiceAnalytics.trackCommand('order_completion', false, {
+                command: text,
+                error: 'Already processing'
+              });
               showFeedback('Processing', 'Your order is already being processed');
               return;
             }
+            voiceAnalytics.trackCommand('order_completion', true, { command: text });
             await soundEffects.playSuccess();
             showFeedback('Processing Order', 'Placing your order...');
             await onPlaceOrder();
             return;
 
           case 'help':
+            voiceAnalytics.trackCommand('system_command', true, { command: text });
             await soundEffects.playSuccess();
             showFeedback(
               'Voice Commands',
@@ -120,6 +132,10 @@ export function useVoiceCommands({
 
           case 'cancel':
             if (cart.length === 0) {
+              voiceAnalytics.trackCommand('system_command', false, {
+                command: text,
+                error: 'Cart already empty'
+              });
               showFeedback('Empty Cart', 'Your cart is already empty');
               return;
             }
@@ -127,6 +143,7 @@ export function useVoiceCommands({
             for (const item of cart) {
               await onRemoveItem(item.drink.id);
             }
+            voiceAnalytics.trackCommand('system_command', true, { command: text });
             await soundEffects.playSuccess();
             showFeedback('Order Cancelled', 'Your order has been cancelled');
             return;
@@ -148,16 +165,28 @@ export function useVoiceCommands({
               drink: matchedDrink,
               quantity: item.quantity
             });
+            voiceAnalytics.trackCommand('drink_order', true, {
+              command: `${item.quantity} ${matchedDrink.name}`
+            });
             await soundEffects.playSuccess();
             showFeedback(
               'Added to Cart',
               `Added ${item.quantity} ${matchedDrink.name}(s) to your cart.`
             );
+          } else {
+            voiceAnalytics.trackCommand('drink_order', false, {
+              command: text,
+              error: 'Drink not found'
+            });
           }
         }
       }
     } catch (error) {
       logger.error('Voice command processing error:', error);
+      voiceAnalytics.trackCommand('system_command', false, {
+        command: text,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
       await soundEffects.playError();
       showFeedback(
         'Error',
@@ -215,5 +244,6 @@ export function useVoiceCommands({
     startListening,
     stopListening,
     isSupported: voiceRecognition.isSupported(),
+    metrics: voiceAnalytics.getMetricsSummary()
   };
 }
