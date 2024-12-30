@@ -5,8 +5,7 @@ import { voiceRecognition } from '@/lib/voice';
 import type { CartItem } from '@/types/cart';
 import { logger } from '@/lib/logger';
 import { parseVoiceCommand } from '@/lib/command-parser';
-import { VoiceCommandHandler } from './VoiceCommandHandler'; // Assuming this is where the class is
-
+import { VoiceCommandHandler } from '@/lib/voice-command-handler'; // Fix import path
 
 interface VoiceCommandsProps {
   drinks: DrinkItem[];
@@ -29,7 +28,7 @@ export function useVoiceCommands({
   const { toast } = useToast();
   const lastCommandRef = useRef<{ text: string; timestamp: number }>({ text: '', timestamp: 0 });
   const COMMAND_DEBOUNCE_MS = 500;
-  const commandHandler = useRef<VoiceCommandHandler | null>(null); // Add commandHandler ref
+  const commandHandler = useRef<VoiceCommandHandler | null>(null);
 
   const validateDependencies = useCallback((): boolean => {
     const dependencies = {
@@ -187,13 +186,13 @@ export function useVoiceCommands({
       await voiceRecognition.start();
       setIsListening(true);
       showFeedback('Voice Control', 'Listening... Say "help" for commands');
-      commandHandler.current = new VoiceCommandHandler({onAddToCart, onRemoveItem, showFeedback, drinks}); // Initialize command handler here
+      commandHandler.current = new VoiceCommandHandler({onAddToCart, onRemoveItem, showFeedback, drinks});
     } catch (error) {
       logger.error('Failed to start listening:', error);
       setIsListening(false);
       throw error;
     }
-  }, [showFeedback, validateDependencies, isProcessing, onAddToCart, onRemoveItem, drinks, showFeedback]);
+  }, [showFeedback, validateDependencies, isProcessing, onAddToCart, onRemoveItem, drinks]);
 
   return {
     isListening,
