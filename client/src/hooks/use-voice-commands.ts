@@ -151,7 +151,6 @@ export function useVoiceCommands({
           }
           break;
       }
-
     } catch (error) {
       logger.error('Voice command processing error:', error);
       showFeedback(
@@ -164,9 +163,13 @@ export function useVoiceCommands({
 
   const handleVoiceEvent = useCallback(async (event: any) => {
     try {
-      if (event.type === 'completion') {
-        logger.info('Received completion event, processing order');
-        await processOrder();
+      if (event?.type === 'completion') {
+        logger.info('Received completion event, initiating order processing');
+        const success = await processOrder();
+        if (success) {
+          logger.info('Order processed successfully via voice command');
+          showFeedback('Success', 'Order processed successfully');
+        }
       }
     } catch (error) {
       logger.error('Error handling voice event:', error);
