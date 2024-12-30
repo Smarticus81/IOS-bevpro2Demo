@@ -47,7 +47,9 @@ class VoiceRecognition extends EventHandler {
     "complete",
     "process",
     "finish",
-    "done"
+    "done",
+    "okay thats it",
+    "okay that's it"
   ];
 
   constructor() {
@@ -93,57 +95,31 @@ class VoiceRecognition extends EventHandler {
           return;
         }
 
-        // Enhanced wake word detection with retry capability
+        // Process other commands
         const hasOrderWake = text.toLowerCase().includes(this.orderWakeWord);
         const hasInquiryWake = text.toLowerCase().includes(this.inquiryWakeWord);
         const hasRetryWake = text.toLowerCase().includes(this.retryWakeWord);
 
-        console.log('Wake word detection:', {
-          text,
-          hasOrderWake,
-          hasInquiryWake,
-          hasRetryWake,
-          isCompletionCommand,
-          orderWakeWord: this.orderWakeWord,
-          inquiryWakeWord: this.inquiryWakeWord,
-          retryWakeWord: this.retryWakeWord
-        });
-
-        // Extract just the command part after wake word if present
-        let commandText = text;
-        let detectedMode: 'order' | 'inquiry' | 'retry' | null = null;
-
         if (hasOrderWake) {
-          console.log('Order wake word detected');
-          detectedMode = 'order';
-          commandText = text.toLowerCase().replace(this.orderWakeWord, '').trim();
+          const commandText = text.toLowerCase().replace(this.orderWakeWord, '').trim();
           this.emit('modeChange', { mode: 'order', isActive: true });
+          if (commandText) {
+            this.emit('speech', commandText);
+          }
         } else if (hasInquiryWake) {
-          console.log('Inquiry wake word detected');
-          detectedMode = 'inquiry';
-          commandText = text.toLowerCase().replace(this.inquiryWakeWord, '').trim();
+          const commandText = text.toLowerCase().replace(this.inquiryWakeWord, '').trim();
           this.emit('modeChange', { mode: 'inquiry', isActive: true });
+          if (commandText) {
+            this.emit('speech', commandText);
+          }
         } else if (hasRetryWake) {
-          console.log('Retry wake word detected');
-          detectedMode = 'retry';
-          commandText = text.toLowerCase().replace(this.retryWakeWord, '').trim();
+          const commandText = text.toLowerCase().replace(this.retryWakeWord, '').trim();
           this.emit('modeChange', { mode: 'retry', isActive: true });
           this.retryCount = 0;
-        }
-
-        if (detectedMode) {
-          console.log('Wake word detected, emitting mode:', detectedMode);
-          this.emit('wakeWord', { mode: detectedMode });
-          this.retryCount = 0;
-
           if (commandText) {
-            setTimeout(() => {
-              console.log('Processing command after wake word:', commandText);
-              this.emit('speech', commandText);
-            }, 500);
+            this.emit('speech', commandText);
           }
         } else {
-          console.log('No wake word detected, emitting speech');
           this.emit('speech', text);
         }
       } catch (error) {

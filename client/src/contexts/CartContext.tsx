@@ -80,7 +80,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         total: cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0)
       });
 
-      // Always succeed in demo mode
+      // In demo mode, always succeed
       const demoTransactionId = `demo-${Date.now()}`;
 
       // Simulate API delay
@@ -111,7 +111,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setLocation(`/payment-confirmation?transaction=${data.transactionId}`);
     },
     onError: () => {
-      // In demo mode, always succeed
       logger.info('Payment error handled (demo mode), proceeding with success flow');
       dispatch({ type: 'CLEAR_CART' });
       queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
@@ -130,45 +129,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     },
   });
 
-  // Place Order with validation and retry
-  const placeOrder = useCallback(async () => {
-    logger.info('Attempting to place order', {
-      cartSize: state.items.length,
-      isProcessing: state.isProcessing
-    });
-
-    if (state.isProcessing) {
-      toast({
-        title: 'Processing',
-        description: 'Your order is already being processed.',
-        variant: 'default',
-      });
-      return;
-    }
-
-    if (state.items.length === 0) {
-      toast({
-        title: 'Error',
-        description: 'Your cart is empty.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      logger.info('Initiating order placement', {
-        cartSize: state.items.length,
-        isProcessing: state.isProcessing
-      });
-
-      await orderMutation.mutateAsync(state.items);
-    } catch (error) {
-      // Error handling is done in mutation callbacks
-      logger.error('Error during order placement:', error);
-    }
-  }, [state.items, state.isProcessing, orderMutation, toast]);
-
-  // Process Voice Commands with improved logging
+  // Process Voice Commands with improved logging and error handling
   const processVoiceCommand = useCallback(async (command: string) => {
     try {
       logger.info('Processing voice command:', command);
@@ -182,7 +143,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
         // Handle order completion command with immediate processing
         if (result.order.action === 'complete_order') {
-          logger.info('Completion command detected, processing order');
+          logger.info('Completion command detected, initiating order processing');
           await placeOrder();
           return;
         }
@@ -208,7 +169,46 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [toast, placeOrder]);
 
-  // Add to Cart with error recovery
+  // Place Order with validation and retry logic
+  const placeOrder = useCallback(async () => {
+    logger.info('Attempting to place order', {
+      cartSize: state.items.length,
+      isProcessing: state.isProcessing
+    });
+
+    if (state.isProcessing) {
+      toast({
+        title: 'Processing',
+        description: 'Your order is already being processed.',
+        variant: 'default',
+      });
+      return false;
+    }
+
+    if (state.items.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'Your cart is empty.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    try {
+      logger.info('Initiating order placement', {
+        cartSize: state.items.length,
+        isProcessing: state.isProcessing
+      });
+
+      await orderMutation.mutateAsync(state.items);
+      return true;
+    } catch (error) {
+      logger.error('Error during order placement:', error);
+      return false;
+    }
+  }, [state.items, state.isProcessing, orderMutation, toast]);
+
+  // Add to Cart with validation and error handling
   const addToCart = useCallback(async (action: AddToCartAction) => {
     if (state.isProcessing) {
       logger.info('Cart is currently processing, ignoring add request');
@@ -230,20 +230,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         variant: 'default',
       });
     } catch (error) {
-      logger.error('Failed to add item to cart:', {
-        error,
-        drinkId: action.drink.id,
-        drinkName: action.drink.name
-      });
-
+      logger.error('Failed to add item to cart:', error);
       toast({
         title: 'Error',
         description: 'Failed to add item to cart.',
         variant: 'destructive',
       });
-
-      // Revert the add action on error
-      dispatch({ type: 'REMOVE_ITEM', drinkId: action.drink.id });
     }
   }, [toast, state.isProcessing]);
 
@@ -256,13 +248,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     try {
       logger.info('Removing item from cart:', { drinkId });
-      const itemToRemove = state.items.find(item => item.drink.id === drinkId);
-
-      if (!itemToRemove) {
-        logger.warn('Item not found in cart:', { drinkId });
-        return;
-      }
-
       dispatch({ type: 'REMOVE_ITEM', drinkId });
 
       toast({
