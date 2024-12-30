@@ -1,0 +1,148 @@
+{
+  "timestamp": "2024-12-30T21:17:47.638Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "complete order"
+}
+Voice command received: 
+Object {text: "complete order", drinksAvailable: 65}
+No drink match found: 
+Object {searchTerm: "complete order", availableDrinks: Array(65)}
+No valid items found in command
+{
+  "timestamp": "2024-12-30T21:17:47.639Z",
+  "level": "info",
+  "message": "Not Understood: Command not recognized. Say \"help\" for a list of commands.",
+  "context": {}
+}
+{
+  "timestamp": "2024-12-30T21:17:47.654Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 5,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-30T21:17:47.655Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 5,
+    "isProcessing": false
+  }
+}
+Recognized text: okay that's it
+{
+  "timestamp": "2024-12-30T21:17:55.632Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "okay that's it"
+}
+Voice command received: 
+Object {text: "okay that's it", drinksAvailable: 65}
+No drink match found: 
+Object {searchTerm: "okay thats it", availableDrinks: Array(65)}
+No valid items found in command
+{
+  "timestamp": "2024-12-30T21:17:55.632Z",
+  "level": "info",
+  "message": "Not Understood: Command not recognized. Say \"help\" for a list of commands.",
+  "context": {}
+}
+{
+  "timestamp": "2024-12-30T21:17:55.644Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 5,
+    "isProcessing": false
+  }
+}
+Recognized text: complete order
+{
+  "timestamp": "2024-12-30T21:18:00.126Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "complete order"
+}
+Voice command received: 
+Object {text: "complete order", drinksAvailable: 65}
+No drink match found: 
+Object {searchTerm: "complete order", availableDrinks: Array(65)}
+No valid items found in command
+{
+  "timestamp": "2024-12-30T21:18:00.127Z",
+  "level": "info",
+  "message": "Not Understood: Command not recognized. Say \"help\" for a list of commands.",
+  "context": {}
+}
+{
+  "timestamp": "2024-12-30T21:18:00.139Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 5,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-30T21:18:00.140Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 5,
+    "isProcessing": false
+  }
+}
+Recognized text: stop listening
+{
+  "timestamp": "2024-12-30T21:18:03.848Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 5,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-30T21:18:03.849Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 5,
+    "isProcessing": false
+  }
+}
+Recognized text: complete order
+Recognized text: hey bar
+{
+  "timestamp": "2024-12-30T21:18:12.411Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 5,
+    "isProcessing": false
+  }
+}
+Recognized text: complete order
+{
+  "timestamp": "2024-12-30T21:18:17.228Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "complete order"
+}
+Voice command received: 
+Object {text: "complete order", drinksAvailable: 65}
+No drink match found: 
+Object {searchTerm: "complete order", availableDrinks: Array(65)}
+No valid items found in command

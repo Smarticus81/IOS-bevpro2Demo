@@ -72,11 +72,26 @@ export function parseVoiceCommand(text: string, availableDrinks: DrinkItem[]): P
     drinksAvailable: availableDrinks.length
   });
 
-  // Check for system commands first
+  // Check for complete order commands first
+  const completeOrderPatterns = [
+    /^(complete|process|finish|confirm|place)\s*(the\s*)?order$/i,
+    /^(that'?s?\s*(it|all)|done|ready|checkout)$/i,
+    /^(process|complete)\s*(the\s*)?payment$/i
+  ];
+
+  for (const pattern of completeOrderPatterns) {
+    if (pattern.test(textLower)) {
+      console.log('Matched complete order command');
+      return { type: 'system', action: 'complete_order' };
+    }
+  }
+
+  // Check for other system commands
   const systemCommands = {
     stop: /(?:stop|end|quit|exit|turn off|disable)\s+(?:listening|voice|commands?)/i,
     help: /(?:help|what can i say|commands|menu|what can you do)/i,
-    repeat: /(?:repeat that|say that again|what did you say)/i
+    repeat: /(?:repeat that|say that again|what did you say)/i,
+    cancel: /(?:cancel|clear|remove)\s+(?:order|everything|all)/i
   };
 
   for (const [action, pattern] of Object.entries(systemCommands)) {
