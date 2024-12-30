@@ -29,8 +29,8 @@ export function useVoiceCommands({
   const COMMAND_DEBOUNCE_MS = 500;
 
   const validateDependencies = useCallback((): boolean => {
+    // Allow initialization even when cart is empty
     const dependencies = {
-      drinks: !!drinks.length,
       onAddToCart: !!onAddToCart,
       onRemoveItem: !!onRemoveItem,
       onPlaceOrder: !!onPlaceOrder,
@@ -43,7 +43,7 @@ export function useVoiceCommands({
     }
 
     return isValid;
-  }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder]);
+  }, [onAddToCart, onRemoveItem, onPlaceOrder]);
 
   const showFeedback = useCallback(
     (title: string, message: string, type: 'default' | 'destructive' = 'default') => {
@@ -238,8 +238,9 @@ export function useVoiceCommands({
         throw new Error('Speech recognition not supported');
       }
 
-      if (!validateDependencies() || isProcessing) {
-        throw new Error('Required dependencies unavailable or cart is processing');
+      // Only check for required callbacks, not processing state
+      if (!validateDependencies()) {
+        throw new Error('Required voice command handlers are not available');
       }
 
       await voiceRecognition.start();
@@ -250,7 +251,7 @@ export function useVoiceCommands({
       setIsListening(false);
       throw error;
     }
-  }, [showFeedback, validateDependencies, isProcessing]);
+  }, [showFeedback, validateDependencies]);
 
   return {
     isListening,

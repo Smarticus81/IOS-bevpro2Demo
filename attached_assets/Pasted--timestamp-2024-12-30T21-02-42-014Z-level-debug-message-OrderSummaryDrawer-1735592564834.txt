@@ -1,0 +1,90 @@
+{
+  "timestamp": "2024-12-30T21:02:42.014Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 2,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-30T21:02:42.016Z",
+  "level": "info",
+  "message": "Voice Control: Listening... Say \"help\" for commands",
+  "context": {}
+}
+{
+  "timestamp": "2024-12-30T21:02:42.033Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 2,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-30T21:02:42.036Z",
+  "level": "info",
+  "message": "Voice Control: Listening... Say \"help\" for commands",
+  "context": {}
+}
+{
+  "timestamp": "2024-12-30T21:02:42.047Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 2,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-30T21:02:42.049Z",
+  "level": "info",
+  "message": "Voice Control: Listening... Say \"help\" for commands",
+  "context": {}
+}
+{
+  "timestamp": "2024-12-30T21:02:42.062Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 2,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-30T21:02:42.064Z",
+  "level": "info",
+  "message": "Voice Control: Listening... Say \"help\" for commands",
+  "context": {}
+}
+{
+  "timestamp": "2024-12-30T21:02:42.079Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 2,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-30T21:02:42.081Z",
+  "level": "info",
+  "message": "Voice Control: Listening... Say \"help\" for commands",
+  "context": {}
+}
+{
+  "timestamp": "2024-12-30T21:02:42.091Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 2,
+    "isProcessing": false
+  }
+}
