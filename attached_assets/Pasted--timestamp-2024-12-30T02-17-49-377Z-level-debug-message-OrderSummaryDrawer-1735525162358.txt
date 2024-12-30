@@ -1,0 +1,90 @@
+{
+  "timestamp": "2024-12-30T02:17:49.377Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-30T02:17:53.069Z",
+  "level": "info",
+  "message": "Adding item to cart",
+  "context": {
+    "drinkId": 8,
+    "quantity": 1,
+    "currentCartSize": 0
+  }
+}
+{
+  "timestamp": "2024-12-30T02:17:53.088Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+`DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
+
+If you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.
+
+For more information, see https://radix-ui.com/primitives/docs/components/dialog
+Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+`DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
+
+If you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.
+
+For more information, see https://radix-ui.com/primitives/docs/components/dialog
+Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+{
+  "timestamp": "2024-12-30T02:17:55.447Z",
+  "level": "info",
+  "message": "Initiating order placement",
+  "context": {
+    "cartSize": 1,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-30T02:17:55.462Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": true
+  }
+}
+{
+  "timestamp": "2024-12-30T02:17:55.463Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": true
+  }
+}
+{
+  "timestamp": "2024-12-30T02:17:55.467Z",
+  "level": "info",
+  "message": "Attempting order placement:",
+  "context": {
+    "attempt": 1,
+    "maxRetries": 3,
+    "itemCount": 1,
+    "total": 5
+  }
+}
+{
+  "timestamp": "2024-12-30T02:17:55.931Z",
+  "level": "info",
+  "message": "Order created successfully:",
+  "context": {
+    "orderId": 86
+  }
+}
