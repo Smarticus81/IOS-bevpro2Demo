@@ -16,6 +16,7 @@ import type { DrinkItem } from "@/types/speech";
 import { useCart } from "@/contexts/CartContext";
 import { logger } from "@/lib/logger";
 import { voiceRecognition } from "@/lib/voice";
+import { SoundWaveVisualizer } from "./SoundWaveVisualizer";
 
 export function VoiceControlButton() {
   const { toast } = useToast();
@@ -56,7 +57,7 @@ export function VoiceControlButton() {
           setMode(data.mode as 'wake_word' | 'command' | 'shutdown');
           toast({
             title: "Voice Control",
-            description: data.mode === 'wake_word' 
+            description: data.mode === 'wake_word'
               ? "Listening for wake word (Hey Bar/Hey Bev)"
               : "Command mode active. Say 'stop listening' to exit",
             duration: 3000,
@@ -164,17 +165,24 @@ export function VoiceControlButton() {
         exit={{ scale: 0.9, opacity: 0 }}
         className="fixed bottom-6 right-6 z-50"
       >
-        <Button
-          onClick={isInitialized ? handleShutdown : initializeVoiceControl}
-          size="lg"
-          className={`rounded-full p-6 shadow-lg transition-all duration-300
-            ${getButtonStyle()}
-            ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
-          disabled={!isSupported || isProcessing}
-          aria-label={!isInitialized ? "Initialize voice control" : mode === 'command' ? "Listening for commands" : "Listening for wake word"}
-        >
-          {getButtonIcon()}
-        </Button>
+        <div className="relative">
+          <Button
+            onClick={isInitialized ? handleShutdown : initializeVoiceControl}
+            size="lg"
+            className={`rounded-full p-6 shadow-lg transition-all duration-300
+              ${getButtonStyle()}
+              ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
+            disabled={!isSupported || isProcessing}
+            aria-label={!isInitialized ? "Initialize voice control" : mode === 'command' ? "Listening for commands" : "Listening for wake word"}
+          >
+            {getButtonIcon()}
+          </Button>
+
+          <SoundWaveVisualizer
+            isListening={isListening && isInitialized}
+            mode={mode}
+          />
+        </div>
       </motion.div>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
