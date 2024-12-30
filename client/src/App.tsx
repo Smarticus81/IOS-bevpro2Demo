@@ -12,8 +12,6 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { VoiceControlButton } from "@/components/VoiceControlButton";
 import { CartProvider } from "@/contexts/CartContext";
 import { OrderSummaryDrawer } from "@/components/OrderSummaryDrawer";
-import { ThemeProvider } from "@/contexts/theme-context";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -33,26 +31,19 @@ function App() {
   }
 
   return (
-    <ThemeProvider defaultTheme="system">
-      <CartProvider>
-        <div className="min-h-screen bg-background text-foreground">
-          <div className="fixed top-4 right-4 z-50">
-            <ThemeToggle />
-          </div>
-          <Switch>
-            <Route path="/" component={Home} />
-            <Route path="/dashboard" component={Dashboard} />
-            <Route path="/inventory" component={Inventory} />
-            <Route path="/events" component={Events} />
-            <Route path="/settings" component={Settings} />
-            <Route path="/payment-confirmation" component={PaymentConfirmation} />
-            <Route component={NotFound} />
-          </Switch>
-          <OrderSummaryDrawer />
-          <VoiceControlButton />
-        </div>
-      </CartProvider>
-    </ThemeProvider>
+    <CartProvider>
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route path="/dashboard" component={Dashboard} />
+        <Route path="/inventory" component={Inventory} />
+        <Route path="/events" component={Events} />
+        <Route path="/settings" component={Settings} />
+        <Route path="/payment-confirmation" component={PaymentConfirmation} />
+        <Route component={NotFound} />
+      </Switch>
+      <OrderSummaryDrawer />
+      <VoiceControlButton />
+    </CartProvider>
   );
 }
 
