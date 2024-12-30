@@ -5,6 +5,7 @@ import { logger } from '@/lib/logger';
 import type { CartState, CartContextType, AddToCartAction, CartItem } from '@/types/cart';
 import { useLocation } from 'wouter';
 import { processVoiceOrder } from '@/lib/voice-order-service';
+import { soundEffects } from '@/lib/sound-effects';
 
 // Define the context
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -95,11 +96,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       logger.info('Setting cart processing state');
       dispatch({ type: 'SET_PROCESSING', isProcessing: true });
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       logger.info('Payment successful, clearing cart');
       dispatch({ type: 'CLEAR_CART' });
       queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
 
+      await soundEffects.playSuccess();
       toast({
         title: 'Order Confirmed',
         description: 'Your order has been processed successfully!',
@@ -109,11 +111,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       // Navigate to confirmation page
       setLocation(`/payment-confirmation?transaction=${data.transactionId}`);
     },
-    onError: () => {
+    onError: async () => {
       logger.info('Payment error handled (demo mode), proceeding with success flow');
       dispatch({ type: 'CLEAR_CART' });
       queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
 
+      await soundEffects.playSuccess();
       toast({
         title: 'Order Confirmed',
         description: 'Your order has been processed successfully!',
@@ -145,6 +148,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (state.items.length === 0) {
+      await soundEffects.playError();
       toast({
         title: 'Error',
         description: 'Your cart is empty.',
@@ -182,6 +186,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       });
 
       dispatch(action);
+      await soundEffects.playSuccess();
 
       toast({
         title: 'Added to Cart',
@@ -190,6 +195,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       });
     } catch (error) {
       logger.error('Failed to add item to cart:', error);
+      await soundEffects.playError();
       toast({
         title: 'Error',
         description: 'Failed to add item to cart.',
@@ -216,6 +222,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       });
     } catch (error) {
       logger.error('Error removing item from cart:', { error, drinkId });
+      await soundEffects.playError();
       toast({
         title: 'Error',
         description: 'Failed to remove item from cart.',
@@ -256,6 +263,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       logger.error('Error processing voice command:', error);
+      await soundEffects.playError();
       toast({
         title: 'Error',
         description: 'Failed to process voice command',

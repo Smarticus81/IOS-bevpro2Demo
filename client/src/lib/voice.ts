@@ -1,4 +1,5 @@
 import type { ErrorType, VoiceError } from "@/types/speech";
+import { soundEffects } from "./sound-effects";
 
 type EventCallback<T = any> = (data?: T) => void;
 type EventMap = { [key: string]: EventCallback[] };
@@ -87,7 +88,7 @@ class VoiceRecognition extends EventHandler {
   private setupRecognition() {
     if (!this.recognition) return;
 
-    this.recognition.onresult = (event: SpeechRecognitionEvent) => {
+    this.recognition.onresult = async (event: SpeechRecognitionEvent) => {
       try {
         const result = event.results[event.results.length - 1];
         if (!result?.[0]?.transcript) {
@@ -96,6 +97,14 @@ class VoiceRecognition extends EventHandler {
 
         const text = result[0].transcript.toLowerCase();
         console.log('Recognized text:', text);
+
+        // Play wake word sound if detected
+        const hasWakeWord = text.includes(this.orderWakeWord) || 
+                          text.includes(this.inquiryWakeWord) || 
+                          text.includes(this.retryWakeWord);
+        if (hasWakeWord) {
+          await soundEffects.playWakeWord();
+        }
 
         // Check for completion phrases first
         const isCompletionCommand = this.completionPhrases.some(phrase => 
@@ -109,12 +118,14 @@ class VoiceRecognition extends EventHandler {
 
         if (isCompletionCommand) {
           console.log('Completion command detected');
+          await soundEffects.playSuccess();
           this.emit('completion', { type: 'complete_order' });
           return;
         }
 
         if (isCancellationCommand) {
           console.log('Cancellation command detected');
+          await soundEffects.playError();
           this.emit('cancel', { type: 'cancel_order' });
           return;
         }
@@ -169,6 +180,7 @@ class VoiceRecognition extends EventHandler {
       const errorMessage = event.message || `Recognition error: ${event.error}`;
 
       this.emit('error', { type: errorType, message: errorMessage });
+      soundEffects.playError();
 
       if (errorType === 'network') {
         console.error('Network error detected, stopping recognition');
@@ -198,7 +210,7 @@ class VoiceRecognition extends EventHandler {
     };
   }
 
-  start() {
+  async start() {
     if (!this.recognition) {
       this.emit('error', 'Speech recognition not available');
       return;
@@ -209,6 +221,7 @@ class VoiceRecognition extends EventHandler {
         this.isListening = true;
         this.retryCount = 0;
         this.recognition.start();
+        await soundEffects.playListeningStart();
         this.emit('start');
       } catch (error) {
         console.error('Error starting speech recognition:', error);
@@ -218,12 +231,13 @@ class VoiceRecognition extends EventHandler {
     }
   }
 
-  stop() {
+  async stop() {
     if (this.recognition && this.isListening) {
       try {
         this.isListening = false;
         this.retryCount = 0;
         this.recognition.stop();
+        await soundEffects.playListeningStop();
         this.emit('stop');
       } catch (error) {
         console.error('Error stopping speech recognition:', error);
