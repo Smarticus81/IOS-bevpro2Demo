@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Mic, CheckCircle2, HelpCircle, ShoppingCart, XCircle } from 'lucide-react';
+import { Mic, CheckCircle2, HelpCircle, ShoppingCart, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { soundEffects } from '@/lib/sound-effects';
 
@@ -88,6 +88,18 @@ export function VoiceTutorial({ onComplete, isOpen }: Props) {
     onComplete();
   }, [onComplete]);
 
+  const handlePrevStep = useCallback(() => {
+    if (currentStep > 0) {
+      setCurrentStep(prev => prev - 1);
+    }
+  }, [currentStep]);
+
+  const handleNextStep = useCallback(() => {
+    if (currentStep < tutorialSteps.length - 1) {
+      setCurrentStep(prev => prev + 1);
+    }
+  }, [currentStep]);
+
   if (!isOpen) return null;
 
   const step = tutorialSteps[currentStep];
@@ -98,49 +110,75 @@ export function VoiceTutorial({ onComplete, isOpen }: Props) {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 overflow-y-auto"
       >
-        <Card className="w-full max-w-lg mx-4 p-6">
-          <div className="flex items-start gap-4">
-            <div className="flex-shrink-0 p-2 bg-primary/10 rounded-full">
-              {step.icon}
+        <Card className="w-full max-w-lg mx-auto">
+          <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 p-2 bg-primary/10 rounded-full">
+                {step.icon}
+              </div>
+              <div className="flex-grow">
+                <h3 className="text-lg font-semibold mb-2">
+                  Step {currentStep + 1}: {step.title}
+                </h3>
+                <p className="text-muted-foreground mb-4">{step.instruction}</p>
+                {step.hint && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                    <HelpCircle className="h-4 w-4" />
+                    <p>{step.hint}</p>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="flex-grow">
-              <h3 className="text-lg font-semibold mb-2">
-                Step {currentStep + 1}: {step.title}
-              </h3>
-              <p className="text-muted-foreground mb-4">{step.instruction}</p>
-              {step.hint && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                  <HelpCircle className="h-4 w-4" />
-                  <p>{step.hint}</p>
-                </div>
-              )}
-            </div>
-          </div>
 
-          <div className="mt-6 flex items-center justify-between">
-            <div className="flex gap-2">
-              {tutorialSteps.map((_, index) => (
-                <div
-                  key={index}
-                  className={`w-2 h-2 rounded-full transition-colors duration-200 ${
-                    completedSteps.includes(index)
-                      ? 'bg-primary'
-                      : index === currentStep
-                      ? 'bg-primary/50'
-                      : 'bg-border'
-                  }`}
-                />
-              ))}
+            <div className="flex items-center justify-between mt-6">
+              <div className="flex gap-2">
+                {tutorialSteps.map((_, index) => (
+                  <div
+                    key={index}
+                    className={`w-2 h-2 rounded-full transition-colors duration-200 ${
+                      completedSteps.includes(index)
+                        ? 'bg-primary'
+                        : index === currentStep
+                        ? 'bg-primary/50'
+                        : 'bg-border'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handlePrevStep}
+                  disabled={currentStep === 0}
+                  className="text-muted-foreground"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleNextStep}
+                  disabled={currentStep === tutorialSteps.length - 1}
+                  className="text-muted-foreground"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSkip}
+                  className="text-muted-foreground ml-2"
+                >
+                  Skip Tutorial
+                </Button>
+              </div>
             </div>
-            <Button
-              variant="ghost"
-              onClick={handleSkip}
-              className="text-muted-foreground"
-            >
-              Skip Tutorial
-            </Button>
           </div>
         </Card>
       </motion.div>
