@@ -5,7 +5,6 @@ import { Events } from "@/pages/Events";
 import { Settings } from "@/pages/Settings";
 import { Dashboard } from "@/pages/Dashboard";
 import { PaymentConfirmation } from "@/pages/PaymentConfirmation";
-import { PaymentFailed } from "@/pages/PaymentFailed";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { useState } from "react";
@@ -30,7 +29,6 @@ function App() {
         <Route path="/events" component={Events} />
         <Route path="/settings" component={Settings} />
         <Route path="/payment-confirmation" component={PaymentConfirmation} />
-        <Route path="/payment-failed" component={PaymentFailed} />
         <Route component={NotFound} />
       </Switch>
       <OrderSummaryDrawer />
