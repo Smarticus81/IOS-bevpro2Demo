@@ -27,9 +27,46 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       colors: {
+        // Light mode colors (warm, inviting beverage tones)
         pearl: {
           light: "#F8F9FC",
           dark: "#F0F2F8"
+        },
+        espresso: {
+          50: "#FDF8F6",
+          100: "#F5E6E0",
+          200: "#E8C7BA",
+          300: "#D9A794",
+          400: "#C68B6E",
+          500: "#A66D4F",
+          600: "#8B4F32",
+          700: "#6F3A22",
+          800: "#522615",
+          900: "#2D1509"
+        },
+        tea: {
+          50: "#F7F9E8",
+          100: "#EFF4D1",
+          200: "#DFE9A3",
+          300: "#CFDE75",
+          400: "#BFD347",
+          500: "#A3B72E",
+          600: "#879B1F",
+          700: "#6B7F10",
+          800: "#4F6307",
+          900: "#334700"
+        },
+        cocktail: {
+          50: "#FFF0F6",
+          100: "#FFE0ED",
+          200: "#FFC1DB",
+          300: "#FFA2C9",
+          400: "#FF83B7",
+          500: "#FF64A5",
+          600: "#FF4593",
+          700: "#E62677",
+          800: "#CC075B",
+          900: "#B3003F"
         },
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
