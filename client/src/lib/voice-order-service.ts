@@ -43,7 +43,8 @@ function processSimpleCommands(text: string): OrderDetails | null {
   const completionPhrases = [
     'complete', 'finish', 'done', 'checkout', 'pay',
     'confirm', 'process', 'submit', 'place order',
-    'thats it', "that's it", 'process order', 'complete order'
+    'thats it', "that's it", 'process order', 'complete order',
+    'okay thats it', "okay that's it"
   ];
 
   // Check if any completion phrase is present
