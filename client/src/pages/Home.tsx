@@ -93,11 +93,11 @@ export function Home() {
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <div className="lg:col-span-3 space-y-8">
-            {/* Drinks Grid */}
+          {/* Drinks Grid - Optimized for mobile */}
+          <div className="lg:col-span-3">
             <motion.div 
               layout
-              className="grid grid-cols-2 gap-3 sm:gap-4"
+              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4"
             >
               <AnimatePresence>
                 {filteredDrinks.map((drink) => {
