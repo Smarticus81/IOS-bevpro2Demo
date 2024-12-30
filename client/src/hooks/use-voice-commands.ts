@@ -104,32 +104,6 @@ export function useVoiceCommands({
     lastCommandRef.current = { text: command, timestamp: now };
 
     try {
-      // Check for completion phrases first
-      const completionPhrases = [
-        'complete order',
-        'process order',
-        'finish order',
-        'place order',
-        'thats it',
-        "that's it",
-        'complete',
-        'process',
-        'finish',
-        'done',
-        'okay thats it',
-        'okay that\'s it'
-      ];
-
-      const isCompletionCommand = completionPhrases.some(phrase => 
-        command.includes(phrase)
-      );
-
-      if (isCompletionCommand) {
-        logger.info('Completion command detected:', command);
-        await processOrder();
-        return;
-      }
-
       // Handle regular order items
       const parsedCommand = parseVoiceCommand(command, drinks);
       if (!parsedCommand) {
@@ -186,14 +160,23 @@ export function useVoiceCommands({
         'destructive'
       );
     }
-  }, [drinks, onAddToCart, showFeedback, processOrder]);
+  }, [drinks, onAddToCart, showFeedback]);
 
-  const handleVoiceEvent = useCallback((event: any) => {
-    if (event.type === 'completion') {
-      logger.info('Received completion event:', event);
-      processOrder();
+  const handleVoiceEvent = useCallback(async (event: any) => {
+    try {
+      if (event.type === 'completion') {
+        logger.info('Received completion event, processing order');
+        await processOrder();
+      }
+    } catch (error) {
+      logger.error('Error handling voice event:', error);
+      showFeedback(
+        'Error',
+        'Failed to process voice command',
+        'destructive'
+      );
     }
-  }, [processOrder]);
+  }, [processOrder, showFeedback]);
 
   useEffect(() => {
     if (isListening) {
