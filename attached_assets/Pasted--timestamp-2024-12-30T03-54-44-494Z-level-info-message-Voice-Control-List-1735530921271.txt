@@ -1,0 +1,169 @@
+{
+  "timestamp": "2024-12-30T03:54:44.494Z",
+  "level": "info",
+  "message": "Voice Control: Listening... Say \"help\" for commands",
+  "context": {}
+}
+{
+  "timestamp": "2024-12-30T03:54:44.506Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-30T03:54:44.507Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-30T03:54:44.521Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-30T03:54:44.522Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-30T03:54:48.729Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "can i get to two cucumber cooler"
+}
+Voice command received: 
+Object {text: "can i get to two cucumber cooler", drinksAvailable: 65}
+Found exact drink match: Cucumber Cooler
+Successfully parsed order items: 
+Array [{…}]
+{
+  "timestamp": "2024-12-30T03:54:48.730Z",
+  "level": "info",
+  "message": "Adding item to cart",
+  "context": {
+    "drinkId": 2,
+    "quantity": 2,
+    "currentCartSize": 0
+  }
+}
+{
+  "timestamp": "2024-12-30T03:54:48.730Z",
+  "level": "info",
+  "message": "Added to Cart: Added 2 Cucumber Cooler(s) to your cart.",
+  "context": {}
+}
+{
+  "timestamp": "2024-12-30T03:54:48.742Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 2,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-30T03:54:48.743Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 2,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-30T03:54:52.124Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "please order"
+}
+Voice command received: 
+Object {text: "please order", drinksAvailable: 65}
+No drink match found: 
+Object {searchTerm: "please order", availableDrinks: Array(65)}
+No valid items found in command
+{
+  "timestamp": "2024-12-30T03:54:52.125Z",
+  "level": "info",
+  "message": "Not Understood: Command not recognized. Say \"help\" for a list of commands.",
+  "context": {}
+}
+{
+  "timestamp": "2024-12-30T03:54:52.137Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 2,
+    "isProcessing": false
+  }
+}
+`DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
+
+If you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.
+
+For more information, see https://radix-ui.com/primitives/docs/components/dialog
+Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+`DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.
+
+If you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.
+
+For more information, see https://radix-ui.com/primitives/docs/components/dialog
+Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+{
+  "timestamp": "2024-12-30T03:54:58.238Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "process the order"
+}
+Voice command received: 
+Object {text: "process the order", drinksAvailable: 65}
+No drink match found: 
+Object {searchTerm: "process the order", availableDrinks: Array(65)}
+No valid items found in command
+{
+  "timestamp": "2024-12-30T03:54:58.239Z",
+  "level": "info",
+  "message": "Not Understood: Command not recognized. Say \"help\" for a list of commands.",
+  "context": {}
+}
+{
+  "timestamp": "2024-12-30T03:54:58.257Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 2,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-30T03:54:58.258Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 2,
+    "isProcessing": false
+  }
+}
