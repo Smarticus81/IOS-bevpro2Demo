@@ -24,6 +24,7 @@ declare global {
   interface SpeechRecognitionErrorEvent extends Event {
     error: string;
     message: string;
+    name: string;
   }
 
   interface SpeechRecognitionEvent extends Event {

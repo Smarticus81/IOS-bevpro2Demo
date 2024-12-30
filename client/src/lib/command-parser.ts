@@ -1,4 +1,5 @@
-import type { DrinkItem } from "@db/schema";
+import type { DrinkItem } from "@/types/speech";
+import { logger } from "./logger";
 
 type ParsedCommand = {
   type: 'order' | 'inquiry' | 'modify' | 'cancel' | 'system';
@@ -28,31 +29,27 @@ function findMatchingDrink(drinkName: string, availableDrinks: DrinkItem[]): Dri
   );
 
   if (exactMatch) {
-    console.log('Found exact drink match:', exactMatch.name);
+    logger.info('Found exact drink match:', exactMatch.name);
     return exactMatch;
   }
 
-  // Try partial matches with word boundaries
+  // Try partial matches
   const partialMatches = availableDrinks.filter(d => {
-    const drinkName = d.name.toLowerCase();
+    const drinkName = normalizeText(d.name);
     return drinkName.includes(normalizedInput) ||
-           normalizedInput.includes(drinkName) ||
-           // Handle special cases like "cooler" variants
-           (drinkName.includes('cooler') && normalizedInput.includes('cooler'));
+           normalizedInput.includes(drinkName);
   });
 
   if (partialMatches.length > 0) {
-    // If multiple matches, prefer the shortest name as it's likely more specific
-    const bestMatch = partialMatches.sort((a, b) => a.name.length - b.name.length)[0];
-    console.log('Found best partial match:', {
+    const bestMatch = partialMatches[0];
+    logger.info('Found best partial match:', {
       searchTerm: normalizedInput,
-      matchedDrink: bestMatch.name,
-      allMatches: partialMatches.map(d => d.name)
+      matchedDrink: bestMatch.name
     });
     return bestMatch;
   }
 
-  console.log('No drink match found:', {
+  logger.info('No drink match found:', {
     searchTerm: normalizedInput,
     availableDrinks: availableDrinks.map(d => d.name)
   });
@@ -62,58 +59,60 @@ function findMatchingDrink(drinkName: string, availableDrinks: DrinkItem[]): Dri
 // Efficient command parser that integrates with inventory
 export function parseVoiceCommand(text: string, availableDrinks: DrinkItem[]): ParsedCommand | null {
   if (!text || !availableDrinks?.length) {
-    console.log('Invalid input:', { text: !!text, drinksAvailable: availableDrinks?.length });
+    logger.info('Invalid input:', { text: !!text, drinksAvailable: availableDrinks?.length });
     return null;
   }
 
   const textLower = text.toLowerCase().trim();
-  console.log('Voice command received:', {
+  logger.info('Voice command received:', {
     text: textLower,
     drinksAvailable: availableDrinks.length
   });
 
-  // Check for complete order commands first
+  // Check for complete order commands first - prioritize these matches
   const completeOrderPatterns = [
-    /^(complete|process|finish|confirm|place)\s*(the\s*)?order$/i,
-    /^(that'?s?\s*(it|all)|done|ready|checkout)$/i,
-    /^(process|complete)\s*(the\s*)?payment$/i
+    // Direct completion commands
+    /^(?:complete|process|finish|confirm|place)\s*(?:my\s*)?(?:the\s*)?order$/i,
+    /^(?:that'?s?\s*(?:it|all)|done|ready|checkout)$/i,
+    /^(?:process|complete)\s*(?:my\s*)?(?:the\s*)?payment$/i,
+    /^(?:pay|checkout|finalize)\s*(?:now|order)?$/i,
+    /^(?:order|payment)\s*(?:complete|done|finished)$/i,
+    // Informal completion phrases
+    /^(?:i'?m?\s*)?(?:ready|done|finished)(?:\s*(?:now|with\s*(?:my\s*)?order))?$/i,
+    /^(?:place|submit|send)(?:\s*(?:my|the)\s*order)?(?:\s*now)?$/i,
+    /^(?:let'?s?\s*)?check\s*out(?:\s*now)?$/i
   ];
 
   for (const pattern of completeOrderPatterns) {
     if (pattern.test(textLower)) {
-      console.log('Matched complete order command');
+      logger.info('Matched complete order command');
       return { type: 'system', action: 'complete_order' };
     }
   }
 
   // Check for other system commands
   const systemCommands = {
-    stop: /(?:stop|end|quit|exit|turn off|disable)\s+(?:listening|voice|commands?)/i,
-    help: /(?:help|what can i say|commands|menu|what can you do)/i,
-    repeat: /(?:repeat that|say that again|what did you say)/i,
-    cancel: /(?:cancel|clear|remove)\s+(?:order|everything|all)/i
+    help: /^(?:help|what can i say|what are the commands|menu|what can you do)/i,
+    cancel: /^(?:cancel|clear|remove)\s+(?:order|everything|all)/i
   };
 
   for (const [action, pattern] of Object.entries(systemCommands)) {
     if (pattern.test(textLower)) {
-      console.log('Matched system command:', action);
+      logger.info('System command matched:', action);
       return { type: 'system', action };
     }
   }
 
-  // Command patterns for orders
-  const orderPatterns = [
-    /(?:can i|could i|i want to|i would like to|let me|i'd like to|i want|get me|give me)\s+(?:get|have|order)/i,
-    /(?:order|get|add)\s+(?:a|an|some|\d+)/i,
-    /(?:i'll|i will)\s+(?:take|have)/i,
-    /(?:give|get)\s+me/i
-  ];
-
-  // Split compound orders on "and"
+  // Only try to match drink orders if no system commands matched
   const orderParts = textLower.split(/\s+and\s+|\s*,\s*/);
   const items: ParsedCommand['items'] = [];
 
   for (const part of orderParts) {
+    // Skip if it looks like a system command
+    if (completeOrderPatterns.some(pattern => pattern.test(part))) {
+      continue;
+    }
+
     // Try to extract quantity and drink name
     const quantityMatch = part.match(/(\d+|a|one|two|three|four|five)\s+(.+)/i);
     if (quantityMatch) {
@@ -144,11 +143,11 @@ export function parseVoiceCommand(text: string, availableDrinks: DrinkItem[]): P
   }
 
   if (items.length > 0) {
-    console.log('Successfully parsed order items:', items);
+    logger.info('Successfully parsed order items:', items);
     return { type: 'order', items };
   }
 
-  console.log('No valid items found in command');
+  logger.info('No valid items found in command');
   return null;
 }
 
@@ -167,11 +166,4 @@ function extractModifiers(itemName: string): string[] {
   });
 
   return modifiers;
-}
-
-function determineCommandType(text: string): ParsedCommand['type'] {
-  if (/(cancel|remove|delete|clear)/.test(text)) return 'cancel';
-  if (/(what|how|when|where|why|is there|do you have)/.test(text)) return 'inquiry';
-  if (/(change|modify|make|update)/.test(text)) return 'modify';
-  return 'order';
 }
