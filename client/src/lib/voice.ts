@@ -5,6 +5,11 @@ type EventCallback<T = any> = (data?: T) => void;
 type EventMap = { [key: string]: EventCallback[] };
 type ListeningMode = 'wake_word' | 'command' | 'shutdown';
 
+interface VoiceEvent {
+  mode: string;
+  isActive: boolean;
+}
+
 class EventHandler {
   private events: EventMap = {};
 
@@ -26,6 +31,10 @@ class EventHandler {
       this.events[event] = this.events[event].filter(cb => cb !== callback);
     }
   }
+
+  clearAllListeners() {
+    this.events = {};
+  }
 }
 
 class VoiceRecognition extends EventHandler {
@@ -36,9 +45,14 @@ class VoiceRecognition extends EventHandler {
   private inquiryWakeWord = "hey bev";
   private retryCount = 0;
   private maxRetries = 3;
+  private cleanup: (() => void) | null = null;
 
   constructor() {
     super();
+    this.initializeRecognition();
+  }
+
+  private initializeRecognition() {
     try {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
@@ -50,9 +64,13 @@ class VoiceRecognition extends EventHandler {
       this.recognition.interimResults = false;
       this.recognition.lang = 'en-US';
       this.setupRecognition();
+      console.log('Speech recognition initialized successfully');
     } catch (error) {
       console.error('Failed to initialize speech recognition:', error);
-      this.emit('error', 'Speech recognition initialization failed');
+      this.emit('error', {
+        type: 'recognition' as ErrorType,
+        message: 'Speech recognition initialization failed'
+      } as VoiceError);
     }
   }
 
@@ -66,7 +84,7 @@ class VoiceRecognition extends EventHandler {
           throw new Error('Invalid speech recognition result');
         }
 
-        const text = result[0].transcript.toLowerCase();
+        const text = result[0].transcript.toLowerCase().trim();
         console.log('Recognized text:', text);
 
         // Handle shutdown command in any mode
@@ -88,12 +106,15 @@ class VoiceRecognition extends EventHandler {
         }
       } catch (error) {
         console.error('Error processing speech result:', error);
-        this.emit('error', 'Failed to process speech input');
+        this.emit('error', {
+          type: 'processing' as ErrorType,
+          message: 'Failed to process speech input'
+        } as VoiceError);
       }
     };
 
     this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error:', event.error, event.message);
+      console.error('Speech recognition error:', event.error);
 
       const errorTypeMap: { [key: string]: ErrorType } = {
         'network': 'network',
@@ -106,9 +127,12 @@ class VoiceRecognition extends EventHandler {
       };
 
       const errorType = errorTypeMap[event.error] || 'processing';
-      const errorMessage = event.message || `Recognition error: ${event.error}`;
+      const error: VoiceError = {
+        type: errorType,
+        message: event.message || `Recognition error: ${event.error}`
+      };
 
-      this.emit('error', { type: errorType, message: errorMessage });
+      this.emit('error', error);
       soundEffects.playError();
 
       if (errorType === 'network') {
@@ -123,10 +147,10 @@ class VoiceRecognition extends EventHandler {
         setTimeout(() => this.start(), 1000);
       } else if (this.retryCount >= this.maxRetries) {
         console.error('Max retry attempts reached');
-        this.emit('error', { 
-          type: 'recognition', 
-          message: 'Speech recognition failed after multiple attempts. Please try again.'
-        });
+        this.emit('error', {
+          type: 'recognition',
+          message: 'Speech recognition failed after multiple attempts'
+        } as VoiceError);
         this.stop();
       }
     };
@@ -146,9 +170,9 @@ class VoiceRecognition extends EventHandler {
     if (hasOrderWake || hasInquiryWake) {
       this.mode = 'command';
       await soundEffects.playWakeWord();
-      this.emit('modeChange', { 
+      this.emit('modeChange', {
         mode: hasOrderWake ? 'order' : 'inquiry',
-        isActive: true 
+        isActive: true
       });
 
       // Extract command after wake word if any
@@ -179,12 +203,15 @@ class VoiceRecognition extends EventHandler {
     await soundEffects.playListeningStop();
     this.mode = 'shutdown';
     this.emit('shutdown');
-    this.stop();
+    await this.stop();
   }
 
   async start() {
     if (!this.recognition) {
-      this.emit('error', 'Speech recognition not available');
+      this.emit('error', {
+        type: 'recognition',
+        message: 'Speech recognition not available'
+      } as VoiceError);
       return;
     }
 
@@ -198,7 +225,10 @@ class VoiceRecognition extends EventHandler {
         this.emit('start', { mode: this.mode });
       } catch (error) {
         console.error('Error starting speech recognition:', error);
-        this.emit('error', 'Failed to start speech recognition');
+        this.emit('error', {
+          type: 'recognition',
+          message: 'Failed to start speech recognition'
+        } as VoiceError);
         this.isListening = false;
       }
     }
@@ -212,9 +242,13 @@ class VoiceRecognition extends EventHandler {
         this.recognition.stop();
         await soundEffects.playListeningStop();
         this.emit('stop');
+        this.cleanup?.();
       } catch (error) {
         console.error('Error stopping speech recognition:', error);
-        this.emit('error', 'Failed to stop speech recognition');
+        this.emit('error', {
+          type: 'recognition',
+          message: 'Failed to stop speech recognition'
+        } as VoiceError);
       }
     }
   }
@@ -225,6 +259,10 @@ class VoiceRecognition extends EventHandler {
 
   isSupported(): boolean {
     return !!this.recognition;
+  }
+
+  setCleanup(cleanup: () => void) {
+    this.cleanup = cleanup;
   }
 }
 
