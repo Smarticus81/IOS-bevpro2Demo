@@ -1,14 +1,15 @@
+
 import { type VoiceRecognitionCallback, type VoiceError } from "@/types/speech";
+import { logger } from "@/lib/logger";
 
 class GoogleVoiceService {
   private recognition: SpeechRecognition | null = null;
   private isListening: boolean = false;
   private callback: VoiceRecognitionCallback | null = null;
-  private isInitialized: boolean = false;
-  private initializationAttempts: number = 0;
-  private readonly MAX_INIT_ATTEMPTS = 3;
-  private isManualStop: boolean = false;
-  private isPaused: boolean = false;
+  private readonly RESTART_DELAY = 50;
+  private processingCommand = false;
+  private commandBuffer: string[] = [];
+  private readonly BUFFER_LIMIT = 3;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -17,14 +18,7 @@ class GoogleVoiceService {
   }
 
   private initializeSpeechRecognition() {
-    if (this.isInitialized || this.initializationAttempts >= this.MAX_INIT_ATTEMPTS) {
-      return;
-    }
-
-    this.initializationAttempts++;
     try {
-      if (typeof window === 'undefined') return;
-
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
         throw new Error('Speech recognition not supported');
@@ -33,11 +27,8 @@ class GoogleVoiceService {
       this.recognition = new SpeechRecognition();
       this.setupRecognitionConfig();
       this.setupEventHandlers();
-      this.isInitialized = true;
     } catch (error) {
-      console.error('Failed to initialize speech recognition:', error);
-      const err = error instanceof Error ? error : new Error('Failed to initialize speech recognition');
-      this.handleError(err);
+      logger.error('Failed to initialize speech recognition:', error);
     }
   }
 
@@ -54,114 +45,111 @@ class GoogleVoiceService {
 
     this.recognition.onstart = () => {
       this.isListening = true;
-      this.isManualStop = false;
-      this.isPaused = false;
+      logger.info('Voice recognition started');
     };
 
     this.recognition.onend = () => {
-      if (this.isListening && !this.isManualStop && !this.isPaused) {
-        try {
-          this.recognition?.start();
-        } catch (error) {
-          console.error('Failed to restart speech recognition:', error);
-          this.isListening = false;
-          this.callback = null;
-        }
+      if (this.isListening) {
+        setTimeout(() => {
+          try {
+            this.recognition?.start();
+          } catch (error) {
+            logger.error('Failed to restart speech recognition:', error);
+            this.cleanup();
+          }
+        }, this.RESTART_DELAY);
       }
     };
 
-    this.recognition.onerror = this.handleRecognitionError.bind(this);
-    this.recognition.onresult = this.handleRecognitionResult.bind(this);
+    this.recognition.onerror = this.handleError.bind(this);
+    this.recognition.onresult = this.handleResult.bind(this);
   }
 
-  private handleRecognitionResult(event: SpeechRecognitionEvent) {
+  private handleResult(event: SpeechRecognitionEvent) {
     try {
-      const results = event.results;
-      if (results && results.length > 0) {
-        const result = results[results.length - 1];
-        if (result.isFinal) {
-          const text = result[0].transcript;
-          if (this.callback) {
-            this.callback(text);
-          }
+      const result = event.results[event.results.length - 1];
+      if (result.isFinal) {
+        const text = result[0].transcript.trim();
+        if (text && !this.processingCommand) {
+          this.bufferCommand(text);
         }
       }
     } catch (error) {
-      const err = error instanceof Error ? error : new Error('Unknown error processing speech result');
-      console.error('Error processing speech result:', err);
-      this.handleError(err);
+      logger.error('Error processing speech result:', error);
     }
   }
 
-  private handleRecognitionError(event: SpeechRecognitionErrorEvent) {
-    const nonFatalErrors = ['no-speech', 'audio-capture', 'network', 'aborted'];
+  private bufferCommand(text: string) {
+    this.commandBuffer.push(text);
+    if (this.commandBuffer.length >= this.BUFFER_LIMIT) {
+      this.commandBuffer.shift();
+    }
+    this.processBufferedCommands();
+  }
+
+  private async processBufferedCommands() {
+    if (this.processingCommand || !this.callback) return;
+
+    this.processingCommand = true;
+    try {
+      while (this.commandBuffer.length > 0) {
+        const command = this.commandBuffer.shift();
+        if (command) {
+          await this.callback(command);
+        }
+      }
+    } finally {
+      this.processingCommand = false;
+    }
+  }
+
+  private handleError(event: SpeechRecognitionErrorEvent) {
+    const nonFatalErrors = ['no-speech', 'audio-capture', 'network'];
     if (!nonFatalErrors.includes(event.error)) {
-      this.handleError(new Error(`Speech recognition error: ${event.error}`));
+      logger.error('Speech recognition error:', event.error);
+      this.cleanup();
     }
   }
 
-  private handleError(error: Error) {
-    console.error('Voice service error:', error);
+  private cleanup() {
     this.isListening = false;
-    if (this.callback) {
-      this.callback('');
-    }
+    this.callback = null;
+    this.commandBuffer = [];
   }
 
   async startListening(callback: VoiceRecognitionCallback): Promise<void> {
-    if (!this.isInitialized) {
-      this.initializeSpeechRecognition();
-    }
-
     if (!this.recognition) {
-      throw new Error('Speech recognition is not available');
-    }
-
-    if (this.isListening && !this.isPaused) {
-      return;
+      throw new Error('Speech recognition not available');
     }
 
     try {
       this.callback = callback;
-      this.isManualStop = false;
-      this.isPaused = false;
       await this.recognition.start();
+      logger.info('Voice recognition initialized');
     } catch (error) {
-      console.error('Error starting voice recognition:', error);
-      this.isListening = false;
-      this.callback = null;
+      logger.error('Error starting voice recognition:', error);
+      this.cleanup();
       throw error;
     }
   }
 
   async stopListening(): Promise<void> {
-    if (!this.isListening || !this.recognition) {
-      return;
-    }
-
     try {
-      this.isManualStop = true;
-      this.isPaused = false;
-      await this.recognition.stop();
-      this.isListening = false;
-      this.callback = null;
+      await this.recognition?.stop();
+      this.cleanup();
+      logger.info('Voice recognition stopped');
     } catch (error) {
-      console.error('Error stopping voice recognition:', error);
-      this.isListening = false;
-      this.callback = null;
+      logger.error('Error stopping voice recognition:', error);
       throw error;
     }
   }
 
   isActive(): boolean {
-    return this.isListening && !this.isPaused;
+    return this.isListening;
   }
 
   isSupported(): boolean {
-    if (!this.isInitialized) {
-      this.initializeSpeechRecognition();
-    }
-    return this.isInitialized && this.recognition !== null;
+    return !!this.recognition;
   }
 }
 
