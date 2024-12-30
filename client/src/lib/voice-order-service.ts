@@ -26,6 +26,7 @@ interface OrderItem {
 interface OrderDetails {
   items: OrderItem[];
   specialInstructions?: string;
+  action?: 'complete_order' | 'help' | 'stop';
 }
 
 interface VoiceOrderResult {
@@ -38,11 +39,22 @@ interface VoiceOrderResult {
 function processSimpleCommands(text: string): OrderDetails | null {
   const command = text.toLowerCase().trim();
 
-  // Process completion commands
-  if (/^(complete|finish|done|checkout|pay|confirm|process|submit)(\s+order)?$/.test(command)) {
+  // Enhanced completion command detection
+  const completionPhrases = [
+    'complete', 'finish', 'done', 'checkout', 'pay',
+    'confirm', 'process', 'submit', 'place order',
+    'thats it', "that's it", 'process order', 'complete order'
+  ];
+
+  // Check if any completion phrase is present
+  const isCompletionCommand = completionPhrases.some(phrase => 
+    command.includes(phrase)
+  );
+
+  if (isCompletionCommand) {
     return {
       items: [],
-      specialInstructions: 'complete_order'
+      action: 'complete_order'
     };
   }
 
@@ -50,7 +62,7 @@ function processSimpleCommands(text: string): OrderDetails | null {
   if (/^(help|commands|what can (i|you) do)$/.test(command)) {
     return {
       items: [],
-      specialInstructions: 'help_requested'
+      action: 'help'
     };
   }
 
@@ -58,7 +70,7 @@ function processSimpleCommands(text: string): OrderDetails | null {
   if (/^(stop|end|quit|exit)$/.test(command)) {
     return {
       items: [],
-      specialInstructions: 'stop_requested'
+      action: 'stop'
     };
   }
 
@@ -76,8 +88,10 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
         content: `Extract order details from customer voice commands.
           Return a JSON object with: {
             "items": [{ "name": string, "quantity": number }],
-            "specialInstructions": string
+            "specialInstructions": string,
+            "action": "complete_order" | null
           }
+          Pay special attention to completion phrases like "that's it", "finish order", etc.
           Keep responses concise and focused on order details only.`
       },
       {
@@ -87,7 +101,7 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
     ],
     response_format: { type: "json_object" },
     temperature: 0.3,
-    max_tokens: 150 // Reduced for faster response
+    max_tokens: 150 
   });
 
   return JSON.parse(completion.choices[0].message.content);
@@ -105,6 +119,7 @@ export async function processVoiceOrder(text: string): Promise<VoiceOrderResult>
     // First try processing simple commands locally for better latency
     const simpleOrder = processSimpleCommands(text);
     if (simpleOrder) {
+      console.log('Simple command processed:', simpleOrder);
       return {
         success: true,
         order: simpleOrder
@@ -113,6 +128,7 @@ export async function processVoiceOrder(text: string): Promise<VoiceOrderResult>
 
     // Fall back to AI processing for complex orders
     const orderDetails = await processComplexOrder(text);
+    console.log('Complex order processed:', orderDetails);
     return {
       success: true,
       order: orderDetails

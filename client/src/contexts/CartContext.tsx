@@ -229,6 +229,44 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.items, state.isProcessing, orderMutation, toast]);
 
+  // Process Voice Commands
+  const processVoiceCommand = useCallback(async (command: string) => {
+    try {
+      const result = await processVoiceOrder(command);
+
+      if (result.success && result.order) {
+        logger.info('Processing voice command result:', {
+          order: result.order,
+          hasAction: !!result.order.action
+        });
+
+        // Handle order completion command
+        if (result.order.action === 'complete_order') {
+          logger.info('Completing order via voice command');
+          await placeOrder();
+          return;
+        }
+
+        // Handle regular order items
+        if (result.order.items?.length > 0) {
+          for (const item of result.order.items) {
+            await addToCart({
+              drink: item.drink,
+              quantity: item.quantity
+            })
+          }
+        }
+      }
+    } catch (error) {
+      logger.error('Error processing voice command:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to process voice command',
+        variant: 'destructive',
+      });
+    }
+  }, [toast, placeOrder, addToCart]);
+
   return (
     <CartContext.Provider
       value={{
@@ -237,6 +275,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         addToCart,
         removeItem,
         placeOrder,
+        processVoiceCommand, // Add this to the context value
       }}
     >
       {children}
