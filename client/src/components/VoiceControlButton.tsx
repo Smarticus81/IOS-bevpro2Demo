@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Mic, MicOff } from "lucide-react";
+import { Mic, MicOff, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useVoiceCommands } from "@/hooks/use-voice-commands";
 import { useToast } from "@/hooks/use-toast";
@@ -15,10 +15,12 @@ import { useState } from "react";
 import type { DrinkItem } from "@/types/speech";
 import { useCart } from "@/contexts/CartContext";
 import { logger } from "@/lib/logger";
+import { VoiceTutorial } from "./VoiceTutorial";
 
 export function VoiceControlButton() {
   const { toast } = useToast();
   const [showDialog, setShowDialog] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const { cart, addToCart, removeItem, placeOrder, isProcessing } = useCart();
 
   // Fetch drinks data with optimized caching
@@ -80,8 +82,17 @@ export function VoiceControlButton() {
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="fixed bottom-6 right-6 z-50"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2"
       >
+        <Button
+          onClick={() => setShowTutorial(true)}
+          size="icon"
+          variant="outline"
+          className="rounded-full shadow-lg"
+          aria-label="Show voice command tutorial"
+        >
+          <HelpCircle className="h-5 w-5" />
+        </Button>
         <Button
           onClick={handleClick}
           size="lg"
@@ -114,6 +125,8 @@ export function VoiceControlButton() {
           </DialogHeader>
         </DialogContent>
       </Dialog>
+
+      {showTutorial && <VoiceTutorial onClose={() => setShowTutorial(false)} />}
     </>
   );
 }
