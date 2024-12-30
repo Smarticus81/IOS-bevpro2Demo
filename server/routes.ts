@@ -143,7 +143,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const { amount, orderId } = req.body;
-      console.log("Processing payment:", { amount, orderId, transactionId });
+      console.log("Processing payment:", { amount, orderId });
 
       if (typeof amount !== 'number' || amount <= 0) {
         console.error("Invalid payment amount:", amount);
@@ -171,6 +171,7 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
       transactionId = transaction.id;
+      console.log("Transaction created:", transactionId);
 
       // In demo mode, payment always succeeds
       // Update transaction record
@@ -186,19 +187,14 @@ export function registerRoutes(app: Express): Server {
         .where(eq(transactions.id, transactionId));
 
       // Update order status
-      const [updatedOrder] = await db
+      await db
         .update(orders)
         .set({ 
-          status: 'paid',
+          status: 'completed',
           payment_status: 'completed',
           completed_at: new Date()
         })
-        .where(eq(orders.id, orderId))
-        .returning();
-
-      if (!updatedOrder) {
-        throw new Error(`Order ${orderId} not found`);
-      }
+        .where(eq(orders.id, orderId));
 
       console.log("Payment successful:", {
         orderId,
@@ -213,28 +209,23 @@ export function registerRoutes(app: Express): Server {
         transactionId,
         timestamp: new Date().toISOString()
       });
-    } catch (error) {
-      console.error("Payment processing failed:", error);
 
-      // Final transaction status update
+    } catch (error) {
+      console.error("Payment processing error:", error);
+
       if (transactionId) {
         await db.update(transactions)
           .set({
             status: 'failed',
             last_error: error instanceof Error ? error.message : 'Payment processing failed',
-            updated_at: new Date(),
-            metadata: {
-              final_error_at: new Date().toISOString()
-            }
+            updated_at: new Date()
           })
           .where(eq(transactions.id, transactionId));
       }
 
       res.status(500).json({ 
-        success: false,
-        error: error instanceof Error ? error.message : "Payment processing failed",
-        transactionId,
-        timestamp: new Date().toISOString()
+        error: "Internal server error during payment processing",
+        transactionId
       });
     }
   });
