@@ -11,12 +11,13 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { DrinkItem } from "@/types/speech";
 import { useCart } from "@/contexts/CartContext";
 import { logger } from "@/lib/logger";
 import { voiceRecognition } from "@/lib/voice";
 import { SoundWaveVisualizer } from "./SoundWaveVisualizer";
+import { VoiceTutorial } from "./VoiceTutorial";
 import {
   Tooltip,
   TooltipContent,
@@ -24,9 +25,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+const TUTORIAL_SHOWN_KEY = 'voice_tutorial_completed';
+
 export function VoiceControlButton() {
   const { toast } = useToast();
   const [showDialog, setShowDialog] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const { cart, addToCart, removeItem, placeOrder, isProcessing } = useCart();
   const [mode, setMode] = useState<'wake_word' | 'command' | 'shutdown'>('wake_word');
   const [isInitialized, setIsInitialized] = useState(false);
@@ -38,6 +42,14 @@ export function VoiceControlButton() {
     staleTime: 30000,
   });
 
+  // Check if tutorial has been shown before
+  useEffect(() => {
+    const tutorialShown = localStorage.getItem(TUTORIAL_SHOWN_KEY);
+    if (!tutorialShown) {
+      setShowTutorial(true);
+    }
+  }, []);
+
   // Initialize voice commands with proper cart state
   const { isListening, startListening, stopListening, isSupported, metrics } =
     useVoiceCommands({
@@ -48,6 +60,17 @@ export function VoiceControlButton() {
       onPlaceOrder: placeOrder,
       isProcessing,
     });
+
+  // Handle tutorial completion
+  const handleTutorialComplete = () => {
+    localStorage.setItem(TUTORIAL_SHOWN_KEY, 'true');
+    setShowTutorial(false);
+    toast({
+      title: "Tutorial Complete",
+      description: "You can now use voice commands! Click the microphone button to start.",
+      duration: 5000,
+    });
+  };
 
   // Initialize voice control
   const initializeVoiceControl = async () => {
@@ -224,6 +247,11 @@ export function VoiceControlButton() {
           </DialogHeader>
         </DialogContent>
       </Dialog>
+
+      <VoiceTutorial
+        isOpen={showTutorial}
+        onComplete={handleTutorialComplete}
+      />
     </>
   );
 }

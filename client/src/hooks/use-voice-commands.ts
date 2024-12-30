@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { DrinkItem, AddToCartAction } from '@/types/speech';
 import { voiceRecognition } from '@/lib/voice';
@@ -7,6 +7,8 @@ import { logger } from '@/lib/logger';
 import { parseVoiceCommand } from '@/lib/command-parser';
 import { soundEffects } from '@/lib/sound-effects';
 import { voiceAnalytics } from '@/lib/analytics';
+
+const TUTORIAL_EVENT = 'tutorial_step_complete';
 
 interface VoiceCommandsProps {
   drinks: DrinkItem[];
@@ -238,6 +240,11 @@ export function useVoiceCommands({
       throw error;
     }
   }, [showFeedback, validateDependencies]);
+
+  useEffect(() => {
+    const customEvent = new CustomEvent(TUTORIAL_EVENT, { detail: { command: lastCommandRef.current.text } });
+    window.dispatchEvent(customEvent);
+  }, [lastCommandRef.current.text]);
 
   return {
     isListening,
