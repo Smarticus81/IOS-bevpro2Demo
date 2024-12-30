@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { useVoiceCommands } from "@/hooks/use-voice-commands";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
+import { VoiceCommandHandler } from "@/lib/voice-command-handler";
+import { useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +31,14 @@ export function VoiceControlButton() {
     retry: 1,
     staleTime: 30000,
   });
+
+  const commandHandler = useRef<VoiceCommandHandler>();
+
+  useEffect(() => {
+    if (drinks.length > 0) {
+      commandHandler.current = new VoiceCommandHandler(drinks);
+    }
+  }, [drinks]);
 
   const { isListening, startListening, stopListening, isSupported } =
     useVoiceCommands({

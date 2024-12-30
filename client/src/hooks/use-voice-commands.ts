@@ -5,6 +5,8 @@ import { voiceRecognition } from '@/lib/voice';
 import type { CartItem } from '@/types/cart';
 import { logger } from '@/lib/logger';
 import { parseVoiceCommand } from '@/lib/command-parser';
+import { VoiceCommandHandler } from './VoiceCommandHandler'; // Assuming this is where the class is
+
 
 interface VoiceCommandsProps {
   drinks: DrinkItem[];
@@ -27,6 +29,7 @@ export function useVoiceCommands({
   const { toast } = useToast();
   const lastCommandRef = useRef<{ text: string; timestamp: number }>({ text: '', timestamp: 0 });
   const COMMAND_DEBOUNCE_MS = 500;
+  const commandHandler = useRef<VoiceCommandHandler | null>(null); // Add commandHandler ref
 
   const validateDependencies = useCallback((): boolean => {
     const dependencies = {
@@ -110,75 +113,14 @@ export function useVoiceCommands({
     const command = text.toLowerCase().trim();
     const now = Date.now();
 
-    logger.info('Processing voice command:', command);
+    logger.info('Processing voice command:', { text });
 
-    // Debounce similar commands
-    if (
-      command === lastCommandRef.current.text &&
-      now - lastCommandRef.current.timestamp < COMMAND_DEBOUNCE_MS
-    ) {
+    // Use command handler if available
+    if (commandHandler.current) {
+      await commandHandler.current.processCommand(command);
       return;
     }
-
-    lastCommandRef.current = { text: command, timestamp: now };
-
-    try {
-      // Handle regular order items
-      const parsedCommand = parseVoiceCommand(command, drinks);
-      if (!parsedCommand) {
-        showFeedback(
-          'Not Understood',
-          'Command not recognized. Say "help" for a list of commands.',
-          'destructive'
-        );
-        return;
-      }
-
-      switch (parsedCommand.type) {
-        case 'system':
-          if (parsedCommand.action === 'help') {
-            showFeedback(
-              'Voice Commands',
-              'Try commands like "Add a Moscow Mule", "Complete my order", or "Cancel order".'
-            );
-          }
-          break;
-
-        case 'order':
-          if (!parsedCommand.items?.length) {
-            showFeedback('Error', 'No items specified in order', 'destructive');
-            return;
-          }
-
-          // Process each item in the order
-          for (const item of parsedCommand.items) {
-            const matchedDrink = drinks.find(
-              d => d.name.toLowerCase() === item.name.toLowerCase()
-            );
-
-            if (matchedDrink) {
-              await onAddToCart({
-                type: 'ADD_ITEM',
-                drink: matchedDrink,
-                quantity: item.quantity
-              });
-              showFeedback(
-                'Added to Cart',
-                `Added ${item.quantity} ${matchedDrink.name}(s) to your cart.`
-              );
-            }
-          }
-          break;
-      }
-    } catch (error) {
-      logger.error('Voice command processing error:', error);
-      showFeedback(
-        'Error',
-        error instanceof Error ? error.message : 'Failed to process command',
-        'destructive'
-      );
-    }
-  }, [drinks, onAddToCart, showFeedback]);
+  }, []);
 
   const handleVoiceEvent = useCallback(async (event: any) => {
     try {
@@ -245,12 +187,13 @@ export function useVoiceCommands({
       await voiceRecognition.start();
       setIsListening(true);
       showFeedback('Voice Control', 'Listening... Say "help" for commands');
+      commandHandler.current = new VoiceCommandHandler({onAddToCart, onRemoveItem, showFeedback, drinks}); // Initialize command handler here
     } catch (error) {
       logger.error('Failed to start listening:', error);
       setIsListening(false);
       throw error;
     }
-  }, [showFeedback, validateDependencies, isProcessing]);
+  }, [showFeedback, validateDependencies, isProcessing, onAddToCart, onRemoveItem, drinks, showFeedback]);
 
   return {
     isListening,
