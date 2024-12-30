@@ -72,46 +72,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
-  // Place Order with validation and retry logic
-  const placeOrder = useCallback(async () => {
-    logger.info('Attempting to place order', {
-      cartSize: state.items.length,
-      isProcessing: state.isProcessing
-    });
-
-    if (state.isProcessing) {
-      toast({
-        title: 'Processing',
-        description: 'Your order is already being processed.',
-        variant: 'default',
-      });
-      return false;
-    }
-
-    if (state.items.length === 0) {
-      toast({
-        title: 'Error',
-        description: 'Your cart is empty.',
-        variant: 'destructive',
-      });
-      return false;
-    }
-
-    try {
-      logger.info('Initiating order placement', {
-        cartSize: state.items.length,
-        isProcessing: state.isProcessing
-      });
-
-      await orderMutation.mutateAsync(state.items);
-      return true;
-    } catch (error) {
-      logger.error('Error during order placement:', error);
-      return false;
-    }
-  }, [state.items, state.isProcessing, orderMutation, toast]);
-
-  // Place Order Mutation
+  // Define orderMutation first, before any functions that use it
   const orderMutation = useMutation({
     mutationFn: async (cartItems: CartItem[]) => {
       logger.info('Initiating order placement', {
@@ -166,6 +127,45 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'SET_PROCESSING', isProcessing: false });
     },
   });
+
+  // Place Order with validation and retry logic
+  const placeOrder = useCallback(async () => {
+    logger.info('Attempting to place order', {
+      cartSize: state.items.length,
+      isProcessing: state.isProcessing
+    });
+
+    if (state.isProcessing) {
+      toast({
+        title: 'Processing',
+        description: 'Your order is already being processed.',
+        variant: 'default',
+      });
+      return false;
+    }
+
+    if (state.items.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'Your cart is empty.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    try {
+      logger.info('Initiating order placement', {
+        cartSize: state.items.length,
+        isProcessing: state.isProcessing
+      });
+
+      await orderMutation.mutateAsync(state.items);
+      return true;
+    } catch (error) {
+      logger.error('Error during order placement:', error);
+      return false;
+    }
+  }, [state.items, state.isProcessing, toast, orderMutation]);
 
   // Add to Cart with validation and error handling
   const addToCart = useCallback(async (action: AddToCartAction) => {
