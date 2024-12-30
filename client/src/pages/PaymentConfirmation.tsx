@@ -3,30 +3,16 @@ import { useLocation } from "wouter";
 import { NavBar } from "@/components/NavBar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
 
 export function PaymentConfirmation() {
   const [, setLocation] = useLocation();
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    // Get payment status from URL parameters
-    const params = new URLSearchParams(window.location.search);
-    const paymentStatus = params.get("status");
-    const paymentMessage = params.get("message");
-
-    if (paymentStatus === "success") {
-      setStatus("success");
-      setMessage(paymentMessage || "Thank you! Your payment has been processed successfully.");
-    } else if (paymentStatus === "error") {
-      setStatus("error");
-      setMessage(paymentMessage || "Payment was unsuccessful. Please try again.");
-    } else {
-      setStatus("error");
-      setMessage("Invalid payment status");
-    }
+    // In demo mode, always show success
+    setMessage("Thank you! Your payment has been processed successfully.");
   }, []);
 
   return (
@@ -43,25 +29,9 @@ export function PaymentConfirmation() {
             <Card className="w-full max-w-md mx-auto bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
               <CardContent className="p-6">
                 <div className="flex flex-col items-center text-center space-y-4">
-                  {status === "loading" ? (
-                    <>
-                      <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                      <h2 className="text-xl font-semibold">Processing Payment</h2>
-                      <p className="text-gray-600">Please wait while we confirm your payment...</p>
-                    </>
-                  ) : status === "success" ? (
-                    <>
-                      <CheckCircle2 className="h-12 w-12 text-green-500" />
-                      <h2 className="text-xl font-semibold text-green-700">Payment Successful!</h2>
-                      <p className="text-gray-600">{message}</p>
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="h-12 w-12 text-red-500" />
-                      <h2 className="text-xl font-semibold text-red-700">Payment Failed</h2>
-                      <p className="text-gray-600">{message}</p>
-                    </>
-                  )}
+                  <CheckCircle2 className="h-12 w-12 text-green-500" />
+                  <h2 className="text-xl font-semibold text-green-700">Payment Successful!</h2>
+                  <p className="text-gray-600">{message}</p>
 
                   <Button
                     onClick={() => setLocation("/")}

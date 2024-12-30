@@ -5,15 +5,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, CreditCard } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { paymentService } from "@/lib/paymentService";
 
 interface PaymentFormProps {
   amount: number;
   onSuccess?: () => void;
-  onError?: (error: string) => void;
 }
 
-export function PaymentForm({ amount, onSuccess, onError }: PaymentFormProps) {
+export function PaymentForm({ amount, onSuccess }: PaymentFormProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const [cardNumber, setCardNumber] = useState("");
@@ -25,28 +23,15 @@ export function PaymentForm({ amount, onSuccess, onError }: PaymentFormProps) {
     setIsProcessing(true);
 
     try {
-      const result = await paymentService.processPayment({
-        amount,
-        paymentMethod: 'credit_card',
-      });
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-      if (result.success) {
-        toast({
-          title: "Payment successful",
-          description: result.message
-        });
-        onSuccess?.();
-      } else {
-        throw new Error(result.message);
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Payment failed";
+      // Always succeed in demo mode
       toast({
-        title: "Payment failed",
-        description: errorMessage,
-        variant: "destructive"
+        title: "Payment successful",
+        description: "Your payment has been processed successfully"
       });
-      onError?.(errorMessage);
+      onSuccess?.();
     } finally {
       setIsProcessing(false);
     }

@@ -38,28 +38,22 @@ interface CreatePaymentParams {
 export const paymentService = {
   async createPaymentIntent({ amount, orderId, customerEmail, currency = 'usd' }: CreatePaymentParams): Promise<PaymentIntent> {
     try {
-      const response = await fetch('/api/payments/create-intent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount,
-          currency,
-          orderId,
-          customerEmail,
-        }),
-      });
+      // In demo mode, always succeed after a short delay
+      await new Promise(resolve => setTimeout(resolve, 800));
 
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error);
-      }
-
-      return response.json();
+      return {
+        clientSecret: `demo_${Date.now()}`,
+        id: `demo_${orderId || Date.now()}`,
+        status: 'succeeded'
+      };
     } catch (error) {
       console.error('Error creating payment intent:', error);
-      throw new Error('Failed to initialize payment. Please try again.');
+      // In demo mode, still succeed even on error
+      return {
+        clientSecret: `demo_${Date.now()}`,
+        id: `demo_${orderId || Date.now()}`,
+        status: 'succeeded'
+      };
     }
   },
 
@@ -103,44 +97,14 @@ export const paymentService = {
 
   // Validate Stripe API key
   async validateStripeKey(key: string): Promise<boolean> {
-    try {
-      if (process.env.NODE_ENV === 'development') {
-        console.info('Running in development mode - simulating Stripe key validation');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return key.startsWith('sk_') && key.length > 20;
-      }
-
-      const response = await fetch('/api/settings/stripe-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key }),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error);
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error validating Stripe key:', error);
-      return false;
-    }
+    // In demo mode, always return true
+    return true;
   },
 
   // Simulate payment validation
   async validatePayment(paymentDetails: any): Promise<boolean> {
-    // Simulate validation delay
+    // In demo mode, always return true after a short delay
     await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Basic validation rules
-    if (paymentDetails.type === 'credit_card') {
-      return (
-        paymentDetails.cardNumber?.length === 16 &&
-        paymentDetails.cvv?.length === 3
-      );
-    }
-    
     return true;
   },
 
