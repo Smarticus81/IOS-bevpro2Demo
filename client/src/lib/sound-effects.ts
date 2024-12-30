@@ -3,7 +3,6 @@ class SoundEffects {
   private static instance: SoundEffects;
   private audioContext: AudioContext | null = null;
   private masterGain: GainNode | null = null;
-  private reverbNode: ConvolverNode | null = null;
   private compressor: DynamicsCompressorNode | null = null;
 
   private constructor() {
@@ -18,11 +17,11 @@ class SoundEffects {
   private async initAudioContext() {
     try {
       this.audioContext = new AudioContext();
-      
+
       // Create and configure master gain
       this.masterGain = this.audioContext.createGain();
-      this.masterGain.gain.value = 0.3; // Set default volume
-      
+      this.masterGain.gain.value = 0.2; // Reduced overall volume
+
       // Create and configure compressor for better dynamics
       this.compressor = this.audioContext.createDynamicsCompressor();
       this.compressor.threshold.value = -24;
@@ -30,38 +29,15 @@ class SoundEffects {
       this.compressor.ratio.value = 12;
       this.compressor.attack.value = 0.003;
       this.compressor.release.value = 0.25;
-      
-      // Create reverb node for ambient effects
-      this.reverbNode = this.audioContext.createConvolver();
-      await this.createReverb();
-      
+
       // Connect audio processing chain
       this.masterGain.connect(this.compressor);
-      this.compressor.connect(this.reverbNode);
-      this.reverbNode.connect(this.audioContext.destination);
-      
+      this.compressor.connect(this.audioContext.destination);
+
       console.log('Audio context initialized successfully');
     } catch (error) {
       console.error('Failed to initialize audio context:', error);
     }
-  }
-
-  private async createReverb(duration = 2, decay = 0.1) {
-    if (!this.audioContext || !this.reverbNode) return;
-
-    const sampleRate = this.audioContext.sampleRate;
-    const length = sampleRate * duration;
-    const impulse = this.audioContext.createBuffer(2, length, sampleRate);
-    
-    for (let channel = 0; channel < 2; channel++) {
-      const channelData = impulse.getChannelData(channel);
-      for (let i = 0; i < length; i++) {
-        const t = i / sampleRate;
-        channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - t / duration, decay);
-      }
-    }
-    
-    this.reverbNode.buffer = impulse;
   }
 
   static getInstance(): SoundEffects {
@@ -89,45 +65,40 @@ class SoundEffects {
 
     const {
       type = 'sine',
-      attack = 0.02,
-      decay = 0.1,
+      attack = 0.01,  // Faster attack
+      decay = 0.05,   // Faster decay
       sustain = 0.7,
-      release = 0.1,
+      release = 0.05, // Faster release
       detune = 0
     } = options;
 
     try {
       const oscillator = this.audioContext!.createOscillator();
       const gainNode = this.audioContext!.createGain();
-      
-      // Connect the nodes
+
       oscillator.connect(gainNode);
       gainNode.connect(this.masterGain!);
-      
-      // Configure oscillator
+
       oscillator.type = type;
       oscillator.frequency.setValueAtTime(frequency, this.audioContext!.currentTime);
       oscillator.detune.setValueAtTime(detune, this.audioContext!.currentTime);
-      
-      // ADSR envelope
+
       const now = this.audioContext!.currentTime;
       gainNode.gain.setValueAtTime(0, now);
       gainNode.gain.linearRampToValueAtTime(1, now + attack);
       gainNode.gain.linearRampToValueAtTime(sustain, now + attack + decay);
       gainNode.gain.linearRampToValueAtTime(sustain, now + duration - release);
       gainNode.gain.linearRampToValueAtTime(0, now + duration);
-      
-      // Schedule oscillator
+
       oscillator.start(now);
       oscillator.stop(now + duration);
-      
-      // Clean up
+
       return new Promise<void>(resolve => {
         setTimeout(() => {
           oscillator.disconnect();
           gainNode.disconnect();
           resolve();
-        }, duration * 1000 + 100);
+        }, duration * 1000 + 50); // Reduced cleanup delay
       });
     } catch (error) {
       console.error('Error playing tone:', error);
@@ -135,101 +106,87 @@ class SoundEffects {
   }
 
   async playWakeWord() {
-    // Gentle ascending arpeggio with slight detune for warmth
-    await this.playTone(523.25, 0.15, { // C5
+    // Quick ascending arpeggio
+    await this.playTone(523.25, 0.08, { // C5
       type: 'sine',
       detune: 2,
-      attack: 0.02,
-      decay: 0.1,
+      attack: 0.01,
+      decay: 0.03,
       sustain: 0.8
     });
-    await this.playTone(659.25, 0.15, { // E5
+    await this.playTone(659.25, 0.08, { // E5
       type: 'sine',
       detune: -2,
-      attack: 0.02,
-      decay: 0.1,
+      attack: 0.01,
+      decay: 0.03,
       sustain: 0.8
-    });
-    await this.playTone(783.99, 0.2, { // G5
-      type: 'sine',
-      detune: 2,
-      attack: 0.02,
-      decay: 0.15,
-      sustain: 0.9,
-      release: 0.15
     });
   }
 
   async playSuccess() {
-    // Warm major seventh chord with subtle variations
+    // Quick major chord
     const now = performance.now();
     await Promise.all([
-      this.playTone(523.25, 0.4, { // C5
+      this.playTone(523.25, 0.15, { // C5
         type: 'sine',
-        attack: 0.05,
+        attack: 0.02,
         sustain: 0.8,
         detune: 2
       }),
-      this.playTone(659.25, 0.4, { // E5
+      this.playTone(659.25, 0.15, { // E5
         type: 'sine',
-        attack: 0.06,
+        attack: 0.02,
         sustain: 0.7,
         detune: -2
       }),
-      this.playTone(783.99, 0.4, { // G5
+      this.playTone(783.99, 0.15, { // G5
         type: 'sine',
-        attack: 0.07,
+        attack: 0.02,
         sustain: 0.6,
         detune: 1
-      }),
-      this.playTone(987.77, 0.4, { // B5
-        type: 'sine',
-        attack: 0.08,
-        sustain: 0.5,
-        detune: -1
       })
     ]);
     console.log('Success sound played in:', performance.now() - now, 'ms');
   }
 
   async playError() {
-    // Gentle descending minor third with soft envelope
-    await this.playTone(523.25, 0.2, { // C5
+    // Quick descending minor third
+    await this.playTone(523.25, 0.1, { // C5
       type: 'sine',
-      attack: 0.04,
-      decay: 0.1,
+      attack: 0.02,
+      decay: 0.05,
       sustain: 0.7,
-      release: 0.15
+      release: 0.03
     });
-    await this.playTone(440.00, 0.3, { // A4
+    await this.playTone(440.00, 0.15, { // A4
       type: 'sine',
-      attack: 0.04,
-      decay: 0.15,
+      attack: 0.02,
+      decay: 0.05,
       sustain: 0.6,
-      release: 0.2
+      release: 0.05
     });
   }
 
   async playListeningStart() {
-    // Bright single tone with quick attack
-    await this.playTone(880, 0.15, { // A5
+    // Single quick bright tone
+    await this.playTone(880, 0.08, { // A5
       type: 'sine',
-      attack: 0.02,
-      decay: 0.05,
+      attack: 0.01,
+      decay: 0.03,
       sustain: 0.8,
-      release: 0.08,
+      release: 0.04,
       detune: 2
     });
   }
 
   async playListeningStop() {
-    // Mellow tone with longer release
-    await this.playTone(659.25, 0.2, { // E5
+    // Quick mellow tone
+    await this.playTone(659.25, 0.1, { // E5
       type: 'sine',
-      attack: 0.03,
-      decay: 0.1,
+      attack: 0.01,
+      decay: 0.05,
       sustain: 0.7,
-      release: 0.15,
+      release: 0.04,
       detune: -2
     });
   }
