@@ -14,6 +14,7 @@ import {
 import { useState } from "react";
 import type { DrinkItem } from "@/types/speech";
 import { useCart } from "@/contexts/CartContext";
+import { logger } from "@/lib/logger";
 
 export function VoiceControlButton() {
   const { toast } = useToast();
@@ -47,6 +48,7 @@ export function VoiceControlButton() {
       }
 
       if (isListening) {
+        logger.info('Stopping voice recognition');
         await stopListening();
         toast({
           title: "Voice Control",
@@ -54,6 +56,7 @@ export function VoiceControlButton() {
           duration: 2000,
         });
       } else {
+        logger.info('Starting voice recognition');
         await startListening();
         toast({
           title: "Voice Control",
@@ -62,7 +65,7 @@ export function VoiceControlButton() {
         });
       }
     } catch (error) {
-      console.error("Voice control error:", error);
+      logger.error("Voice control error:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to process voice command",

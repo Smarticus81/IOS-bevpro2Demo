@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import type { CartState, CartContextType, AddToCartAction, CartItem } from '@/types/cart';
 import { useLocation } from 'wouter';
+import { processVoiceOrder } from '@/lib/voice-order-service';
 
 // Define the context
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -71,7 +72,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
-  // Place Order Mutation with automatic success handling
+  // Place Order Mutation with improved error handling
   const orderMutation = useMutation({
     mutationFn: async (cartItems: CartItem[]) => {
       logger.info('Initiating order placement', {
@@ -91,9 +92,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       };
     },
     onMutate: () => {
+      logger.info('Setting cart processing state');
       dispatch({ type: 'SET_PROCESSING', isProcessing: true });
     },
     onSuccess: (data) => {
+      logger.info('Payment successful, clearing cart');
       // Clear cart immediately on success
       dispatch({ type: 'CLEAR_CART' });
       queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
@@ -109,6 +112,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     },
     onError: () => {
       // In demo mode, always succeed
+      logger.info('Payment error handled (demo mode), proceeding with success flow');
       dispatch({ type: 'CLEAR_CART' });
       queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
 
@@ -121,9 +125,88 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setLocation(`/payment-confirmation?transaction=demo-${Date.now()}`);
     },
     onSettled: () => {
+      logger.info('Payment processing complete');
       dispatch({ type: 'SET_PROCESSING', isProcessing: false });
     },
   });
+
+  // Place Order with validation and retry
+  const placeOrder = useCallback(async () => {
+    logger.info('Attempting to place order', {
+      cartSize: state.items.length,
+      isProcessing: state.isProcessing
+    });
+
+    if (state.isProcessing) {
+      toast({
+        title: 'Processing',
+        description: 'Your order is already being processed.',
+        variant: 'default',
+      });
+      return;
+    }
+
+    if (state.items.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'Your cart is empty.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      logger.info('Initiating order placement', {
+        cartSize: state.items.length,
+        isProcessing: state.isProcessing
+      });
+
+      await orderMutation.mutateAsync(state.items);
+    } catch (error) {
+      // Error handling is done in mutation callbacks
+      logger.error('Error during order placement:', error);
+    }
+  }, [state.items, state.isProcessing, orderMutation, toast]);
+
+  // Process Voice Commands with improved logging
+  const processVoiceCommand = useCallback(async (command: string) => {
+    try {
+      logger.info('Processing voice command:', command);
+      const result = await processVoiceOrder(command);
+
+      if (result.success && result.order) {
+        logger.info('Voice command processing result:', {
+          order: result.order,
+          hasAction: !!result.order.action
+        });
+
+        // Handle order completion command with immediate processing
+        if (result.order.action === 'complete_order') {
+          logger.info('Completion command detected, processing order');
+          await placeOrder();
+          return;
+        }
+
+        // Handle regular order items
+        if (result.order.items?.length > 0) {
+          for (const item of result.order.items) {
+            await addToCart({
+              type: 'ADD_ITEM',
+              drink: item.drink,
+              quantity: item.quantity
+            });
+          }
+        }
+      }
+    } catch (error) {
+      logger.error('Error processing voice command:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to process voice command',
+        variant: 'destructive',
+      });
+    }
+  }, [toast, placeOrder]);
 
   // Add to Cart with error recovery
   const addToCart = useCallback(async (action: AddToCartAction) => {
@@ -195,77 +278,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         variant: 'destructive',
       });
     }
-  }, [toast, state.isProcessing, state.items]);
-
-  // Place Order with validation and retry
-  const placeOrder = useCallback(async () => {
-    if (state.isProcessing) {
-      toast({
-        title: 'Processing',
-        description: 'Your order is already being processed.',
-        variant: 'default',
-      });
-      return;
-    }
-
-    if (state.items.length === 0) {
-      toast({
-        title: 'Error',
-        description: 'Your cart is empty.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      logger.info('Initiating order placement', {
-        cartSize: state.items.length,
-        isProcessing: state.isProcessing
-      });
-
-      await orderMutation.mutateAsync(state.items);
-    } catch (error) {
-      // Error handling is done in mutation callbacks
-    }
-  }, [state.items, state.isProcessing, orderMutation, toast]);
-
-  // Process Voice Commands
-  const processVoiceCommand = useCallback(async (command: string) => {
-    try {
-      const result = await processVoiceOrder(command);
-
-      if (result.success && result.order) {
-        logger.info('Processing voice command result:', {
-          order: result.order,
-          hasAction: !!result.order.action
-        });
-
-        // Handle order completion command
-        if (result.order.action === 'complete_order') {
-          logger.info('Completing order via voice command');
-          await placeOrder();
-          return;
-        }
-
-        // Handle regular order items
-        if (result.order.items?.length > 0) {
-          for (const item of result.order.items) {
-            await addToCart({
-              drink: item.drink,
-              quantity: item.quantity
-            })
-          }
-        }
-      }
-    } catch (error) {
-      logger.error('Error processing voice command:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to process voice command',
-        variant: 'destructive',
-      });
-    }
-  }, [toast, placeOrder, addToCart]);
+  }, [toast, state.isProcessing]);
 
   return (
     <CartContext.Provider
@@ -275,7 +288,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         addToCart,
         removeItem,
         placeOrder,
-        processVoiceCommand, // Add this to the context value
+        processVoiceCommand,
       }}
     >
       {children}
