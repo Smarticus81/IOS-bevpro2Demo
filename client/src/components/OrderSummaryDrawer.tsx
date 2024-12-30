@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logger } from "@/lib/logger";
@@ -6,6 +6,9 @@ import {
   Drawer,
   DrawerContent,
   DrawerTrigger,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerHeader,
 } from "@/components/ui/drawer";
 import { OrderSummary } from "./OrderSummary";
 import { useCart } from "@/contexts/CartContext";
@@ -28,12 +31,19 @@ export function OrderSummaryDrawer() {
         <Button
           variant="outline"
           className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20"
+          disabled={isProcessing}
         >
           <ShoppingBag className="mr-2 h-4 w-4" />
           View Order ({itemCount} items)
         </Button>
       </DrawerTrigger>
       <DrawerContent>
+        <DrawerHeader>
+          <DrawerTitle>Your Order Summary</DrawerTitle>
+          <DrawerDescription>
+            Review your items and complete your order
+          </DrawerDescription>
+        </DrawerHeader>
         <div className="p-4 max-h-[80vh] overflow-auto">
           <OrderSummary
             cart={cart}

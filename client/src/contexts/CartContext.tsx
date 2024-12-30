@@ -19,6 +19,8 @@ type CartAction =
 function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
     case 'ADD_ITEM': {
+      if (state.isProcessing) return state;
+
       const existingItem = state.items.find(item => item.drink.id === action.drink.id);
       if (existingItem) {
         const newQuantity = Math.max(0, Math.min(99, existingItem.quantity + action.quantity));
@@ -37,6 +39,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       };
     }
     case 'REMOVE_ITEM':
+      if (state.isProcessing) return state;
       return {
         ...state,
         items: state.items.filter(item => item.drink.id !== action.drinkId),
@@ -45,6 +48,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       return {
         ...state,
         items: [],
+        isProcessing: false,
       };
     case 'SET_PROCESSING':
       return {
@@ -122,6 +126,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         transactionId: paymentData.transactionId
       };
     },
+    onMutate: () => {
+      dispatch({ type: 'SET_PROCESSING', isProcessing: true });
+    },
     onSuccess: (data) => {
       // Clear cart immediately on success
       dispatch({ type: 'CLEAR_CART' });
@@ -139,18 +146,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     onError: (error: Error) => {
       logger.error('Order/payment failed:', error);
 
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to process order. Please try again.',
-        variant: 'destructive',
-      });
-
-      // In demo mode, we still clear the cart and show success
+      // In demo mode, we still show success
       dispatch({ type: 'CLEAR_CART' });
       queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
 
-      // Always navigate to success in demo mode
+      toast({
+        title: 'Order Confirmed',
+        description: 'Your order has been processed successfully!',
+        variant: 'default',
+      });
+
       setLocation(`/payment-confirmation?transaction=demo-${Date.now()}`);
+    },
+    onSettled: () => {
+      dispatch({ type: 'SET_PROCESSING', isProcessing: false });
     },
   });
 
@@ -168,7 +177,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         currentCartSize: state.items.length
       });
 
-      dispatch({ type: 'SET_PROCESSING', isProcessing: true });
       dispatch(action);
 
       toast({
@@ -191,10 +199,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         description: 'Failed to add item to cart.',
         variant: 'destructive',
       });
-    } finally {
-      dispatch({ type: 'SET_PROCESSING', isProcessing: false });
     }
-  }, [toast, state.items.length, state.isProcessing]);
+  }, [toast, state.isProcessing]);
 
   // Remove from Cart with validation
   const removeItem = useCallback(async (drinkId: number) => {
@@ -205,7 +211,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     try {
       logger.info('Removing item from cart:', { drinkId });
-      dispatch({ type: 'SET_PROCESSING', isProcessing: true });
       const itemToRemove = state.items.find(item => item.drink.id === drinkId);
 
       if (!itemToRemove) {
@@ -227,60 +232,40 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         description: 'Failed to remove item from cart.',
         variant: 'destructive',
       });
-    } finally {
-      dispatch({ type: 'SET_PROCESSING', isProcessing: false });
     }
   }, [toast, state.isProcessing, state.items]);
 
   // Place Order with validation and retry
   const placeOrder = useCallback(async () => {
+    if (state.isProcessing) {
+      toast({
+        title: 'Processing',
+        description: 'Your order is already being processed.',
+        variant: 'default',
+      });
+      return;
+    }
+
+    if (state.items.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'Your cart is empty.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       logger.info('Initiating order placement', {
         cartSize: state.items.length,
         isProcessing: state.isProcessing
       });
 
-      if (state.isProcessing) {
-        toast({
-          title: 'Processing',
-          description: 'Your order is already being processed.',
-          variant: 'default',
-        });
-        return;
-      }
-
-      if (state.items.length === 0) {
-        toast({
-          title: 'Error',
-          description: 'Your cart is empty.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      dispatch({ type: 'SET_PROCESSING', isProcessing: true });
-
-      // In demo mode, always succeed
-      try {
-        await orderMutation.mutateAsync(state.items);
-      } catch (error) {
-        logger.error('Error placing order:', error);
-        // Even on error, in demo mode we show success
-        dispatch({ type: 'CLEAR_CART' });
-        queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
-
-        toast({
-          title: 'Order Confirmed',
-          description: 'Your order has been processed successfully!',
-          variant: 'default',
-        });
-
-        setLocation(`/payment-confirmation?transaction=demo-${Date.now()}`);
-      }
-    } finally {
-      dispatch({ type: 'SET_PROCESSING', isProcessing: false });
+      await orderMutation.mutateAsync(state.items);
+    } catch (error) {
+      // Error handling is done in mutation callbacks
     }
-  }, [state.items, state.isProcessing, orderMutation, toast, setLocation, queryClient]);
+  }, [state.items, state.isProcessing, orderMutation, toast]);
 
   return (
     <CartContext.Provider
