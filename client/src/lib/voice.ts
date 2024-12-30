@@ -36,7 +36,7 @@ class VoiceRecognition extends EventHandler {
   private maxRetries = 3;
   private processingCommand = false;
 
-  // Add completion phrases
+  // Order completion phrases
   private completionPhrases = [
     "complete order",
     "process order",
@@ -50,6 +50,19 @@ class VoiceRecognition extends EventHandler {
     "done",
     "okay thats it",
     "okay that's it"
+  ];
+
+  // Order cancellation phrases
+  private cancellationPhrases = [
+    "cancel order",
+    "void order",
+    "delete order",
+    "remove order",
+    "clear cart",
+    "cancel",
+    "void",
+    "delete",
+    "clear"
   ];
 
   constructor() {
@@ -89,9 +102,20 @@ class VoiceRecognition extends EventHandler {
           text.toLowerCase().includes(phrase.toLowerCase())
         );
 
+        // Check for cancellation phrases
+        const isCancellationCommand = this.cancellationPhrases.some(phrase =>
+          text.toLowerCase().includes(phrase.toLowerCase())
+        );
+
         if (isCompletionCommand) {
           console.log('Completion command detected');
           this.emit('completion', { type: 'complete_order' });
+          return;
+        }
+
+        if (isCancellationCommand) {
+          console.log('Cancellation command detected');
+          this.emit('cancel', { type: 'cancel_order' });
           return;
         }
 

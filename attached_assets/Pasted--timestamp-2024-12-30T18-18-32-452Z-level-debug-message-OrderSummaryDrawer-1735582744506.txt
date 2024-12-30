@@ -1,0 +1,114 @@
+{
+  "timestamp": "2024-12-30T18:18:32.452Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+Recognized text:  void order
+{
+  "timestamp": "2024-12-30T18:18:38.948Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "void order"
+}
+Voice command received: 
+Object {text: "void order", drinksAvailable: 65}
+No drink match found: 
+Object {searchTerm: "void order", availableDrinks: Array(65)}
+No valid items found in command
+{
+  "timestamp": "2024-12-30T18:18:38.948Z",
+  "level": "info",
+  "message": "Not Understood: Command not recognized. Say \"help\" for a list of commands.",
+  "context": {}
+}
+{
+  "timestamp": "2024-12-30T18:18:38.965Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-30T18:18:38.967Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+Recognized text:  cancel order
+{
+  "timestamp": "2024-12-30T18:18:47.236Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "cancel order"
+}
+Voice command received: 
+Object {text: "cancel order", drinksAvailable: 65}
+No drink match found: 
+Object {searchTerm: "cancel order", availableDrinks: Array(65)}
+No valid items found in command
+{
+  "timestamp": "2024-12-30T18:18:47.236Z",
+  "level": "info",
+  "message": "Not Understood: Command not recognized. Say \"help\" for a list of commands.",
+  "context": {}
+}
+{
+  "timestamp": "2024-12-30T18:18:47.252Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-30T18:18:47.253Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+Recognized text:  delete order
+{
+  "timestamp": "2024-12-30T18:18:49.338Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "delete order"
+}
+Voice command received: 
+Object {text: "delete order", drinksAvailable: 65}
+No drink match found: 
+Object {searchTerm: "delete order", availableDrinks: Array(65)}
+No valid items found in command
+{
+  "timestamp": "2024-12-30T18:18:49.338Z",
+  "level": "info",
+  "message": "Not Understood: Command not recognized. Say \"help\" for a list of commands.",
+  "context": {}
+}
+{
+  "timestamp": "2024-12-30T18:18:49.351Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}

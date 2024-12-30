@@ -85,6 +85,25 @@ export function useVoiceCommands({
     }
   }, [cart, onPlaceOrder, isProcessing, showFeedback]);
 
+  const clearCart = useCallback(async () => {
+    try {
+      logger.info('Clearing cart on cancel command');
+      for (const item of cart) {
+        await onRemoveItem(item.drink.id);
+      }
+      showFeedback('Cart Cleared', 'All items have been removed from your cart');
+      return true;
+    } catch (error) {
+      logger.error('Error clearing cart:', error);
+      showFeedback(
+        'Error',
+        'Failed to clear cart. Please try again.',
+        'destructive'
+      );
+      return false;
+    }
+  }, [cart, onRemoveItem, showFeedback]);
+
   const handleVoiceCommand = useCallback(async (text: string) => {
     if (!text?.trim()) return;
 
@@ -120,7 +139,7 @@ export function useVoiceCommands({
           if (parsedCommand.action === 'help') {
             showFeedback(
               'Voice Commands',
-              'Try commands like "Add a Moscow Mule" or "Complete my order".'
+              'Try commands like "Add a Moscow Mule", "Complete my order", or "Cancel order".'
             );
           }
           break;
@@ -163,12 +182,19 @@ export function useVoiceCommands({
 
   const handleVoiceEvent = useCallback(async (event: any) => {
     try {
-      if (event?.type === 'completion') {
+      if (event?.type === 'complete_order') {
         logger.info('Received completion event, initiating order processing');
         const success = await processOrder();
         if (success) {
           logger.info('Order processed successfully via voice command');
           showFeedback('Success', 'Order processed successfully');
+        }
+      } else if (event?.type === 'cancel_order') {
+        logger.info('Received cancellation event, clearing cart');
+        const success = await clearCart();
+        if (success) {
+          logger.info('Cart cleared successfully via voice command');
+          showFeedback('Cart Cleared', 'Your order has been cancelled');
         }
       }
     } catch (error) {
@@ -179,17 +205,19 @@ export function useVoiceCommands({
         'destructive'
       );
     }
-  }, [processOrder, showFeedback]);
+  }, [processOrder, clearCart, showFeedback]);
 
   useEffect(() => {
     if (isListening) {
       voiceRecognition.on('speech', handleVoiceCommand);
       voiceRecognition.on('completion', handleVoiceEvent);
+      voiceRecognition.on('cancel', handleVoiceEvent);
     }
 
     return () => {
       voiceRecognition.off('speech', handleVoiceCommand);
       voiceRecognition.off('completion', handleVoiceEvent);
+      voiceRecognition.off('cancel', handleVoiceEvent);
     };
   }, [isListening, handleVoiceCommand, handleVoiceEvent]);
 
