@@ -3,6 +3,7 @@ import { soundEffects } from "./sound-effects";
 
 type EventCallback<T = any> = (data?: T) => void;
 type EventMap = { [key: string]: EventCallback[] };
+type ListeningMode = 'wake_word' | 'command' | 'shutdown';
 
 class EventHandler {
   private events: EventMap = {};
@@ -30,41 +31,11 @@ class EventHandler {
 class VoiceRecognition extends EventHandler {
   private recognition: SpeechRecognition | null = null;
   private isListening = false;
+  private mode: ListeningMode = 'wake_word';
   private orderWakeWord = "hey bar";
   private inquiryWakeWord = "hey bev";
-  private retryWakeWord = "hey pro";
   private retryCount = 0;
   private maxRetries = 3;
-  private processingCommand = false;
-
-  // Order completion phrases
-  private completionPhrases = [
-    "complete order",
-    "process order",
-    "finish order",
-    "place order",
-    "that's it",
-    "thats it",
-    "complete",
-    "process",
-    "finish",
-    "done",
-    "okay thats it",
-    "okay that's it"
-  ];
-
-  // Order cancellation phrases
-  private cancellationPhrases = [
-    "cancel order",
-    "void order",
-    "delete order",
-    "remove order",
-    "clear cart",
-    "cancel",
-    "void",
-    "delete",
-    "clear"
-  ];
 
   constructor() {
     super();
@@ -98,64 +69,22 @@ class VoiceRecognition extends EventHandler {
         const text = result[0].transcript.toLowerCase();
         console.log('Recognized text:', text);
 
-        // Play wake word sound if detected
-        const hasWakeWord = text.includes(this.orderWakeWord) || 
-                          text.includes(this.inquiryWakeWord) || 
-                          text.includes(this.retryWakeWord);
-        if (hasWakeWord) {
-          await soundEffects.playWakeWord();
-        }
-
-        // Check for completion phrases first
-        const isCompletionCommand = this.completionPhrases.some(phrase => 
-          text.toLowerCase().includes(phrase.toLowerCase())
-        );
-
-        // Check for cancellation phrases
-        const isCancellationCommand = this.cancellationPhrases.some(phrase =>
-          text.toLowerCase().includes(phrase.toLowerCase())
-        );
-
-        if (isCompletionCommand) {
-          console.log('Completion command detected');
-          await soundEffects.playSuccess();
-          this.emit('completion', { type: 'complete_order' });
+        // Handle shutdown command in any mode
+        if (text.includes('shut down')) {
+          await this.handleShutdown();
           return;
         }
 
-        if (isCancellationCommand) {
-          console.log('Cancellation command detected');
-          await soundEffects.playError();
-          this.emit('cancel', { type: 'cancel_order' });
-          return;
-        }
-
-        // Process other commands
-        const hasOrderWake = text.toLowerCase().includes(this.orderWakeWord);
-        const hasInquiryWake = text.toLowerCase().includes(this.inquiryWakeWord);
-        const hasRetryWake = text.toLowerCase().includes(this.retryWakeWord);
-
-        if (hasOrderWake) {
-          const commandText = text.toLowerCase().replace(this.orderWakeWord, '').trim();
-          this.emit('modeChange', { mode: 'order', isActive: true });
-          if (commandText) {
-            this.emit('speech', commandText);
-          }
-        } else if (hasInquiryWake) {
-          const commandText = text.toLowerCase().replace(this.inquiryWakeWord, '').trim();
-          this.emit('modeChange', { mode: 'inquiry', isActive: true });
-          if (commandText) {
-            this.emit('speech', commandText);
-          }
-        } else if (hasRetryWake) {
-          const commandText = text.toLowerCase().replace(this.retryWakeWord, '').trim();
-          this.emit('modeChange', { mode: 'retry', isActive: true });
-          this.retryCount = 0;
-          if (commandText) {
-            this.emit('speech', commandText);
-          }
-        } else {
-          this.emit('speech', text);
+        switch (this.mode) {
+          case 'wake_word':
+            await this.handleWakeWordMode(text);
+            break;
+          case 'command':
+            await this.handleCommandMode(text);
+            break;
+          case 'shutdown':
+            // Do nothing in shutdown mode
+            break;
         }
       } catch (error) {
         console.error('Error processing speech result:', error);
@@ -203,11 +132,54 @@ class VoiceRecognition extends EventHandler {
     };
 
     this.recognition.onend = () => {
-      if (this.isListening && this.retryCount < this.maxRetries) {
+      if (this.isListening && this.mode !== 'shutdown') {
         console.log('Recognition ended, restarting...');
         this.recognition?.start();
       }
     };
+  }
+
+  private async handleWakeWordMode(text: string) {
+    const hasOrderWake = text.includes(this.orderWakeWord);
+    const hasInquiryWake = text.includes(this.inquiryWakeWord);
+
+    if (hasOrderWake || hasInquiryWake) {
+      this.mode = 'command';
+      await soundEffects.playWakeWord();
+      this.emit('modeChange', { 
+        mode: hasOrderWake ? 'order' : 'inquiry',
+        isActive: true 
+      });
+
+      // Extract command after wake word if any
+      const commandText = text
+        .replace(hasOrderWake ? this.orderWakeWord : this.inquiryWakeWord, '')
+        .trim();
+
+      if (commandText) {
+        this.emit('speech', commandText);
+      }
+    }
+  }
+
+  private async handleCommandMode(text: string) {
+    // Check for stop listening command
+    if (text.includes('stop listening')) {
+      await soundEffects.playListeningStop();
+      this.mode = 'wake_word';
+      this.emit('modeChange', { mode: 'wake_word', isActive: false });
+      return;
+    }
+
+    // Process regular commands
+    this.emit('speech', text);
+  }
+
+  private async handleShutdown() {
+    await soundEffects.playListeningStop();
+    this.mode = 'shutdown';
+    this.emit('shutdown');
+    this.stop();
   }
 
   async start() {
@@ -220,9 +192,10 @@ class VoiceRecognition extends EventHandler {
       try {
         this.isListening = true;
         this.retryCount = 0;
+        this.mode = 'wake_word';
         this.recognition.start();
         await soundEffects.playListeningStart();
-        this.emit('start');
+        this.emit('start', { mode: this.mode });
       } catch (error) {
         console.error('Error starting speech recognition:', error);
         this.emit('error', 'Failed to start speech recognition');
@@ -244,6 +217,10 @@ class VoiceRecognition extends EventHandler {
         this.emit('error', 'Failed to stop speech recognition');
       }
     }
+  }
+
+  getMode(): ListeningMode {
+    return this.mode;
   }
 
   isSupported(): boolean {
