@@ -33,3 +33,23 @@ export interface RecognitionError {
   type: ErrorType;
   message: string;
 }
+
+// New interfaces for voice command customization
+export interface VoiceCommandPreference {
+  command: string;
+  action: 'order' | 'inquiry' | 'modify' | 'cancel' | 'system';
+  aliases: string[];
+  enabled: boolean;
+}
+
+export interface VoiceSettings {
+  wakeWord: string;
+  volume: number;
+  commandPreferences: VoiceCommandPreference[];
+}
+
+export interface VoiceCustomization {
+  settings: VoiceSettings;
+  updateSettings: (settings: Partial<VoiceSettings>) => void;
+  resetSettings: () => void;
+}
