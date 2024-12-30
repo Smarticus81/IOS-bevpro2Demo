@@ -6,6 +6,7 @@ import type { CartState, CartContextType, AddToCartAction, CartItem } from '@/ty
 import { useLocation } from 'wouter';
 import { processVoiceOrder } from '@/lib/voice-order-service';
 import { soundEffects } from '@/lib/sound-effects';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 // Define the context
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -284,6 +285,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
+      {state.isProcessing && (
+        <LoadingScreen message={
+          state.items.length > 1 
+            ? `Preparing your ${state.items.length} drinks...`
+            : "Preparing your drink..."
+        } />
+      )}
     </CartContext.Provider>
   );
 }
