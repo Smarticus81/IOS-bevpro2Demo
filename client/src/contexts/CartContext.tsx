@@ -67,69 +67,111 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
-  // Place Order Mutation
+  // Place Order Mutation with retry logic
   const orderMutation = useMutation({
     mutationFn: async (cartItems: typeof state.items) => {
-      logger.info('Placing order:', {
-        itemCount: cartItems.length,
-        total: cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0)
-      });
+      let retryCount = 0;
+      const MAX_RETRIES = 3;
 
-      // Step 1: Create the order
-      const orderResponse = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          items: cartItems,
-          total: cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0),
-          status: 'pending'
-        }),
-      });
+      const attemptOrder = async () => {
+        try {
+          logger.info('Attempting order placement:', {
+            attempt: retryCount + 1,
+            maxRetries: MAX_RETRIES,
+            itemCount: cartItems.length,
+            total: cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0)
+          });
 
-      if (!orderResponse.ok) {
-        const errorText = await orderResponse.text();
-        logger.error('Order creation failed:', {
-          status: orderResponse.status,
-          error: errorText
-        });
-        throw new Error(errorText || 'Failed to create order');
-      }
+          // Step 1: Create the order
+          const orderResponse = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              items: cartItems,
+              total: cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0),
+              status: 'pending'
+            }),
+          });
 
-      const orderData = await orderResponse.json();
-      logger.info('Order created successfully:', { orderId: orderData.id });
+          if (!orderResponse.ok) {
+            const errorText = await orderResponse.text();
+            logger.error('Order creation failed:', {
+              status: orderResponse.status,
+              error: errorText,
+              attempt: retryCount + 1
+            });
 
-      // Step 2: Process payment
-      const paymentResponse = await fetch('/api/payment/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0),
-          orderId: orderData.id
-        }),
-      });
+            if (retryCount < MAX_RETRIES) {
+              retryCount++;
+              return await attemptOrder();
+            }
+            throw new Error(errorText || 'Failed to create order');
+          }
 
-      if (!paymentResponse.ok) {
-        const errorText = await paymentResponse.text();
-        logger.error('Payment processing failed:', {
-          status: paymentResponse.status,
-          error: errorText,
-          orderId: orderData.id
-        });
-        throw new Error(errorText || 'Payment processing failed');
-      }
+          const orderData = await orderResponse.json();
+          logger.info('Order created successfully:', { orderId: orderData.id });
 
-      const paymentData = await paymentResponse.json();
-      if (!paymentData.success) {
-        logger.error('Payment unsuccessful:', paymentData);
-        throw new Error(paymentData.error || 'Payment was unsuccessful');
-      }
+          // Step 2: Process payment
+          const paymentResponse = await fetch('/api/payment/process', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              amount: cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0) * 100, // Convert to cents
+              orderId: orderData.id
+            }),
+          });
 
-      logger.info('Payment processed successfully:', {
-        orderId: orderData.id,
-        paymentId: paymentData.id
-      });
+          if (!paymentResponse.ok) {
+            const errorText = await paymentResponse.text();
+            logger.error('Payment processing failed:', {
+              status: paymentResponse.status,
+              error: errorText,
+              orderId: orderData.id,
+              attempt: retryCount + 1
+            });
 
-      return { order: orderData, payment: paymentData };
+            if (retryCount < MAX_RETRIES) {
+              retryCount++;
+              return await attemptOrder();
+            }
+            throw new Error(errorText || 'Payment processing failed');
+          }
+
+          const paymentData = await paymentResponse.json();
+          if (!paymentData.success) {
+            logger.error('Payment unsuccessful:', {
+              paymentData,
+              attempt: retryCount + 1
+            });
+
+            if (retryCount < MAX_RETRIES) {
+              retryCount++;
+              return await attemptOrder();
+            }
+            throw new Error(paymentData.error || 'Payment was unsuccessful');
+          }
+
+          logger.info('Payment processed successfully:', {
+            orderId: orderData.id,
+            paymentId: paymentData.id
+          });
+
+          return { order: orderData, payment: paymentData };
+        } catch (error) {
+          if (retryCount < MAX_RETRIES) {
+            retryCount++;
+            logger.warn('Retrying order/payment:', {
+              error,
+              attempt: retryCount,
+              maxRetries: MAX_RETRIES
+            });
+            return await attemptOrder();
+          }
+          throw error;
+        }
+      };
+
+      return attemptOrder();
     },
     onSuccess: (data) => {
       dispatch({ type: 'CLEAR_CART' });
@@ -148,7 +190,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       logger.error('Order/payment failed:', error);
 
       toast({
-        title: 'Error',
+        title: 'Payment Failed',
         description: error.message || 'Failed to process order. Please try again.',
         variant: 'destructive',
       });
@@ -158,7 +200,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     },
   });
 
-  // Add to Cart
+  // Add to Cart with error recovery
   const addToCart = useCallback(async (action: AddToCartAction) => {
     if (state.isProcessing) {
       logger.info('Cart is currently processing, ignoring add request');
@@ -189,7 +231,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       // Revert the add action on error
       dispatch({ type: 'REMOVE_ITEM', drinkId: action.drink.id });
-      
+
       toast({
         title: 'Error',
         description: 'Failed to add item to cart.',
@@ -200,7 +242,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [toast, state.items.length, state.isProcessing]);
 
-  // Remove from Cart
+  // Remove from Cart with validation
   const removeItem = useCallback(async (drinkId: number) => {
     if (state.isProcessing) {
       logger.info('Cart is currently processing, ignoring remove request');
@@ -211,7 +253,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       logger.info('Removing item from cart:', { drinkId });
       dispatch({ type: 'SET_PROCESSING', isProcessing: true });
       const itemToRemove = state.items.find(item => item.drink.id === drinkId);
-      
+
       if (!itemToRemove) {
         logger.warn('Item not found in cart:', { drinkId });
         return;
@@ -236,7 +278,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [toast, state.isProcessing, state.items]);
 
-  // Place Order
+  // Place Order with validation and retry
   const placeOrder = useCallback(async () => {
     try {
       logger.info('Initiating order placement', {
@@ -267,14 +309,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       logger.error('Error placing order:', error);
       toast({
-        title: 'Error',
+        title: 'Payment Failed',
         description: error instanceof Error ? error.message : 'Failed to place order.',
         variant: 'destructive',
       });
+      setLocation('/payment-failed');
     } finally {
       dispatch({ type: 'SET_PROCESSING', isProcessing: false });
     }
-  }, [state.items, state.isProcessing, orderMutation, toast]);
+  }, [state.items, state.isProcessing, orderMutation, toast, setLocation]);
 
   return (
     <CartContext.Provider

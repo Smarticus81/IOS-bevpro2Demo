@@ -35,29 +35,43 @@ export function registerRoutes(app: Express): Server {
       const { items, total } = req.body;
 
       if (!items?.length || typeof total !== 'number' || total <= 0) {
+        console.error("Invalid order data:", { items, total });
         return res.status(400).json({ 
           error: "Invalid order data. Must include items array and valid total." 
         });
       }
 
       // Validate all items have required fields
-      const invalidItems = items.filter((item: any) => 
-        !item.drink?.id || 
-        typeof item.quantity !== 'number' || 
-        item.quantity <= 0
-      );
+      const invalidItems = items.filter((item: any) => {
+        const isValid = item.drink?.id && 
+                       typeof item.quantity === 'number' && 
+                       item.quantity > 0;
+        if (!isValid) {
+          console.error("Invalid item in order:", item);
+        }
+        return !isValid;
+      });
 
       if (invalidItems.length > 0) {
         return res.status(400).json({
-          error: "Invalid items in order. Each item must have a valid drink ID and quantity."
+          error: "Invalid items in order. Each item must have a valid drink ID and quantity.",
+          invalidItems
         });
       }
 
       // Create order
       const [order] = await db
         .insert(orders)
-        .values({ total, items, status: 'pending' })
+        .values({ 
+          total, 
+          items, 
+          status: 'pending',
+          payment_status: 'pending',
+          created_at: new Date()
+        })
         .returning();
+
+      console.log("Order created successfully:", order);
 
       // Create order items with validation
       const orderItemsData = items.map((item: any) => ({
@@ -68,6 +82,7 @@ export function registerRoutes(app: Express): Server {
       }));
 
       await db.insert(orderItems).values(orderItemsData);
+      console.log("Order items created:", orderItemsData);
 
       // Update inventory and sales with proper error handling
       for (const item of items) {
@@ -83,6 +98,7 @@ export function registerRoutes(app: Express): Server {
         if (!updatedDrink) {
           throw new Error(`Failed to update inventory for drink ${item.drink.id}`);
         }
+        console.log("Updated drink inventory:", updatedDrink);
       }
 
       res.json(order);
@@ -95,10 +111,12 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get order by ID
+  // Get order by ID with detailed error logging
   app.get("/api/orders/:id", async (req, res) => {
     try {
       const { id } = req.params;
+      console.log("Fetching order:", id);
+
       const order = await db
         .select()
         .from(orders)
@@ -106,9 +124,11 @@ export function registerRoutes(app: Express): Server {
         .limit(1);
 
       if (!order.length) {
+        console.error("Order not found:", id);
         return res.status(404).json({ error: "Order not found" });
       }
 
+      console.log("Order found:", order[0]);
       res.json(order[0]);
     } catch (error) {
       console.error("Error fetching order:", error);
@@ -116,55 +136,83 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Payment processing with improved error handling
+  // Payment processing with improved error handling and retry mechanism
   app.post("/api/payment/process", async (req, res) => {
-    try {
-      const { amount, orderId } = req.body;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
 
-      if (typeof amount !== 'number' || amount <= 0) {
-        return res.status(400).json({ 
-          error: "Invalid payment amount" 
-        });
-      }
+    async function attemptPayment() {
+      try {
+        const { amount, orderId } = req.body;
+        console.log("Processing payment:", { amount, orderId, retryCount });
 
-      if (orderId && typeof orderId !== 'number') {
-        return res.status(400).json({ 
-          error: "Invalid order ID" 
-        });
-      }
-
-      // Simulate payment processing with better error handling
-      const success = Math.random() > 0.1; // 90% success rate
-
-      if (success) {
-        // If we have an order ID, update its status
-        if (orderId) {
-          const [updatedOrder] = await db
-            .update(orders)
-            .set({ 
-              status: 'paid',
-              payment_status: 'completed',
-              completed_at: new Date()
-            })
-            .where(eq(orders.id, orderId))
-            .returning();
-
-          if (!updatedOrder) {
-            throw new Error(`Order ${orderId} not found`);
-          }
+        if (typeof amount !== 'number' || amount <= 0) {
+          console.error("Invalid payment amount:", amount);
+          return res.status(400).json({ 
+            error: "Invalid payment amount" 
+          });
         }
 
-        res.json({ 
-          success: true,
-          message: `Payment of $${(amount / 100).toFixed(2)} processed successfully`,
-          orderId,
-          timestamp: new Date().toISOString()
-        });
-      } else {
-        throw new Error('Payment simulation failed - please try again');
+        if (orderId && typeof orderId !== 'number') {
+          console.error("Invalid order ID:", orderId);
+          return res.status(400).json({ 
+            error: "Invalid order ID" 
+          });
+        }
+
+        // Simulate payment processing with better error handling
+        const success = Math.random() > 0.1; // 90% success rate
+
+        if (success) {
+          // If we have an order ID, update its status
+          if (orderId) {
+            console.log("Updating order status:", orderId);
+            const [updatedOrder] = await db
+              .update(orders)
+              .set({ 
+                status: 'paid',
+                payment_status: 'completed',
+                completed_at: new Date()
+              })
+              .where(eq(orders.id, orderId))
+              .returning();
+
+            if (!updatedOrder) {
+              throw new Error(`Order ${orderId} not found`);
+            }
+            console.log("Order status updated:", updatedOrder);
+          }
+
+          const response = { 
+            success: true,
+            message: `Payment of $${(amount / 100).toFixed(2)} processed successfully`,
+            orderId,
+            timestamp: new Date().toISOString()
+          };
+          console.log("Payment successful:", response);
+          res.json(response);
+        } else {
+          if (retryCount < MAX_RETRIES) {
+            console.log(`Payment failed, retrying (${retryCount + 1}/${MAX_RETRIES})...`);
+            retryCount++;
+            return await attemptPayment();
+          }
+          throw new Error(`Payment failed after ${MAX_RETRIES} attempts - please try again`);
+        }
+      } catch (error) {
+        if (retryCount < MAX_RETRIES) {
+          console.log(`Payment error, retrying (${retryCount + 1}/${MAX_RETRIES})...`, error);
+          retryCount++;
+          return await attemptPayment();
+        }
+        throw error;
       }
+    }
+
+    try {
+      await attemptPayment();
     } catch (error) {
-      console.error("Error processing payment:", error);
+      console.error("Payment processing failed:", error);
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Payment processing failed",
