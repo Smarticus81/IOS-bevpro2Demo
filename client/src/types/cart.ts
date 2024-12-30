@@ -1,7 +1,7 @@
-import type { DrinkItem } from './speech';
+import type { Drink } from '@db/schema';
 
 export interface CartItem {
-  drink: DrinkItem;
+  drink: Drink;
   quantity: number;
 }
 
@@ -12,7 +12,7 @@ export interface CartState {
 
 export interface AddToCartAction {
   type: 'ADD_ITEM';
-  drink: DrinkItem;
+  drink: Drink;
   quantity: number;
 }
 

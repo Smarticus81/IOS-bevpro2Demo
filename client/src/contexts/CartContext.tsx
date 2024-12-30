@@ -2,7 +2,7 @@ import { createContext, useContext, useReducer, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
-import type { CartState, CartContextType, AddToCartAction } from '@/types/cart';
+import type { CartState, CartContextType, AddToCartAction, CartItem } from '@/types/cart';
 import { useLocation } from 'wouter';
 
 // Define the context
@@ -73,57 +73,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Place Order Mutation with automatic success handling
   const orderMutation = useMutation({
-    mutationFn: async (cartItems: typeof state.items) => {
+    mutationFn: async (cartItems: CartItem[]) => {
       logger.info('Initiating order placement', {
         cartSize: cartItems.length,
         total: cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0)
       });
 
-      // Step 1: Create the order
-      const orderResponse = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: cartItems,
-          total: cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0),
-          status: 'pending'
-        }),
-      });
+      // Always succeed in demo mode
+      const demoTransactionId = `demo-${Date.now()}`;
 
-      if (!orderResponse.ok) {
-        const errorText = await orderResponse.text();
-        throw new Error(errorText || 'Failed to create order');
-      }
-
-      const orderData = await orderResponse.json();
-      logger.info('Order created successfully:', { orderId: orderData.id });
-
-      // Step 2: Process payment
-      const paymentResponse = await fetch('/api/payment/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0) * 100, // Convert to cents
-          orderId: orderData.id
-        }),
-      });
-
-      if (!paymentResponse.ok) {
-        const errorText = await paymentResponse.text();
-        throw new Error(errorText || 'Payment processing failed');
-      }
-
-      const paymentData = await paymentResponse.json();
-      logger.info('Payment processed successfully:', {
-        orderId: orderData.id,
-        transactionId: paymentData.transactionId,
-        timestamp: paymentData.timestamp
-      });
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       return {
-        order: orderData,
-        payment: paymentData,
-        transactionId: paymentData.transactionId
+        transactionId: demoTransactionId,
+        success: true
       };
     },
     onMutate: () => {
@@ -135,18 +99,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
 
       toast({
-        title: 'Success',
-        description: 'Order placed and payment processed successfully!',
+        title: 'Order Confirmed',
+        description: 'Your order has been processed successfully!',
         variant: 'default',
       });
 
       // Navigate to confirmation page
       setLocation(`/payment-confirmation?transaction=${data.transactionId}`);
     },
-    onError: (error: Error) => {
-      logger.error('Order/payment failed:', error);
-
-      // In demo mode, we still show success
+    onError: () => {
+      // In demo mode, always succeed
       dispatch({ type: 'CLEAR_CART' });
       queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
 
@@ -181,7 +143,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       toast({
         title: 'Added to Cart',
-        description: `${action.quantity} ${action.drink.name}(s) added to your cart.`,
+        description: `Added ${action.quantity} ${action.drink.name}(s) to your cart.`,
         variant: 'default',
       });
     } catch (error) {
@@ -191,14 +153,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         drinkName: action.drink.name
       });
 
-      // Revert the add action on error
-      dispatch({ type: 'REMOVE_ITEM', drinkId: action.drink.id });
-
       toast({
         title: 'Error',
         description: 'Failed to add item to cart.',
         variant: 'destructive',
       });
+
+      // Revert the add action on error
+      dispatch({ type: 'REMOVE_ITEM', drinkId: action.drink.id });
     }
   }, [toast, state.isProcessing]);
 

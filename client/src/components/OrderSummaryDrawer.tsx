@@ -9,6 +9,7 @@ import {
   DrawerTitle,
   DrawerDescription,
   DrawerHeader,
+  DrawerClose,
 } from "@/components/ui/drawer";
 import { OrderSummary } from "./OrderSummary";
 import { useCart } from "@/contexts/CartContext";
@@ -32,26 +33,29 @@ export function OrderSummaryDrawer() {
           variant="outline"
           className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20"
           disabled={isProcessing}
+          aria-label={`View order cart with ${itemCount} items`}
         >
           <ShoppingBag className="mr-2 h-4 w-4" />
           View Order ({itemCount} items)
         </Button>
       </DrawerTrigger>
       <DrawerContent>
-        <DrawerHeader>
+        <DrawerHeader className="text-left">
           <DrawerTitle>Your Order Summary</DrawerTitle>
           <DrawerDescription>
             Review your items and complete your order
           </DrawerDescription>
         </DrawerHeader>
-        <div className="p-4 max-h-[80vh] overflow-auto">
+        <div className="p-4 pb-6 max-h-[80vh] overflow-auto">
           <OrderSummary
             cart={cart}
             onRemoveItem={onRemoveItem}
             onPlaceOrder={onPlaceOrder}
             isLoading={isProcessing}
+            variant="compact"
           />
         </div>
+        <DrawerClose className="sr-only">Close order summary</DrawerClose>
       </DrawerContent>
     </Drawer>
   );
