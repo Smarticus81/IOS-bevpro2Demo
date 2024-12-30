@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { DrinkItem } from "@/types/speech";
 import { useCart } from "@/contexts/CartContext";
 import { logger } from "@/lib/logger";
@@ -22,7 +22,7 @@ export function VoiceControlButton() {
   const [showDialog, setShowDialog] = useState(false);
   const { cart, addToCart, removeItem, placeOrder, isProcessing } = useCart();
   const [mode, setMode] = useState<'wake_word' | 'command' | 'shutdown'>('wake_word');
-  const [initError, setInitError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Fetch drinks data with optimized caching
   const { data: drinks = [] } = useQuery<DrinkItem[]>({
@@ -42,66 +42,61 @@ export function VoiceControlButton() {
       isProcessing,
     });
 
-  // Start listening for wake word on mount with error handling
-  useEffect(() => {
-    let mounted = true;
+  // Initialize voice control
+  const initializeVoiceControl = async () => {
+    if (!isSupported) {
+      setShowDialog(true);
+      return;
+    }
 
-    const initializeVoice = async () => {
-      if (!isSupported) {
-        setInitError('Voice commands are not supported in this browser');
-        return;
-      }
+    try {
+      if (!isInitialized) {
+        // Set up event listeners
+        const handleModeChange = (data: { mode: string, isActive: boolean }) => {
+          setMode(data.mode as 'wake_word' | 'command' | 'shutdown');
+          toast({
+            title: "Voice Control",
+            description: data.mode === 'wake_word' 
+              ? "Listening for wake word (Hey Bar/Hey Bev)"
+              : "Command mode active. Say 'stop listening' to exit",
+            duration: 3000,
+          });
+        };
 
-      try {
+        const handleShutdown = () => {
+          setMode('shutdown');
+          setIsInitialized(false);
+          toast({
+            title: "Voice Control",
+            description: "System shutting down",
+            duration: 3000,
+          });
+        };
+
+        voiceRecognition.on('modeChange', handleModeChange);
+        voiceRecognition.on('shutdown', handleShutdown);
+
+        // Start listening
         await startListening();
+        setIsInitialized(true);
 
-        if (mounted) {
-          // Listen for mode changes
-          const handleModeChange = (data: { mode: string, isActive: boolean }) => {
-            setMode(data.mode as 'wake_word' | 'command' | 'shutdown');
-
-            toast({
-              title: "Voice Control",
-              description: data.mode === 'wake_word' 
-                ? "Listening for wake word (Hey Bar/Hey Bev)"
-                : "Command mode active. Say 'stop listening' to exit",
-              duration: 3000,
-            });
-          };
-
-          const handleShutdown = () => {
-            setMode('shutdown');
-            toast({
-              title: "Voice Control",
-              description: "System shutting down",
-              duration: 3000,
-            });
-          };
-
-          voiceRecognition.on('modeChange', handleModeChange);
-          voiceRecognition.on('shutdown', handleShutdown);
-
-          return () => {
-            voiceRecognition.off('modeChange', handleModeChange);
-            voiceRecognition.off('shutdown', handleShutdown);
-          };
-        }
-      } catch (error) {
-        logger.error('Failed to initialize voice control:', error);
-        if (mounted) {
-          setInitError(error instanceof Error ? error.message : 'Failed to initialize voice control');
-        }
+        toast({
+          title: "Voice Control",
+          description: "System ready. Say 'Hey Bar' or 'Hey Bev' to start",
+          duration: 3000,
+        });
       }
-    };
+    } catch (error) {
+      logger.error('Failed to initialize voice control:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to initialize voice control",
+        variant: "destructive",
+      });
+    }
+  };
 
-    initializeVoice();
-
-    return () => {
-      mounted = false;
-    };
-  }, [isSupported, startListening, toast]);
-
-  // Handle manual shutdown
+  // Handle shutdown
   const handleShutdown = async () => {
     try {
       if (!isSupported) {
@@ -111,6 +106,7 @@ export function VoiceControlButton() {
 
       await stopListening();
       setMode('shutdown');
+      setIsInitialized(false);
       toast({
         title: "Voice Control",
         description: "System shutdown",
@@ -126,31 +122,11 @@ export function VoiceControlButton() {
     }
   };
 
-  // If there's an initialization error, show retry button
-  if (initError) {
-    return (
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        className="fixed bottom-6 right-6 z-50"
-      >
-        <Button
-          onClick={() => {
-            setInitError(null);
-            startListening();
-          }}
-          size="lg"
-          className="rounded-full p-6 shadow-lg bg-yellow-500 hover:bg-yellow-600"
-          aria-label="Retry voice initialization"
-        >
-          <MicOff className="h-6 w-6" />
-        </Button>
-      </motion.div>
-    );
-  }
-
   const getButtonStyle = () => {
+    if (!isInitialized) {
+      return "bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black";
+    }
+
     switch (mode) {
       case 'command':
         return "bg-red-500 hover:bg-red-600 animate-pulse";
@@ -164,6 +140,10 @@ export function VoiceControlButton() {
   };
 
   const getButtonIcon = () => {
+    if (!isInitialized) {
+      return <Mic className="h-6 w-6" />;
+    }
+
     switch (mode) {
       case 'command':
         return <Mic className="h-6 w-6" />;
@@ -185,13 +165,13 @@ export function VoiceControlButton() {
         className="fixed bottom-6 right-6 z-50"
       >
         <Button
-          onClick={handleShutdown}
+          onClick={isInitialized ? handleShutdown : initializeVoiceControl}
           size="lg"
           className={`rounded-full p-6 shadow-lg transition-all duration-300
             ${getButtonStyle()}
             ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
           disabled={!isSupported || isProcessing}
-          aria-label={mode === 'command' ? "Listening for commands" : "Listening for wake word"}
+          aria-label={!isInitialized ? "Initialize voice control" : mode === 'command' ? "Listening for commands" : "Listening for wake word"}
         >
           {getButtonIcon()}
         </Button>
