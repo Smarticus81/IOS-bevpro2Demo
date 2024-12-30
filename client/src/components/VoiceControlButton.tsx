@@ -22,6 +22,7 @@ export function VoiceControlButton() {
   const [showDialog, setShowDialog] = useState(false);
   const { cart, addToCart, removeItem, placeOrder, isProcessing } = useCart();
   const [mode, setMode] = useState<'wake_word' | 'command' | 'shutdown'>('wake_word');
+  const [initError, setInitError] = useState<string | null>(null);
 
   // Fetch drinks data with optimized caching
   const { data: drinks = [] } = useQuery<DrinkItem[]>({
@@ -41,41 +42,63 @@ export function VoiceControlButton() {
       isProcessing,
     });
 
-  // Start listening for wake word on mount
+  // Start listening for wake word on mount with error handling
   useEffect(() => {
-    if (isSupported) {
-      startListening();
+    let mounted = true;
 
-      // Listen for mode changes
-      const handleModeChange = (data: { mode: string, isActive: boolean }) => {
-        setMode(data.mode as 'wake_word' | 'command' | 'shutdown');
+    const initializeVoice = async () => {
+      if (!isSupported) {
+        setInitError('Voice commands are not supported in this browser');
+        return;
+      }
 
-        toast({
-          title: "Voice Control",
-          description: data.mode === 'wake_word' 
-            ? "Listening for wake word (Hey Bar/Hey Bev)"
-            : "Command mode active. Say 'stop listening' to exit",
-          duration: 3000,
-        });
-      };
+      try {
+        await startListening();
 
-      const handleShutdown = () => {
-        setMode('shutdown');
-        toast({
-          title: "Voice Control",
-          description: "System shutting down",
-          duration: 3000,
-        });
-      };
+        if (mounted) {
+          // Listen for mode changes
+          const handleModeChange = (data: { mode: string, isActive: boolean }) => {
+            setMode(data.mode as 'wake_word' | 'command' | 'shutdown');
 
-      voiceRecognition.on('modeChange', handleModeChange);
-      voiceRecognition.on('shutdown', handleShutdown);
+            toast({
+              title: "Voice Control",
+              description: data.mode === 'wake_word' 
+                ? "Listening for wake word (Hey Bar/Hey Bev)"
+                : "Command mode active. Say 'stop listening' to exit",
+              duration: 3000,
+            });
+          };
 
-      return () => {
-        voiceRecognition.off('modeChange', handleModeChange);
-        voiceRecognition.off('shutdown', handleShutdown);
-      };
-    }
+          const handleShutdown = () => {
+            setMode('shutdown');
+            toast({
+              title: "Voice Control",
+              description: "System shutting down",
+              duration: 3000,
+            });
+          };
+
+          voiceRecognition.on('modeChange', handleModeChange);
+          voiceRecognition.on('shutdown', handleShutdown);
+
+          return () => {
+            voiceRecognition.off('modeChange', handleModeChange);
+            voiceRecognition.off('shutdown', handleShutdown);
+          };
+        }
+      } catch (error) {
+        logger.error('Failed to initialize voice control:', error);
+        if (mounted) {
+          setInitError(error instanceof Error ? error.message : 'Failed to initialize voice control');
+        }
+      }
+    };
+
+    initializeVoice();
+
+    return () => {
+      mounted = false;
+    };
   }, [isSupported, startListening, toast]);
 
   // Handle manual shutdown
@@ -102,6 +125,30 @@ export function VoiceControlButton() {
       });
     }
   };
+
+  // If there's an initialization error, show retry button
+  if (initError) {
+    return (
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="fixed bottom-6 right-6 z-50"
+      >
+        <Button
+          onClick={() => {
+            setInitError(null);
+            startListening();
+          }}
+          size="lg"
+          className="rounded-full p-6 shadow-lg bg-yellow-500 hover:bg-yellow-600"
+          aria-label="Retry voice initialization"
+        >
+          <MicOff className="h-6 w-6" />
+        </Button>
+      </motion.div>
+    );
+  }
 
   const getButtonStyle = () => {
     switch (mode) {
