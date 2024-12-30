@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, boolean, jsonb, real, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean, jsonb, real } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 
@@ -51,10 +51,24 @@ export const transactions = pgTable("transactions", {
   amount: integer("amount").notNull(),
   status: text("status").notNull().default("pending"),
   provider_transaction_id: text("provider_transaction_id"),
+  attempt_count: integer("attempt_count").default(0),
+  error_message: text("error_message"),
   metadata: jsonb("metadata"),
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at"),
 });
+
+// Add relations for transactions
+export const transactionRelations = relations(transactions, ({ one }) => ({
+  order: one(orders, {
+    fields: [transactions.order_id],
+    references: [orders.id],
+  }),
+  paymentMethod: one(paymentMethods, {
+    fields: [transactions.payment_method_id],
+    references: [paymentMethods.id],
+  }),
+}));
 
 // Tabs table for managing open tabs
 export const tabs = pgTable("tabs", {

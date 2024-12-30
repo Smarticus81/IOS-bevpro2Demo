@@ -6,6 +6,7 @@ import {
   orders, 
   orderItems,
   paymentMethods,
+  transactions,
   tabs,
   splitPayments,
   eventPackages 
@@ -136,15 +137,16 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Payment processing with improved error handling and retry mechanism
+  // Payment processing with complete transaction recording
   app.post("/api/payment/process", async (req, res) => {
     let retryCount = 0;
     const MAX_RETRIES = 3;
+    let transactionId: number | null = null;
 
     async function attemptPayment() {
       try {
         const { amount, orderId } = req.body;
-        console.log("Processing payment:", { amount, orderId, retryCount });
+        console.log("Processing payment:", { amount, orderId, retryCount, transactionId });
 
         if (typeof amount !== 'number' || amount <= 0) {
           console.error("Invalid payment amount:", amount);
@@ -153,53 +155,115 @@ export function registerRoutes(app: Express): Server {
           });
         }
 
-        if (orderId && typeof orderId !== 'number') {
+        if (!orderId || typeof orderId !== 'number') {
           console.error("Invalid order ID:", orderId);
           return res.status(400).json({ 
             error: "Invalid order ID" 
           });
         }
 
+        // Create or update transaction record
+        if (!transactionId) {
+          const [transaction] = await db.insert(transactions)
+            .values({
+              order_id: orderId,
+              amount,
+              status: 'processing',
+              attempt_count: 1,
+              created_at: new Date(),
+              updated_at: new Date()
+            })
+            .returning();
+          transactionId = transaction.id;
+        } else {
+          await db.update(transactions)
+            .set({
+              status: 'processing',
+              attempt_count: sql`${transactions.attempt_count} + 1`,
+              updated_at: new Date()
+            })
+            .where(eq(transactions.id, transactionId));
+        }
+
         // Simulate payment processing with better error handling
         const success = Math.random() > 0.1; // 90% success rate
 
         if (success) {
-          // If we have an order ID, update its status
-          if (orderId) {
-            console.log("Updating order status:", orderId);
-            const [updatedOrder] = await db
-              .update(orders)
-              .set({ 
-                status: 'paid',
-                payment_status: 'completed',
-                completed_at: new Date()
-              })
-              .where(eq(orders.id, orderId))
-              .returning();
+          // Update transaction record
+          await db.update(transactions)
+            .set({
+              status: 'completed',
+              updated_at: new Date(),
+              metadata: {
+                completed_at: new Date().toISOString(),
+                success: true
+              }
+            })
+            .where(eq(transactions.id, transactionId));
 
-            if (!updatedOrder) {
-              throw new Error(`Order ${orderId} not found`);
-            }
-            console.log("Order status updated:", updatedOrder);
+          // Update order status
+          const [updatedOrder] = await db
+            .update(orders)
+            .set({ 
+              status: 'paid',
+              payment_status: 'completed',
+              completed_at: new Date()
+            })
+            .where(eq(orders.id, orderId))
+            .returning();
+
+          if (!updatedOrder) {
+            throw new Error(`Order ${orderId} not found`);
           }
+          console.log("Order status updated:", updatedOrder);
 
           const response = { 
             success: true,
             message: `Payment of $${(amount / 100).toFixed(2)} processed successfully`,
             orderId,
+            transactionId,
             timestamp: new Date().toISOString()
           };
           console.log("Payment successful:", response);
           res.json(response);
         } else {
+          // Record failed attempt
+          await db.update(transactions)
+            .set({
+              status: 'failed',
+              error_message: 'Payment simulation failed',
+              updated_at: new Date(),
+              metadata: {
+                failed_at: new Date().toISOString(),
+                attempt: retryCount + 1
+              }
+            })
+            .where(eq(transactions.id, transactionId));
+
           if (retryCount < MAX_RETRIES) {
             console.log(`Payment failed, retrying (${retryCount + 1}/${MAX_RETRIES})...`);
             retryCount++;
             return await attemptPayment();
           }
+
           throw new Error(`Payment failed after ${MAX_RETRIES} attempts - please try again`);
         }
       } catch (error) {
+        // Record error in transaction
+        if (transactionId) {
+          await db.update(transactions)
+            .set({
+              status: 'error',
+              error_message: error instanceof Error ? error.message : 'Unknown error',
+              updated_at: new Date(),
+              metadata: {
+                error_at: new Date().toISOString(),
+                attempt: retryCount + 1
+              }
+            })
+            .where(eq(transactions.id, transactionId));
+        }
+
         if (retryCount < MAX_RETRIES) {
           console.log(`Payment error, retrying (${retryCount + 1}/${MAX_RETRIES})...`, error);
           retryCount++;
@@ -213,9 +277,26 @@ export function registerRoutes(app: Express): Server {
       await attemptPayment();
     } catch (error) {
       console.error("Payment processing failed:", error);
+
+      // Final transaction status update
+      if (transactionId) {
+        await db.update(transactions)
+          .set({
+            status: 'failed',
+            error_message: error instanceof Error ? error.message : 'Payment processing failed',
+            updated_at: new Date(),
+            metadata: {
+              final_error_at: new Date().toISOString(),
+              total_attempts: retryCount + 1
+            }
+          })
+          .where(eq(transactions.id, transactionId));
+      }
+
       res.status(500).json({ 
         success: false,
         error: error instanceof Error ? error.message : "Payment processing failed",
+        transactionId,
         timestamp: new Date().toISOString()
       });
     }

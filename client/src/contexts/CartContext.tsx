@@ -111,7 +111,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           const orderData = await orderResponse.json();
           logger.info('Order created successfully:', { orderId: orderData.id });
 
-          // Step 2: Process payment
+          // Step 2: Process payment with improved error tracking
           const paymentResponse = await fetch('/api/payment/process', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -141,7 +141,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           if (!paymentData.success) {
             logger.error('Payment unsuccessful:', {
               paymentData,
-              attempt: retryCount + 1
+              attempt: retryCount + 1,
+              transactionId: paymentData.transactionId
             });
 
             if (retryCount < MAX_RETRIES) {
@@ -153,10 +154,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
           logger.info('Payment processed successfully:', {
             orderId: orderData.id,
-            paymentId: paymentData.id
+            transactionId: paymentData.transactionId,
+            timestamp: paymentData.timestamp
           });
 
-          return { order: orderData, payment: paymentData };
+          return { 
+            order: orderData, 
+            payment: paymentData,
+            transactionId: paymentData.transactionId
+          };
         } catch (error) {
           if (retryCount < MAX_RETRIES) {
             retryCount++;
@@ -183,8 +189,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         variant: 'default',
       });
 
-      // Navigate to success page
-      setLocation('/payment-confirmation');
+      // Navigate to success page with transaction ID
+      setLocation(`/payment-confirmation?transaction=${data.transactionId}`);
     },
     onError: (error: Error) => {
       logger.error('Order/payment failed:', error);
@@ -195,7 +201,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         variant: 'destructive',
       });
 
-      // Navigate to payment failure page
+      // Navigate to failure page
       setLocation('/payment-failed');
     },
   });
