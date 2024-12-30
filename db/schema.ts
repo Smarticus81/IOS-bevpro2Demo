@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, boolean, jsonb, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 
@@ -51,14 +51,13 @@ export const transactions = pgTable("transactions", {
   amount: integer("amount").notNull(),
   status: text("status").notNull().default("pending"),
   provider_transaction_id: text("provider_transaction_id"),
-  attempt_count: integer("attempt_count").default(0),
-  error_message: text("error_message"),
+  attempts: integer("attempts").default(0),
+  last_error: text("last_error"),
   metadata: jsonb("metadata"),
   created_at: timestamp("created_at").defaultNow(),
-  updated_at: timestamp("updated_at"),
+  updated_at: timestamp("updated_at").defaultNow(),
 });
 
-// Add relations for transactions
 export const transactionRelations = relations(transactions, ({ one }) => ({
   order: one(orders, {
     fields: [transactions.order_id],
@@ -102,7 +101,7 @@ export const eventPackages = pgTable("event_packages", {
   description: text("description"),
   price_per_person: integer("price_per_person").notNull(),
   minimum_guests: integer("minimum_guests").default(1),
-  duration_hours: real("duration_hours"),
+  duration_hours: integer("duration_hours"), // Changed from real to integer
   is_active: boolean("is_active").default(true),
   included_items: jsonb("included_items"),
   created_at: timestamp("created_at").defaultNow(),

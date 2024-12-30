@@ -137,7 +137,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Payment processing with complete transaction recording
+  // Payment processing endpoint with error handling and transaction recording
   app.post("/api/payment/process", async (req, res) => {
     let retryCount = 0;
     const MAX_RETRIES = 3;
@@ -169,7 +169,7 @@ export function registerRoutes(app: Express): Server {
               order_id: orderId,
               amount,
               status: 'processing',
-              attempt_count: 1,
+              attempts: 1,
               created_at: new Date(),
               updated_at: new Date()
             })
@@ -179,7 +179,7 @@ export function registerRoutes(app: Express): Server {
           await db.update(transactions)
             .set({
               status: 'processing',
-              attempt_count: sql`${transactions.attempt_count} + 1`,
+              attempts: sql`${transactions.attempts} + 1`,
               updated_at: new Date()
             })
             .where(eq(transactions.id, transactionId));
@@ -215,23 +215,26 @@ export function registerRoutes(app: Express): Server {
           if (!updatedOrder) {
             throw new Error(`Order ${orderId} not found`);
           }
-          console.log("Order status updated:", updatedOrder);
 
-          const response = { 
+          console.log("Payment successful:", {
+            orderId,
+            transactionId,
+            amount: (amount / 100).toFixed(2)
+          });
+
+          res.json({ 
             success: true,
             message: `Payment of $${(amount / 100).toFixed(2)} processed successfully`,
             orderId,
             transactionId,
             timestamp: new Date().toISOString()
-          };
-          console.log("Payment successful:", response);
-          res.json(response);
+          });
         } else {
           // Record failed attempt
           await db.update(transactions)
             .set({
               status: 'failed',
-              error_message: 'Payment simulation failed',
+              last_error: 'Payment simulation failed',
               updated_at: new Date(),
               metadata: {
                 failed_at: new Date().toISOString(),
@@ -254,7 +257,7 @@ export function registerRoutes(app: Express): Server {
           await db.update(transactions)
             .set({
               status: 'error',
-              error_message: error instanceof Error ? error.message : 'Unknown error',
+              last_error: error instanceof Error ? error.message : 'Unknown error',
               updated_at: new Date(),
               metadata: {
                 error_at: new Date().toISOString(),
@@ -283,7 +286,7 @@ export function registerRoutes(app: Express): Server {
         await db.update(transactions)
           .set({
             status: 'failed',
-            error_message: error instanceof Error ? error.message : 'Payment processing failed',
+            last_error: error instanceof Error ? error.message : 'Payment processing failed',
             updated_at: new Date(),
             metadata: {
               final_error_at: new Date().toISOString(),
