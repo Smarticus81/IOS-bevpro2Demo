@@ -63,6 +63,8 @@ class VoiceRecognition extends EventHandler {
   private partialResults: string[] = [];
   private lastPartialResultTime = 0;
   private readonly PARTIAL_RESULT_TIMEOUT = 1000;
+  private isWakeWordJustDetected = false;
+  private wakeWordClearTimeout: NodeJS.Timeout | null = null;
 
   constructor() {
     super();
@@ -105,7 +107,7 @@ class VoiceRecognition extends EventHandler {
 
   private shouldProcessCommand(text: string): boolean {
     const now = Date.now();
-    if (text === this.lastProcessedCommand && 
+    if (text === this.lastProcessedCommand &&
         now - this.lastProcessedTimestamp < this.COMMAND_DEBOUNCE_TIME) {
       logger.info('Duplicate command detected, skipping:', text);
       return false;
@@ -130,6 +132,7 @@ class VoiceRecognition extends EventHandler {
       this.partialResults = [];
       this.lastProcessedCommand = '';
       this.lastProcessedTimestamp = 0;
+      this.isWakeWordJustDetected = false;
     };
 
     this.recognition.onend = () => {
@@ -160,6 +163,9 @@ class VoiceRecognition extends EventHandler {
       const confidence = result[0].confidence;
       const isFinal = result.isFinal;
 
+      // Log the recognized text for debugging
+      logger.info('Recognized text:', text);
+
       if (!isFinal) {
         this.lastPartialResultTime = Date.now();
         this.partialResults.push(text);
@@ -174,27 +180,30 @@ class VoiceRecognition extends EventHandler {
         return;
       }
 
-      // Debounce processing of similar commands
-      if (!this.shouldProcessCommand(text)) {
-        return;
-      }
-
+      // Check for shutdown command first
       if (text.includes('shut down') || text.includes('shutdown')) {
         this.handleShutdown();
         return;
       }
 
+      // Handle based on current mode
       switch (this.mode) {
         case 'wake_word':
           this.handleWakeWordMode(text, confidence);
           break;
         case 'command':
-          this.handleCommandMode(text, confidence);
+          // Only process commands if we're not in the wake word cooldown period
+          if (!this.isWakeWordJustDetected) {
+            this.handleCommandMode(text, confidence);
+          }
           break;
       }
 
-      this.lastProcessedCommand = text;
-      this.lastProcessedTimestamp = Date.now();
+      // Update last processed command tracking
+      if (isFinal && !this.isWakeWordJustDetected) {
+        this.lastProcessedCommand = text;
+        this.lastProcessedTimestamp = Date.now();
+      }
       this.partialResults = [];
 
     } catch (error) {
@@ -225,17 +234,30 @@ class VoiceRecognition extends EventHandler {
       await soundEffects.playWakeWord();
       this.emit('modeChange', { mode: this.mode, isActive: true });
 
-      // Extract any command that follows the wake word
-      const wakeWord = isOrderWake ? this.wakeWords.order[0] : this.wakeWords.inquiry[0];
-      const commandText = text.substring(text.indexOf(wakeWord) + wakeWord.length).trim();
+      // Set flag to prevent immediate command processing
+      this.isWakeWordJustDetected = true;
 
-      if (commandText) {
-        this.emit('speech', commandText);
+      // Clear the wake word detection flag after a short delay
+      if (this.wakeWordClearTimeout) {
+        clearTimeout(this.wakeWordClearTimeout);
       }
+      this.wakeWordClearTimeout = setTimeout(() => {
+        this.isWakeWordJustDetected = false;
+      }, 1000); // 1 second delay
     }
   }
 
   private async handleCommandMode(text: string, confidence: number) {
+    // Skip command processing if we just detected a wake word
+    if (this.isWakeWordJustDetected) {
+      return;
+    }
+
+    // Debounce processing of similar commands
+    if (!this.shouldProcessCommand(text)) {
+      return;
+    }
+
     if (text.includes('stop listening')) {
       await soundEffects.playListeningStop();
       this.mode = 'wake_word';
