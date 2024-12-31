@@ -2,21 +2,114 @@ import OpenAI from "openai";
 import { useQueryClient } from "@tanstack/react-query";
 import fuzzysort from 'fuzzysort';
 
-// Initialize OpenAI client with proper error handling
-let openai: OpenAI | null = null;
+// Track response history for better context
+interface ResponseHistory {
+  command: string;
+  intent: CommandIntent;
+  confidence: number;
+  timestamp: number;
+  success: boolean;
+}
 
-try {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-  if (!apiKey) {
-    console.warn('OpenAI API key not found - voice features will be limited');
-  } else {
-    openai = new OpenAI({
-      apiKey,
-      dangerouslyAllowBrowser: true
-    });
+const responseHistory: ResponseHistory[] = [];
+const MAX_HISTORY_LENGTH = 10;
+
+// Enhanced response generation
+function generateContextualResponse(
+  intent: CommandIntent, 
+  confidence: number,
+  context: OrderContext,
+  items?: OrderItem[]
+): string {
+  const uncertaintyPrefix = confidence < 0.6 ? 
+    "I think you want to " : 
+    confidence < 0.8 ? 
+    "If I understand correctly, you want to " : 
+    "";
+
+  const emotionalTone = context.emotionalTone || 'neutral';
+  const emotionalPrefix = {
+    'apologetic': "I'm sorry, but ",
+    'frustrated': "Let me help fix that. ",
+    'enthusiastic': "Great! ",
+    'neutral': ""
+  }[emotionalTone];
+
+  const itemSummary = items?.length ? 
+    `${items.map(i => `${i.quantity} ${i.name}`).join(", ")}` : 
+    "";
+
+  const responses: Record<CommandIntent, string[]> = {
+    'add_item': [
+      `Adding ${itemSummary} to your order.`,
+      `I'll add ${itemSummary}.`,
+      `Got it, adding ${itemSummary}.`
+    ],
+    'remove_item': [
+      `Removing ${itemSummary} from your order.`,
+      `I'll take ${itemSummary} off your order.`,
+      `Removing ${itemSummary}.`
+    ],
+    'modify_item': [
+      `Modifying your order: ${itemSummary}.`,
+      `Changing that to ${itemSummary}.`,
+      `Updating your order with ${itemSummary}.`
+    ],
+    'cancel_order': [
+      `Canceling your entire order.`,
+      `I'll cancel everything.`,
+      `Starting fresh.`
+    ],
+    'help': [
+      `Here's what I can help you with: ordering drinks, modifying orders, or checking status.`,
+      `I can help you order drinks, modify your order, or check status. What would you like to do?`,
+      `I can take your order, make changes, or help you check status. What do you need?`
+    ]
+  };
+
+  const baseResponse = responses[intent]?.[Math.floor(Math.random() * responses[intent].length)] || 
+    "I'll help you with that.";
+
+  return `${emotionalPrefix}${uncertaintyPrefix}${baseResponse}`;
+}
+
+// Add natural language fallback
+async function handleAmbiguousCommand(
+  text: string, 
+  confidence: number, 
+  alternativeIntents: CommandIntent[]
+): Promise<{
+  resolvedIntent: CommandIntent;
+  clarification?: string;
+}> {
+  if (!openai) {
+    // Fallback to best guess if OpenAI not available
+    return {
+      resolvedIntent: alternativeIntents[0],
+      clarification: "I'm not entirely sure, but I'll try to help."
+    };
   }
-} catch (error) {
-  console.error('Failed to initialize OpenAI client:', error);
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4-1106-preview",
+    messages: [
+      {
+        role: "system",
+        content: `You are a helpful POS assistant. Analyze this ambiguous command and determine the most likely intent. Available intents: ${Object.keys(intentPatterns).join(", ")}`
+      },
+      {
+        role: "user",
+        content: `Command: "${text}"\nConfidence: ${confidence}\nPossible intents: ${alternativeIntents.join(", ")}`
+      }
+    ],
+    response_format: { type: "json_object" }
+  });
+
+  const result = JSON.parse(completion.choices[0].message.content);
+  return {
+    resolvedIntent: result.intent,
+    clarification: result.clarification
+  };
 }
 
 // Enhanced intent types
@@ -356,6 +449,20 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
     };
   }
 
+  let finalIntent = detectedIntent;
+  let clarification: string | undefined;
+
+  // Handle ambiguous commands
+  if (needsClarification) {
+    const { resolvedIntent, clarification: resolvedClarification } = await handleAmbiguousCommand(
+      text,
+      confidence,
+      [detectedIntent]
+    );
+    finalIntent = resolvedIntent;
+    clarification = resolvedClarification;
+  }
+
   const emotionalTone = detectEmotionalTone(text);
   const completion = await openai.chat.completions.create({
     model: "gpt-4-1106-preview",
@@ -391,33 +498,18 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
                 "needsClarification": boolean,
                 "uncertaintyLevel": number
               }
-            },
-            "naturalLanguageResponse": {
-              "confidence": number,
-              "alternativeIntents": string[],
-              "needsClarification": boolean,
-              "suggestedResponse": string
             }
-          }
-          Rules:
-          - Extract exact quantities (1-12 only)
-          - Keep drink names exact as spoken
-          - Ignore filler words
-          - Maximum quantity per item is 12
-          - Track order context and modifications
-          - Handle complex intent patterns
-          - Consider emotional context
-          - Support multi-turn conversations`
+          }`
       },
       {
         role: "user",
         content: `Previous context: ${JSON.stringify(orderContext)}
-                 Current command: ${normalizedCommand}`
+                 Current command: ${normalizedCommand}
+                 Detected intent: ${finalIntent}
+                 Confidence: ${confidence}`
       }
     ],
-    response_format: { type: "json_object" },
-    temperature: 0.3,
-    max_tokens: 150
+    response_format: { type: "json_object" }
   });
 
   const parsed = JSON.parse(completion.choices[0].message.content);
@@ -429,7 +521,7 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
     ...orderContext,
     ...parsed.context,
     emotionalTone,
-    lastIntent: parsed.intent
+    lastIntent: finalIntent
   };
 
   if (parsed.items?.length > 0) {
@@ -450,9 +542,37 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
     }
   }
 
+  // Generate contextual response
+  const response = generateContextualResponse(
+    finalIntent,
+    confidence,
+    orderContext,
+    parsed.items
+  );
+
+  // Track response history
+  responseHistory.unshift({
+    command: normalizedCommand,
+    intent: finalIntent,
+    confidence,
+    timestamp: now,
+    success: true
+  });
+
+  if (responseHistory.length > MAX_HISTORY_LENGTH) {
+    responseHistory.pop();
+  }
+
   return {
     ...parsed,
-    context: orderContext
+    intent: finalIntent,
+    context: orderContext,
+    naturalLanguageResponse: {
+      confidence,
+      needsClarification: needsClarification,
+      suggestedResponse: response,
+      alternativeIntents: needsClarification ? [detectedIntent] : undefined
+    }
   };
 }
 
@@ -476,9 +596,17 @@ export async function processVoiceOrder(text: string): Promise<VoiceOrderResult>
 
   } catch (error) {
     console.error('Error processing voice order:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to process voice order';
+    responseHistory.unshift({
+      command: text,
+      intent: 'error',
+      confidence: 0,
+      timestamp: Date.now(),
+      success: false
+    });
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to process voice order'
+      error: errorMessage
     };
   }
 }
@@ -508,4 +636,21 @@ function detectEmotionalTone(text: string): OrderContext['emotionalTone'] {
   }
 
   return 'neutral';
+}
+
+// Initialize OpenAI client with proper error handling
+let openai: OpenAI | null = null;
+
+try {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  if (!apiKey) {
+    console.warn('OpenAI API key not found - voice features will be limited');
+  } else {
+    openai = new OpenAI({
+      apiKey,
+      dangerouslyAllowBrowser: true
+    });
+  }
+} catch (error) {
+  console.error('Failed to initialize OpenAI client:', error);
 }
