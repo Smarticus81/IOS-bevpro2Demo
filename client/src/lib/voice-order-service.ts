@@ -282,7 +282,8 @@ const intentPatterns = {
     /cancel|void|stop|end/i,
     /(the|this|entire) order/i,
     /start over|start fresh/i,
-    /^forget (everything|it all)/i
+    /^forget (everything|it all)/i,
+    /let('s| us) start over/i
   ],
   split_order: [
     /split|divide|separate/i,
@@ -310,7 +311,8 @@ const intentPatterns = {
   repeat_last: [
     /repeat|what|say again|last/i,
     /what was|previous|before/i,
-    /^(sorry|excuse me|pardon)/i
+    /^(sorry|excuse me|pardon)/i,
+    /remind me/i
   ],
   undo_last: [
     /undo|revert|go back|cancel that/i,
@@ -320,12 +322,14 @@ const intentPatterns = {
   quantity_change: [
     /make (it|that)|change to|instead/i,
     /(\d+|one|two|three|four|five) instead/i,
-    /^actually.*(want|need)/i
+    /^actually.*(want|need)/i,
+    /maybe (just|make it|change to)/i
   ],
   list_orders: [
     /show|list|display|what's/i,
     /(my|the|current) order/i,
-    /^what('s| is) in/i
+    /^what('s| is) in/i,
+    /remind me.*ordered/i
   ],
   stop: [
     /stop|end|quit|exit|never mind/i,
