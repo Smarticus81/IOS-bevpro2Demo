@@ -24,7 +24,8 @@ class MiraService {
   private context: string = '';
   private voiceEnabled: boolean = true;
   private emotionState: 'neutral' | 'excited' | 'apologetic' = 'neutral';
-  private rasaEndpoint: string = 'http://localhost:5005/webhooks/rest/webhook';
+  // Use the current hostname/host for the Rasa endpoint
+  private rasaEndpoint: string = `${window.location.protocol}//${window.location.hostname}:5005/webhooks/rest/webhook`;
 
   private constructor() {
     logger.info('Initializing Mira service with Rasa NLU');
@@ -43,6 +44,11 @@ class MiraService {
     streamHandler?: StreamHandler
   ): Promise<MiraResponse> {
     try {
+      logger.info('Sending request to Rasa:', {
+        endpoint: this.rasaEndpoint,
+        message: message
+      });
+
       const response = await fetch(this.rasaEndpoint, {
         method: 'POST',
         headers: {
@@ -62,6 +68,7 @@ class MiraService {
       }
 
       const rasaResponse = await response.json();
+      logger.info('Received response from Rasa:', rasaResponse);
 
       // Extract the text response from Rasa
       const reply = rasaResponse[0]?.text || "I'm sorry, I couldn't process that request.";

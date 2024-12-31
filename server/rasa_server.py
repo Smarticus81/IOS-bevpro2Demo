@@ -18,12 +18,14 @@ def webhook():
         # Get the message from the POST request
         message = request.json.get("message", "")
         sender_id = request.json.get("sender", "default")
+        metadata = request.json.get("metadata", {})
 
         # Process message using Rasa
         response = loop.run_until_complete(
             agent.handle_text(
                 text_message=message,
-                sender_id=sender_id
+                sender_id=sender_id,
+                metadata=metadata
             )
         )
 
@@ -33,4 +35,4 @@ def webhook():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5005)
+    app.run(host="0.0.0.0", port=5005, debug=True)
