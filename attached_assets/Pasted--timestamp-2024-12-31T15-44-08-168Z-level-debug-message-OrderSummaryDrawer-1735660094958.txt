@@ -1,0 +1,140 @@
+{
+  "timestamp": "2024-12-31T15:44:08.168Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 30,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-31T15:44:08.285Z",
+  "level": "info",
+  "message": "Added to Cart: Added 4 Cucumber Cooler(s) to your cart.",
+  "context": {}
+}
+{
+  "timestamp": "2024-12-31T15:44:08.285Z",
+  "level": "info",
+  "message": "Adding item to cart",
+  "context": {
+    "drinkId": 2,
+    "quantity": 4,
+    "currentCartSize": 0
+  }
+}
+{
+  "timestamp": "2024-12-31T15:44:08.288Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 34,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-31T15:44:08.406Z",
+  "level": "info",
+  "message": "Voice Command Tracked:",
+  "context": {
+    "type": "drink_order",
+    "success": true,
+    "command": "4 Cucumber Cooler",
+    "successRate": 100
+  }
+}
+{
+  "timestamp": "2024-12-31T15:44:08.408Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 34,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-31T15:44:08.409Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 34,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-31T15:44:08.527Z",
+  "level": "info",
+  "message": "Added to Cart: Added 4 Cucumber Cooler(s) to your cart.",
+  "context": {}
+}
+{
+  "timestamp": "2024-12-31T15:44:08.527Z",
+  "level": "info",
+  "message": "Adding item to cart",
+  "context": {
+    "drinkId": 2,
+    "quantity": 4,
+    "currentCartSize": 0
+  }
+}
+{
+  "timestamp": "2024-12-31T15:44:08.529Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 38,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-31T15:44:08.530Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 38,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-31T15:44:08.647Z",
+  "level": "info",
+  "message": "Voice Command Tracked:",
+  "context": {
+    "type": "drink_order",
+    "success": true,
+    "command": "4 Cucumber Cooler",
+    "successRate": 100
+  }
+}
+{
+  "timestamp": "2024-12-31T15:44:08.652Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 38,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-31T15:44:08.769Z",
+  "level": "info",
+  "message": "Added to Cart: Added 4 Cucumber Cooler(s) to your cart.",
+  "context": {}
+}
+{
+  "timestamp": "2024-12-31T15:44:08.769Z",
+  "level": "info",
+  "message": "Adding item to cart",
+  "context": {
+    "drinkId": 2,
+    "quantity": 4,
+    "currentCartSize": 0
+  }
+}
