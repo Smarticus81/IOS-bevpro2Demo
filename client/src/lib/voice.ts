@@ -47,8 +47,6 @@ class VoiceRecognition extends EventHandler {
   private retryCount = 0;
   private maxRetries = 3;
   private cleanup: (() => void) | null = null;
-  // Lowering confidence threshold for wake word detection
-  private wakeWordConfidenceThreshold = 0.65; // Previously was 0.85
 
   constructor() {
     super();
@@ -64,7 +62,7 @@ class VoiceRecognition extends EventHandler {
 
       this.recognition = new SpeechRecognition();
       this.recognition.continuous = true;
-      this.recognition.interimResults = true; // Enable interim results for faster response
+      this.recognition.interimResults = false;
       this.recognition.lang = 'en-US';
       this.setupRecognition();
       logger.info('Speech recognition initialized successfully');
@@ -72,9 +70,8 @@ class VoiceRecognition extends EventHandler {
       logger.error('Failed to initialize speech recognition:', error);
       this.emit('error', {
         type: 'recognition' as ErrorType,
-        message: 'Speech recognition initialization failed',
-        name: 'InitializationError'
-      });
+        message: 'Speech recognition initialization failed'
+      } as VoiceError);
     }
   }
 
@@ -89,9 +86,7 @@ class VoiceRecognition extends EventHandler {
         }
 
         const text = result[0].transcript.toLowerCase().trim();
-        const confidence = result[0].confidence;
-
-        logger.info('Recognition result:', { text, confidence });
+        logger.info('Recognized text:', text);
 
         // Handle shutdown command in any mode
         if (text.includes('shut down')) {
@@ -101,12 +96,7 @@ class VoiceRecognition extends EventHandler {
 
         switch (this.mode) {
           case 'wake_word':
-            // Only check confidence threshold for wake word detection
-            if (confidence >= this.wakeWordConfidenceThreshold) {
-              await this.handleWakeWordMode(text);
-            } else {
-              logger.info('Wake word detected but confidence too low:', { confidence, threshold: this.wakeWordConfidenceThreshold });
-            }
+            await this.handleWakeWordMode(text);
             break;
           case 'command':
             await this.handleCommandMode(text);
@@ -119,9 +109,8 @@ class VoiceRecognition extends EventHandler {
         logger.error('Error processing speech result:', error);
         this.emit('error', {
           type: 'processing' as ErrorType,
-          message: 'Failed to process speech input',
-          name: 'ProcessingError'
-        });
+          message: 'Failed to process speech input'
+        } as VoiceError);
       }
     };
 
@@ -142,9 +131,8 @@ class VoiceRecognition extends EventHandler {
         logger.error('Max retry attempts reached');
         this.emit('error', {
           type: 'recognition' as ErrorType,
-          message: 'Speech recognition failed after multiple attempts',
-          name: 'MaxRetriesError'
-        });
+          message: 'Speech recognition failed after multiple attempts'
+        } as VoiceError);
         this.stop();
       }
     };
@@ -196,7 +184,7 @@ class VoiceRecognition extends EventHandler {
   private async handleShutdown() {
     await soundEffects.playListeningStop();
     this.mode = 'shutdown';
-    this.emit('shutdown', null);
+    this.emit('shutdown');
     await this.stop();
   }
 
@@ -204,9 +192,8 @@ class VoiceRecognition extends EventHandler {
     if (!this.recognition) {
       this.emit('error', {
         type: 'recognition' as ErrorType,
-        message: 'Speech recognition not available',
-        name: 'UnavailableError'
-      });
+        message: 'Speech recognition not available'
+      } as VoiceError);
       return;
     }
 
@@ -218,14 +205,12 @@ class VoiceRecognition extends EventHandler {
         this.recognition.start();
         await soundEffects.playListeningStart();
         this.emit('start', { mode: this.mode });
-        logger.info('Voice recognition started with confidence threshold:', this.wakeWordConfidenceThreshold);
       } catch (error) {
         logger.error('Error starting speech recognition:', error);
         this.emit('error', {
           type: 'recognition' as ErrorType,
-          message: 'Failed to start speech recognition',
-          name: 'StartError'
-        });
+          message: 'Failed to start speech recognition'
+        } as VoiceError);
         this.isListening = false;
       }
     }
@@ -238,15 +223,14 @@ class VoiceRecognition extends EventHandler {
         this.retryCount = 0;
         this.recognition.stop();
         await soundEffects.playListeningStop();
-        this.emit('stop', null);
+        this.emit('stop');
         this.cleanup?.();
       } catch (error) {
         logger.error('Error stopping speech recognition:', error);
         this.emit('error', {
           type: 'recognition' as ErrorType,
-          message: 'Failed to stop speech recognition',
-          name: 'StopError'
-        });
+          message: 'Failed to stop speech recognition'
+        } as VoiceError);
       }
     }
   }
