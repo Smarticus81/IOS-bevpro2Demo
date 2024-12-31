@@ -1,0 +1,99 @@
+{
+  "timestamp": "2024-12-31T15:57:50.561Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "could i could i get could i get one could i get one could i get one could i get one mo could i get one mos could i get one mos could i get one moscow could i get one moscow mu could i get one moscow mu could i get one moscow mule could i get one moscow mule"
+}
+{
+  "timestamp": "2024-12-31T15:57:50.561Z",
+  "level": "info",
+  "message": "Voice command received:",
+  "context": {
+    "text": "could i could i get could i get one could i get one could i get one could i get one mo could i get one mos could i get one mos could i get one moscow could i get one moscow mu could i get one moscow mu could i get one moscow mule could i get one moscow mule",
+    "drinksAvailable": 65
+  }
+}
+{
+  "timestamp": "2024-12-31T15:57:50.561Z",
+  "level": "info",
+  "message": "Found best partial match:",
+  "context": {
+    "searchTerm": "one one one mo one mos one mos one moscow one moscow mu one moscow mu one moscow mule one moscow mule",
+    "matchedDrink": "Moscow Mule"
+  }
+}
+{
+  "timestamp": "2024-12-31T15:57:50.561Z",
+  "level": "info",
+  "message": "Successfully parsed order items:",
+  "context": [
+    {
+      "name": "Moscow Mule",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+{
+  "timestamp": "2024-12-31T15:57:50.561Z",
+  "level": "info",
+  "message": "Processing drink order:",
+  "context": [
+    {
+      "name": "Moscow Mule",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+{
+  "timestamp": "2024-12-31T15:57:50.561Z",
+  "level": "info",
+  "message": "Adding item to cart",
+  "context": {
+    "drinkId": 5,
+    "quantity": 1,
+    "currentCartSize": 0
+  }
+}
+{
+  "timestamp": "2024-12-31T15:57:50.564Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 34,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-31T15:57:50.565Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 34,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2024-12-31T15:57:50.682Z",
+  "level": "info",
+  "message": "Voice Command Tracked:",
+  "context": {
+    "type": "drink_order",
+    "success": true,
+    "command": "1 Moscow Mule",
+    "successRate": 100
+  }
+}
+{
+  "timestamp": "2024-12-31T15:57:50.685Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 34,
+    "isProcessing": false
+  }
+}
