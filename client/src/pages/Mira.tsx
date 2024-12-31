@@ -1,18 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NavBar } from "@/components/NavBar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Mic, Send, RefreshCw, Database } from "lucide-react";
+import { Mic, Send, RefreshCw, Bot, Volume2, VolumeX } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { Drink } from "@db/schema";
+import { miraService } from '@/lib/mira-service';
 
 interface Message {
   role: 'assistant' | 'user' | 'system';
   content: string;
   timestamp: number;
+  isStreaming?: boolean;
 }
 
 interface MiraState {
@@ -21,7 +23,15 @@ interface MiraState {
   isProcessing: boolean;
   isListening: boolean;
   currentTask: string | null;
+  voiceEnabled: boolean;
 }
+
+// Web Speech API setup
+const speechSynthesis = window.speechSynthesis;
+const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
+const recognition = new SpeechRecognitionClass();
+recognition.continuous = false;
+recognition.interimResults = true;
 
 export function Mira() {
   const [state, setState] = useState<MiraState>({
@@ -29,37 +39,135 @@ export function Mira() {
     messages: [],
     isProcessing: false,
     isListening: false,
-    currentTask: null
+    currentTask: null,
+    voiceEnabled: true
   });
   const [input, setInput] = useState('');
+  const [streamingMessage, setStreamingMessage] = useState<string>('');
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Fetch inventory data
   const { data: inventory = [], refetch: refetchInventory } = useQuery<Drink[]>({
     queryKey: ["/api/drinks"],
   });
 
+  useEffect(() => {
+    // Configure recognition
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      const transcript = Array.from(event.results)
+        .map(result => result[0])
+        .map((result: SpeechRecognitionAlternative) => result.transcript)
+        .join('');
+
+      setInput(transcript);
+    };
+
+    recognition.onend = () => {
+      setState(prev => ({ ...prev, isListening: false }));
+    };
+
+    return () => {
+      recognition.stop();
+      speechSynthesis.cancel();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [state.messages, streamingMessage]);
+
+  const toggleVoice = () => {
+    setState(prev => ({ ...prev, voiceEnabled: !prev.voiceEnabled }));
+    miraService.setVoiceEnabled(!state.voiceEnabled);
+  };
+
+  const startListening = () => {
+    setState(prev => ({ ...prev, isListening: true }));
+    recognition.start();
+  };
+
+  const stopListening = () => {
+    setState(prev => ({ ...prev, isListening: false }));
+    recognition.stop();
+  };
+
+  const speakResponse = (text: string, config?: { speed?: number; pitch?: number }) => {
+    if (!state.voiceEnabled) return;
+
+    speechSynthesis.cancel(); // Stop any current speech
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = config?.speed || 1;
+    utterance.pitch = config?.pitch || 1;
+    speechSynthesis.speak(utterance);
+  };
+
   const handleSend = async () => {
     if (!input.trim()) return;
 
+    const userMessage: Message = {
+      role: 'user',
+      content: input,
+      timestamp: Date.now()
+    };
+
     setState(prev => ({
       ...prev,
-      messages: [...prev.messages, {
-        role: 'user',
-        content: input,
-        timestamp: Date.now()
-      }],
+      messages: [...prev.messages, userMessage],
       isProcessing: true
     }));
 
     setInput('');
-    
-    // API call will be implemented in next iteration
+    setStreamingMessage('');
+
+    try {
+      await miraService.processMessage(
+        input,
+        JSON.stringify(inventory),
+        {
+          onToken: (token: string) => {
+            setStreamingMessage(prev => prev + token);
+          },
+          onComplete: (response) => {
+            const assistantMessage: Message = {
+              role: 'assistant',
+              content: response.reply,
+              timestamp: Date.now()
+            };
+
+            setState(prev => ({
+              ...prev,
+              messages: [...prev.messages, assistantMessage],
+              isProcessing: false
+            }));
+
+            setStreamingMessage('');
+
+            if (state.voiceEnabled && response.voiceConfig) {
+              speakResponse(response.reply, {
+                speed: response.voiceConfig.speed,
+                pitch: response.voiceConfig.pitch
+              });
+            }
+          },
+          onError: (error: any) => {
+            console.error('Streaming error:', error);
+            setState(prev => ({ ...prev, isProcessing: false }));
+            setStreamingMessage('');
+          }
+        }
+      );
+    } catch (error) {
+      console.error('Error processing message:', error);
+      setState(prev => ({ ...prev, isProcessing: false }));
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       <NavBar />
-      
+
       <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Chat Interface */}
@@ -67,9 +175,9 @@ export function Mira() {
             <CardContent className="p-6">
               <div className="flex flex-col h-[70vh]">
                 {/* Chat Messages */}
-                <ScrollArea className="flex-grow mb-4 pr-4">
+                <ScrollArea ref={scrollRef} className="flex-grow mb-4 pr-4">
                   <AnimatePresence mode="popLayout">
-                    {state.messages.map((message, index) => (
+                    {state.messages.map((message) => (
                       <motion.div
                         key={message.timestamp}
                         initial={{ opacity: 0, y: 20 }}
@@ -90,6 +198,17 @@ export function Mira() {
                         </div>
                       </motion.div>
                     ))}
+                    {streamingMessage && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-4 flex justify-start"
+                      >
+                        <div className="max-w-[80%] p-4 rounded-lg bg-gray-800 text-white">
+                          {streamingMessage}
+                        </div>
+                      </motion.div>
+                    )}
                   </AnimatePresence>
                 </ScrollArea>
 
@@ -98,11 +217,25 @@ export function Mira() {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="shrink-0"
-                    onClick={() => setState(prev => ({ ...prev, isListening: !prev.isListening }))}
+                    className={`shrink-0 ${state.isListening ? 'bg-red-500/10' : ''}`}
+                    onClick={() => state.isListening ? stopListening() : startListening()}
                   >
                     <Mic className={`h-4 w-4 ${state.isListening ? 'text-red-500' : ''}`} />
                   </Button>
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0"
+                    onClick={toggleVoice}
+                  >
+                    {state.voiceEnabled ? (
+                      <Volume2 className="h-4 w-4" />
+                    ) : (
+                      <VolumeX className="h-4 w-4" />
+                    )}
+                  </Button>
+
                   <Input
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -110,6 +243,7 @@ export function Mira() {
                     placeholder="Ask Mira anything about inventory..."
                     className="bg-white/5 border-white/10 text-white placeholder:text-white/50"
                   />
+
                   <Button
                     variant="default"
                     size="icon"
@@ -138,7 +272,7 @@ export function Mira() {
                   <RefreshCw className="h-4 w-4" />
                 </Button>
               </div>
-              
+
               <ScrollArea className="h-[60vh] pr-4">
                 {inventory.map((item) => (
                   <motion.div
