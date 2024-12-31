@@ -1,4 +1,4 @@
-import { Home, Settings, Calendar, Package, BarChart3, Sun, Moon, Menu, Bot } from "lucide-react";
+import { Home, Settings, Calendar, Package, BarChart3, Sun, Moon, Menu } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +17,7 @@ interface NavBarProps {
   drinks?: Drink[];
 }
 
-export function NavBar({ drinks = [] }: NavBarProps) {
+export function NavBar({ drinks = [], onAddToCart }: NavBarProps) {
   const [location] = useLocation();
 
   const navItems = [
@@ -26,7 +26,6 @@ export function NavBar({ drinks = [] }: NavBarProps) {
     { href: "/events", icon: Calendar, label: "Events" },
     { href: "/settings", icon: Settings, label: "Settings" },
     { href: "/dashboard", icon: BarChart3, label: "Dashboard" },
-    { href: "/mira", icon: Bot, label: "Mira AI" },
   ];
 
   return (
@@ -91,7 +90,7 @@ export function NavBar({ drinks = [] }: NavBarProps) {
               <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             </motion.button>
-
+            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <motion.button

@@ -1,49 +1,23 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import {
-  drinks,
-  orders,
+import { 
+  drinks, 
+  orders, 
   orderItems,
   paymentMethods,
   transactions,
   tabs,
   splitPayments,
-  eventPackages
+  eventPackages 
 } from "@db/schema";
 import { eq, sql } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
-import { spawn } from "child_process";
-import path from "path";
-import { createProxyMiddleware } from "http-proxy-middleware";
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
   console.log('Setting up routes and realtime proxy...');
   setupRealtimeProxy(httpServer);
-
-  // Start Rasa server
-  console.log('Starting Rasa server...');
-  const rasaServer = spawn('python3', ['server/rasa_server.py'], {
-    stdio: 'inherit'
-  });
-
-  rasaServer.on('error', (err) => {
-    console.error('Failed to start Rasa server:', err);
-  });
-
-  // Set up proxy for Rasa server
-  app.use('/webhooks/rest/webhook', createProxyMiddleware({
-    target: 'http://localhost:5005',
-    changeOrigin: true,
-    onError: (err, req, res) => {
-      console.error('Proxy error:', err);
-      res.writeHead(500, {
-        'Content-Type': 'application/json'
-      });
-      res.end(JSON.stringify({ error: 'Rasa server error' }));
-    }
-  }));
 
   // Get all drinks
   app.get("/api/drinks", async (_req, res) => {
@@ -63,16 +37,16 @@ export function registerRoutes(app: Express): Server {
 
       if (!items?.length || typeof total !== 'number' || total <= 0) {
         console.error("Invalid order data:", { items, total });
-        return res.status(400).json({
-          error: "Invalid order data. Must include items array and valid total."
+        return res.status(400).json({ 
+          error: "Invalid order data. Must include items array and valid total." 
         });
       }
 
       // Validate all items have required fields
       const invalidItems = items.filter((item: any) => {
-        const isValid = item.drink?.id &&
-          typeof item.quantity === 'number' &&
-          item.quantity > 0;
+        const isValid = item.drink?.id && 
+                       typeof item.quantity === 'number' && 
+                       item.quantity > 0;
         if (!isValid) {
           console.error("Invalid item in order:", item);
         }
@@ -89,9 +63,9 @@ export function registerRoutes(app: Express): Server {
       // Create order
       const [order] = await db
         .insert(orders)
-        .values({
-          total,
-          items,
+        .values({ 
+          total, 
+          items, 
           status: 'pending',
           payment_status: 'pending',
           created_at: new Date()
@@ -115,7 +89,7 @@ export function registerRoutes(app: Express): Server {
       for (const item of items) {
         const [updatedDrink] = await db
           .update(drinks)
-          .set({
+          .set({ 
             inventory: sql`${drinks.inventory} - ${item.quantity}`,
             sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
           })
@@ -131,7 +105,7 @@ export function registerRoutes(app: Express): Server {
       res.json(order);
     } catch (error) {
       console.error("Error creating order:", error);
-      res.status(500).json({
+      res.status(500).json({ 
         error: "Failed to create order",
         details: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -173,15 +147,15 @@ export function registerRoutes(app: Express): Server {
 
       if (typeof amount !== 'number' || amount <= 0) {
         console.error("Invalid payment amount:", amount);
-        return res.status(400).json({
-          error: "Invalid payment amount"
+        return res.status(400).json({ 
+          error: "Invalid payment amount" 
         });
       }
 
       if (!orderId || typeof orderId !== 'number') {
         console.error("Invalid order ID:", orderId);
-        return res.status(400).json({
-          error: "Invalid order ID"
+        return res.status(400).json({ 
+          error: "Invalid order ID" 
         });
       }
 
@@ -215,7 +189,7 @@ export function registerRoutes(app: Express): Server {
       // Update order status
       await db
         .update(orders)
-        .set({
+        .set({ 
           status: 'completed',
           payment_status: 'completed',
           completed_at: new Date()
@@ -228,7 +202,7 @@ export function registerRoutes(app: Express): Server {
         amount: (amount / 100).toFixed(2)
       });
 
-      res.json({
+      res.json({ 
         success: true,
         message: `Payment of $${(amount / 100).toFixed(2)} processed successfully`,
         orderId,
@@ -249,7 +223,7 @@ export function registerRoutes(app: Express): Server {
           .where(eq(transactions.id, transactionId));
       }
 
-      res.status(500).json({
+      res.status(500).json({ 
         error: "Internal server error during payment processing",
         transactionId
       });
@@ -349,7 +323,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const [tab] = await db
         .update(tabs)
-        .set({
+        .set({ 
           status: 'closed',
           closed_at: new Date(),
         })
