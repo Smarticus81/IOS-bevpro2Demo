@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { useQueryClient } from "@tanstack/react-query";
+import fuzzysort from 'fuzzysort';
 
 // Initialize OpenAI client with proper error handling
 let openai: OpenAI | null = null;
@@ -57,6 +58,13 @@ interface OrderContext {
     type: string;
     amount: number;
   }[];
+  conversationState?: {
+    currentTopic?: string;
+    pendingConfirmation?: boolean;
+    lastMentionedItem?: string;
+    needsClarification?: boolean;
+    uncertaintyLevel?: number;
+  };
 }
 
 interface OrderDetails {
@@ -70,6 +78,12 @@ interface OrderDetails {
     item: OrderItem;
     previousQuantity?: number;
   }[];
+  naturalLanguageResponse?: {
+    confidence: number;
+    alternativeIntents?: CommandIntent[];
+    needsClarification?: boolean;
+    suggestedResponse?: string;
+  };
 }
 
 interface VoiceOrderResult {
@@ -80,68 +94,89 @@ interface VoiceOrderResult {
 
 // Track order context for smarter responses
 let orderContext: OrderContext = {
-  emotionalTone: 'neutral'
+  emotionalTone: 'neutral',
+  conversationState: {
+    uncertaintyLevel: 0,
+    pendingConfirmation: false
+  }
 };
 
 // Intent patterns for better command matching
 const intentPatterns = {
   add_item: [
     /add|get|give|make|pour|bring|order/i,
-    /(i('d| would) like|can i (get|have)|may i have)/i
+    /(i('d| would) like|can i (get|have)|may i have)/i,
+    /^(get|give|make|pour) me/i,
+    /^let('s| us) (get|have)/i
   ],
   remove_item: [
     /remove|take off|delete/i,
-    /don't want|remove that|take (it|that) off/i
+    /don't want|remove that|take (it|that) off/i,
+    /^(never mind|forget|scratch) (that|the)/i
   ],
   modify_item: [
     /change|modify|make|adjust/i,
-    /instead|rather|change to|make it/i
+    /instead|rather|change to|make it/i,
+    /^(actually|wait|hold on)/i
   ],
   void_item: [
     /void|cancel|remove/i,
-    /last (drink|order|item)/i
+    /last (drink|order|item)/i,
+    /^start (over|fresh|again)/i
   ],
   cancel_order: [
     /cancel|void|stop|end/i,
     /(the|this|entire) order/i,
-    /start over|start fresh/i
+    /start over|start fresh/i,
+    /^forget (everything|it all)/i
   ],
   split_order: [
     /split|divide|separate/i,
     /(the|this) order/i,
-    /pay separately|split (it|check|bill)/i
+    /pay separately|split (it|check|bill)/i,
+    /separate (checks|bills|payments)/i
   ],
   apply_discount: [
     /discount|deal|offer|special/i,
-    /happy hour|promotion|coupon/i
+    /happy hour|promotion|coupon/i,
+    /^apply (the|a)/i,
+    /^use (the|a|my)/i
   ],
   complete_order: [
     /complete|finish|done|that's it|checkout|confirm/i,
-    /process|submit|place order|ready/i
+    /process|submit|place order|ready/i,
+    /^(okay|alright|perfect).*done/i
   ],
   help: [
     /help|assist|guide|explain|what|how/i,
-    /can (i|you)|what's available|menu/i
+    /can (i|you)|what's available|menu/i,
+    /^(show|tell) me/i,
+    /^what (can|do)/i
   ],
   repeat_last: [
     /repeat|what|say again|last/i,
-    /what was|previous|before/i
+    /what was|previous|before/i,
+    /^(sorry|excuse me|pardon)/i
   ],
   undo_last: [
     /undo|revert|go back|cancel that/i,
-    /last (thing|action|change)/i
+    /last (thing|action|change)/i,
+    /^(oops|wait|hold on)/i
   ],
   quantity_change: [
     /make (it|that)|change to|instead/i,
-    /(\d+|one|two|three|four|five) instead/i
+    /(\d+|one|two|three|four|five) instead/i,
+    /^actually.*(want|need)/i
   ],
   list_orders: [
     /show|list|display|what's/i,
-    /(my|the|current) order/i
+    /(my|the|current) order/i,
+    /^what('s| is) in/i
   ],
   stop: [
     /stop|end|quit|exit|never mind/i,
-    /listening|recording|cancel/i
+    /listening|recording|cancel/i,
+    /^(that's|thats) (all|enough)/i
   ]
 };
 
@@ -157,10 +192,84 @@ const numberWords = {
   'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10'
 };
 
-// Enhanced command normalization with intent detection
+// Enhanced natural language understanding
+function detectNaturalLanguageIntent(text: string, context: OrderContext): {
+  intent: CommandIntent;
+  confidence: number;
+  alternativeIntents?: CommandIntent[];
+  needsClarification?: boolean;
+} {
+  const normalized = text.toLowerCase();
+  let maxConfidence = 0;
+  let detectedIntent: CommandIntent = 'add_item';
+  let alternativeIntents: CommandIntent[] = [];
+
+  // Check each intent pattern with fuzzy matching
+  for (const [intent, patterns] of Object.entries(intentPatterns)) {
+    for (const pattern of patterns) {
+      const match = normalized.match(pattern);
+      if (match) {
+        const confidence = match[0].length / normalized.length;
+        if (confidence > maxConfidence) {
+          if (maxConfidence > 0.3) {
+            alternativeIntents.push(detectedIntent);
+          }
+          maxConfidence = confidence;
+          detectedIntent = intent as CommandIntent;
+        } else if (confidence > 0.3) {
+          alternativeIntents.push(intent as CommandIntent);
+        }
+      }
+    }
+  }
+
+  // Consider conversation context
+  if (context.lastIntent) {
+    const isRelatedToLast = isIntentRelated(detectedIntent, context.lastIntent);
+    if (isRelatedToLast) {
+      maxConfidence *= 1.2; // Boost confidence for related intents
+    }
+  }
+
+  // Check for clarification needs
+  const needsClarification = maxConfidence < 0.4 || alternativeIntents.length > 2;
+
+  return {
+    intent: detectedIntent,
+    confidence: maxConfidence,
+    alternativeIntents: alternativeIntents.length > 0 ? alternativeIntents : undefined,
+    needsClarification
+  };
+}
+
+// Check if intents are related for better context handling
+function isIntentRelated(current: CommandIntent, previous: CommandIntent): boolean {
+  const relatedIntents: Record<CommandIntent, CommandIntent[]> = {
+    'add_item': ['modify_item', 'quantity_change', 'undo_last'],
+    'modify_item': ['add_item', 'quantity_change', 'undo_last'],
+    'remove_item': ['undo_last', 'void_item', 'cancel_order'],
+    'void_item': ['cancel_order', 'remove_item', 'undo_last'],
+    'cancel_order': ['void_item', 'undo_last'],
+    'quantity_change': ['modify_item', 'add_item'],
+    'undo_last': ['modify_item', 'remove_item', 'add_item'],
+    'complete_order': ['split_order', 'apply_discount'],
+    'split_order': ['complete_order', 'apply_discount'],
+    'apply_discount': ['complete_order', 'split_order'],
+    'help': ['repeat_last', 'list_orders'],
+    'repeat_last': ['help', 'list_orders'],
+    'list_orders': ['help', 'repeat_last'],
+    'stop': []
+  };
+
+  return relatedIntents[current]?.includes(previous) || false;
+}
+
+// Enhanced command normalization with natural language processing
 function normalizeCommand(text: string): {
   normalized: string;
   detectedIntent: CommandIntent;
+  confidence: number;
+  needsClarification: boolean;
 } {
   let normalized = text.toLowerCase()
     .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
@@ -178,16 +287,15 @@ function normalizeCommand(text: string): {
     .filter(word => !commonWords.includes(word))
     .join(' ');
 
-  // Detect intent from patterns
-  let detectedIntent: CommandIntent = 'add_item'; // Default intent
-  for (const [intent, patterns] of Object.entries(intentPatterns)) {
-    if (patterns.some(pattern => pattern.test(normalized))) {
-      detectedIntent = intent as CommandIntent;
-      break;
-    }
-  }
+  // Detect intent with natural language understanding
+  const nlpResult = detectNaturalLanguageIntent(normalized, orderContext);
 
-  return { normalized, detectedIntent };
+  return {
+    normalized,
+    detectedIntent: nlpResult.intent,
+    confidence: nlpResult.confidence,
+    needsClarification: nlpResult.needsClarification || false
+  };
 }
 
 // Check inventory availability
@@ -235,7 +343,7 @@ async function checkInventory(items: OrderItem[]): Promise<{
 async function processComplexOrder(text: string): Promise<OrderDetails> {
   if (!openai) throw new Error('Voice processing service is not configured');
 
-  const { normalized: normalizedCommand, detectedIntent } = normalizeCommand(text);
+  const { normalized: normalizedCommand, detectedIntent, confidence, needsClarification } = normalizeCommand(text);
   const now = Date.now();
 
   if (normalizedCommand === lastProcessedCommand && 
@@ -275,7 +383,20 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
               "modificationTarget": {
                 "itemIndex": number,
                 "originalQuantity": number
+              },
+              "conversationState": {
+                "currentTopic": string,
+                "pendingConfirmation": boolean,
+                "lastMentionedItem": string,
+                "needsClarification": boolean,
+                "uncertaintyLevel": number
               }
+            },
+            "naturalLanguageResponse": {
+              "confidence": number,
+              "alternativeIntents": string[],
+              "needsClarification": boolean,
+              "suggestedResponse": string
             }
           }
           Rules:
