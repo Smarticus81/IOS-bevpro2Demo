@@ -31,15 +31,17 @@ export function OrderSummaryDrawer() {
       <DrawerTrigger asChild>
         <Button
           variant="outline"
-          className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20"
+          className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20
+                    backdrop-blur-md shadow-lg rounded-2xl
+                    transition-all duration-300 ease-in-out"
           disabled={isProcessing}
           aria-label={`View order cart with ${itemCount} items`}
         >
           <ShoppingBag className="mr-2 h-4 w-4" />
-          View Order ({itemCount} items)
+          {itemCount > 0 ? `View Order (${itemCount})` : 'Start Order'}
         </Button>
       </DrawerTrigger>
-      <DrawerContent>
+      <DrawerContent className="bg-white/95 backdrop-blur-lg">
         <DrawerHeader className="text-left">
           <DrawerTitle>Your Order Summary</DrawerTitle>
           <DrawerDescription>
