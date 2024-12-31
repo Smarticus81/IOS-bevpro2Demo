@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, boolean, jsonb, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 
@@ -49,10 +49,6 @@ export const transactions = pgTable("transactions", {
   order_id: integer("order_id").notNull().references(() => orders.id),
   payment_method_id: integer("payment_method_id").references(() => paymentMethods.id),
   amount: integer("amount").notNull(),
-  subtotal: integer("subtotal").notNull(),
-  sales_tax: integer("sales_tax").notNull(),
-  liquor_tax: integer("liquor_tax").notNull(),
-  total_tax: integer("total_tax").notNull(),
   status: text("status").notNull().default("pending"),
   provider_transaction_id: text("provider_transaction_id"),
   attempts: integer("attempts").default(0),
@@ -62,15 +58,16 @@ export const transactions = pgTable("transactions", {
   updated_at: timestamp("updated_at").defaultNow(),
 });
 
-// Tax rates configuration table
-export const taxConfig = pgTable("tax_config", {
-  id: serial("id").primaryKey(),
-  type: text("type").notNull(), // 'sales_tax', 'liquor_tax'
-  rate: numeric("rate").notNull(),
-  description: text("description"),
-  is_active: boolean("is_active").default(true),
-  updated_at: timestamp("updated_at").defaultNow(),
-});
+export const transactionRelations = relations(transactions, ({ one }) => ({
+  order: one(orders, {
+    fields: [transactions.order_id],
+    references: [orders.id],
+  }),
+  paymentMethod: one(paymentMethods, {
+    fields: [transactions.payment_method_id],
+    references: [paymentMethods.id],
+  }),
+}));
 
 // Tabs table for managing open tabs
 export const tabs = pgTable("tabs", {
@@ -133,18 +130,6 @@ export const tabRelations = relations(tabs, ({ many, one }) => ({
   }),
 }));
 
-export const transactionRelations = relations(transactions, ({ one }) => ({
-  order: one(orders, {
-    fields: [transactions.order_id],
-    references: [orders.id],
-  }),
-  paymentMethod: one(paymentMethods, {
-    fields: [transactions.payment_method_id],
-    references: [paymentMethods.id],
-  }),
-}));
-
-
 // Types
 export type Drink = typeof drinks.$inferSelect;
 export type Order = typeof orders.$inferSelect;
@@ -154,8 +139,6 @@ export type Transaction = typeof transactions.$inferSelect;
 export type Tab = typeof tabs.$inferSelect;
 export type SplitPayment = typeof splitPayments.$inferSelect;
 export type EventPackage = typeof eventPackages.$inferSelect;
-export type TaxConfig = typeof taxConfig.$inferSelect;
-export type InsertTaxConfig = typeof taxConfig.$inferInsert;
 
 // Schemas
 export const insertDrinkSchema = createInsertSchema(drinks);
@@ -172,5 +155,3 @@ export const insertSplitPaymentSchema = createInsertSchema(splitPayments);
 export const selectSplitPaymentSchema = createSelectSchema(splitPayments);
 export const insertEventPackageSchema = createInsertSchema(eventPackages);
 export const selectEventPackageSchema = createSelectSchema(eventPackages);
-export const insertTaxConfigSchema = createInsertSchema(taxConfig);
-export const selectTaxConfigSchema = createSelectSchema(taxConfig);
