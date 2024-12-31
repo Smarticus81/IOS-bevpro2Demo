@@ -43,9 +43,20 @@ const completionPhrases = [
   'okay thats it', "okay that's it"
 ];
 
+// Track processed commands to prevent duplicates
+let lastProcessedCommand = '';
+let lastProcessedTimestamp = 0;
+const COMMAND_DEBOUNCE_TIME = 2000; // 2 seconds
+
 // Local command processing for better latency
 function processSimpleCommands(text: string): OrderDetails | null {
   const command = text.toLowerCase().trim();
+
+  const now = Date.now();
+  if (command === lastProcessedCommand && now - lastProcessedTimestamp < COMMAND_DEBOUNCE_TIME) {
+    console.log('Duplicate command detected, skipping:', command);
+    return null;
+  }
 
   // Enhanced completion command detection with better phrase matching
   const isCompletionCommand = completionPhrases.some(phrase => 
@@ -55,6 +66,8 @@ function processSimpleCommands(text: string): OrderDetails | null {
   );
 
   if (isCompletionCommand) {
+    lastProcessedCommand = command;
+    lastProcessedTimestamp = now;
     return {
       items: [],
       action: 'complete_order'
@@ -65,6 +78,8 @@ function processSimpleCommands(text: string): OrderDetails | null {
   if (command.match(/^(help|commands|what|assistance|options|menu)/) || 
       command.includes('what can') || 
       command.includes('how do')) {
+    lastProcessedCommand = command;
+    lastProcessedTimestamp = now;
     return {
       items: [],
       action: 'help'
@@ -75,6 +90,8 @@ function processSimpleCommands(text: string): OrderDetails | null {
   if (command.match(/^(stop|end|quit|exit|cancel)/) || 
       command.includes('never mind') || 
       command.includes('cancel that')) {
+    lastProcessedCommand = command;
+    lastProcessedTimestamp = now;
     return {
       items: [],
       action: 'stop'
@@ -101,15 +118,47 @@ function normalizeQuantity(text: string): number {
   const match = normalized.match(/\b(\d{1,2})\b/);
   if (match) {
     const num = parseInt(match[1]);
-    // Sanity check - limit to reasonable quantities
-    return num > 0 && num <= 12 ? num : 1;
+    return Math.min(12, Math.max(1, num)); // Limit to 1-12 range
   }
 
   return 1; // Default to 1 if no valid number found
 }
 
+// Deduplicate and normalize order items
+function consolidateOrderItems(items: OrderItem[]): OrderItem[] {
+  const itemMap = new Map<string, OrderItem>();
+
+  items.forEach(item => {
+    const normalizedName = item.name.toLowerCase().trim();
+    const existingItem = itemMap.get(normalizedName);
+
+    if (existingItem) {
+      // Keep the lower quantity to prevent accidental duplication
+      existingItem.quantity = Math.min(
+        12, // Hard limit at 12
+        Math.min(existingItem.quantity, item.quantity) // Take the lower quantity
+      );
+    } else {
+      itemMap.set(normalizedName, {
+        ...item,
+        name: item.name,
+        quantity: Math.min(12, item.quantity)
+      });
+    }
+  });
+
+  return Array.from(itemMap.values());
+}
+
 async function processComplexOrder(text: string): Promise<OrderDetails> {
   if (!openai) throw new Error('Voice processing service is not configured');
+
+  // Prevent duplicate processing
+  const now = Date.now();
+  if (text === lastProcessedCommand && now - lastProcessedTimestamp < COMMAND_DEBOUNCE_TIME) {
+    console.log('Duplicate complex order detected, skipping:', text);
+    return { items: [] };
+  }
 
   const completion = await openai.chat.completions.create({
     model: "gpt-4-1106-preview",
@@ -122,11 +171,13 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
             "specialInstructions": string,
             "action": "complete_order" | null
           }
-          Prioritize accurate quantity parsing and drink name matching.
-          Keep quantities reasonable (1-12).
-          Avoid duplicating items.
-          Pay special attention to completion phrases like "that's it", "finish order".
-          Keep responses concise and focused on order details only.`
+          Rules:
+          - Parse quantities accurately, including words like "two", "three"
+          - Keep quantities between 1 and 12
+          - Do not duplicate items
+          - Detect completion phrases like "that's it", "finish order"
+          - Keep responses concise
+          - Only include items actually ordered`
       },
       {
         role: "user",
@@ -139,13 +190,12 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
   });
 
   const parsed = JSON.parse(completion.choices[0].message.content);
+  lastProcessedCommand = text;
+  lastProcessedTimestamp = now;
 
-  // Validate and normalize quantities
   if (parsed.items) {
-    parsed.items = parsed.items.map((item: OrderItem) => ({
-      ...item,
-      quantity: Math.min(12, Math.max(1, item.quantity)) // Ensure quantity is between 1 and 12
-    }));
+    // Normalize and deduplicate items
+    parsed.items = consolidateOrderItems(parsed.items);
   }
 
   return parsed;
@@ -170,21 +220,9 @@ export async function processVoiceOrder(text: string): Promise<VoiceOrderResult>
       };
     }
 
-    // Extract quantity from text before AI processing
-    const quantity = normalizeQuantity(text);
-    console.log('Detected quantity:', quantity);
-
-    // Fall back to AI processing for complex orders
+    // Process complex order with quantity validation
     const orderDetails = await processComplexOrder(text);
     console.log('Complex order processed:', orderDetails);
-
-    // Apply quantity normalization to all items
-    if (orderDetails.items) {
-      orderDetails.items = orderDetails.items.map(item => ({
-        ...item,
-        quantity: Math.min(12, Math.max(1, item.quantity))
-      }));
-    }
 
     return {
       success: true,
