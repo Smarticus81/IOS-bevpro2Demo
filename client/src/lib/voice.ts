@@ -47,15 +47,20 @@ class VoiceRecognition extends EventHandler {
   private isListening = false;
   private mode: ListeningMode = 'wake_word';
   private wakeWords = {
-    order: ['hey bar', 'hey bars', 'hey barb', 'hey boss', 'hay bar'],
-    inquiry: ['hey bev', 'hey beth', 'hey belle', 'hey beb', 'hey v']
+    order: ['hey bar', 'hey bars', 'hey barb', 'hey boss', 'hay bar', 'a bar', 'hey far', 'hey ba'],
+    inquiry: ['hey bev', 'hey beth', 'hey belle', 'hey beb', 'hey v', 'hey b', 'hey bed']
   };
   private retryCount = 0;
   private maxRetries = 5;
   private cleanup: (() => void) | null = null;
-  private confidenceThreshold = 0.7;
+  private confidenceThreshold = 0.4; // Lowered from 0.7 for better wake word detection
   private lastWakeWordAttempt = 0;
-  private wakeWordCooldown = 1000; // 1 second cooldown between attempts
+  private wakeWordCooldown = 500; // Lowered from 1000ms to 500ms for more responsive detection
+  private partialPhrases: Array<{text: string, timestamp: number}> = [];
+  private readonly PARTIAL_PHRASE_TIMEOUT = 1500; // 1.5 seconds to combine partial phrases
+  private isManualStop = false;
+  private isPaused = false;
+
 
   constructor() {
     super();
@@ -73,7 +78,7 @@ class VoiceRecognition extends EventHandler {
 
       this.recognition = new SpeechRecognition();
       this.setupRecognitionConfig();
-      this.setupRecognition();
+      this.setupEventHandlers();
       logger.info('Speech recognition initialized successfully');
     } catch (error) {
       logger.error('Failed to initialize speech recognition:', error);
@@ -81,29 +86,44 @@ class VoiceRecognition extends EventHandler {
     }
   }
 
-  private emitError(name: string, message: string, type: ErrorType = 'recognition') {
-    const error: VoiceErrorEvent = {
-      type,
-      message,
-      name
-    };
-    this.emit('error', error);
-  }
-
   private setupRecognitionConfig() {
     if (!this.recognition) return;
-
     this.recognition.continuous = true;
     this.recognition.interimResults = true;
     this.recognition.maxAlternatives = 3;
     this.recognition.lang = 'en-US';
   }
 
+  private cleanPartialPhrases() {
+    const now = Date.now();
+    this.partialPhrases = this.partialPhrases.filter(
+      phrase => now - phrase.timestamp < this.PARTIAL_PHRASE_TIMEOUT
+    );
+  }
+
+  private combinePartialPhrases(): string {
+    this.cleanPartialPhrases();
+    return this.partialPhrases
+      .map(phrase => phrase.text)
+      .join(' ')
+      .toLowerCase()
+      .trim();
+  }
+
   private matchesWakeWord(text: string, wakeWordList: string[]): boolean {
     const normalizedText = text.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "");
+
+    // Check for exact matches first
+    if (wakeWordList.some(word => normalizedText.includes(word))) {
+      return true;
+    }
+
+    // Check for close matches using Levenshtein distance
     return wakeWordList.some(wakeWord => {
       const distance = this.levenshteinDistance(normalizedText, wakeWord);
-      return distance <= 2;
+      // More lenient distance threshold for wake word detection
+      const maxDistance = Math.max(2, Math.floor(wakeWord.length / 4));
+      return distance <= maxDistance;
     });
   }
 
@@ -130,69 +150,92 @@ class VoiceRecognition extends EventHandler {
     return matrix[b.length][a.length];
   }
 
-  private setupRecognition() {
+  private emitError(name: string | Error, message: string, type: ErrorType = 'recognition') {
+    const error: VoiceErrorEvent = {
+      type,
+      message: typeof name === 'string' ? message : name.message,
+      name: typeof name === 'string' ? name : name.name
+    };
+    this.emit('error', error);
+  }
+
+  private setupEventHandlers() {
     if (!this.recognition) return;
 
-    this.recognition.onresult = async (event: SpeechRecognitionEvent) => {
-      try {
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const result = event.results[i];
-          if (!result?.[0]?.transcript) continue;
-
-          const text = result[0].transcript.toLowerCase().trim();
-          const confidence = result[0].confidence;
-
-          logger.info('Recognized text:', text, 'Confidence:', confidence);
-
-          if (text.includes('shut down') && confidence > this.confidenceThreshold) {
-            await this.handleShutdown();
-            return;
-          }
-
-          switch (this.mode) {
-            case 'wake_word':
-              await this.handleWakeWordMode(text, confidence);
-              break;
-            case 'command':
-              await this.handleCommandMode(text, confidence);
-              break;
-          }
-        }
-      } catch (error) {
-        logger.error('Error processing speech result:', error);
-        this.emitError('ProcessingError', 'Failed to process speech input', 'processing');
-      }
-    };
-
-    this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      logger.error('Speech recognition error:', event.error);
-
-      if (event.error === 'network') {
-        this.stop();
-        return;
-      }
-
-      if (this.isListening && this.retryCount < this.maxRetries) {
-        this.retryCount++;
-        logger.info(`Retrying speech recognition (${this.retryCount}/${this.maxRetries})`);
-        setTimeout(() => this.start(), Math.min(1000 * this.retryCount, 5000));
-      } else if (this.retryCount >= this.maxRetries) {
-        logger.error('Max retry attempts reached');
-        this.emitError('MaxRetriesError', 'Speech recognition failed after multiple attempts');
-        this.stop();
-      }
+    this.recognition.onstart = () => {
+      this.isListening = true;
+      this.isManualStop = false;
+      this.isPaused = false;
     };
 
     this.recognition.onend = () => {
-      if (this.isListening && this.mode !== 'shutdown') {
-        logger.info('Recognition ended, restarting...');
-        setTimeout(() => {
-          if (this.recognition && this.isListening) {
-            this.recognition.start();
-          }
-        }, 100);
+      if (this.isListening && !this.isManualStop && !this.isPaused) {
+        try {
+          this.recognition?.start();
+        } catch (error) {
+          console.error('Failed to restart speech recognition:', error);
+          this.isListening = false;
+          this.cleanup = null;
+        }
       }
     };
+
+    this.recognition.onerror = this.handleRecognitionError.bind(this);
+    this.recognition.onresult = this.handleRecognitionResult.bind(this);
+  }
+
+  private handleRecognitionResult(event: SpeechRecognitionEvent) {
+    try {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (!result?.[0]?.transcript) continue;
+
+        const text = result[0].transcript.toLowerCase().trim();
+        const confidence = result[0].confidence;
+        const isFinal = result.isFinal;
+
+        logger.info('Recognized text:', text, 'Confidence:', confidence, 'Final:', isFinal);
+
+        if (!isFinal) {
+          // Store partial phrases
+          this.partialPhrases.push({
+            text,
+            timestamp: Date.now()
+          });
+          continue;
+        }
+
+        // For final results, combine with recent partial phrases
+        const combinedText = this.combinePartialPhrases() + ' ' + text;
+
+        if (combinedText.includes('shut down') && confidence > this.confidenceThreshold) {
+          this.handleShutdown();
+          return;
+        }
+
+        switch (this.mode) {
+          case 'wake_word':
+            this.handleWakeWordMode(combinedText, confidence);
+            break;
+          case 'command':
+            this.handleCommandMode(combinedText, confidence);
+            break;
+        }
+
+        // Clear partial phrases after processing final result
+        this.partialPhrases = [];
+      }
+    } catch (error) {
+      logger.error('Error processing speech result:', error);
+      this.emitError('ProcessingError', 'Failed to process speech input', 'processing');
+    }
+  }
+
+  private handleRecognitionError(event: SpeechRecognitionErrorEvent) {
+    const nonFatalErrors = ['no-speech', 'audio-capture', 'network', 'aborted'];
+    if (!nonFatalErrors.includes(event.error)) {
+      this.emitError(new Error(`Speech recognition error: ${event.error}`));
+    }
   }
 
   private async handleWakeWordMode(text: string, confidence: number) {
@@ -202,7 +245,8 @@ class VoiceRecognition extends EventHandler {
     }
     this.lastWakeWordAttempt = now;
 
-    if (confidence < this.confidenceThreshold) {
+    // More lenient confidence check for wake words
+    if (confidence < this.confidenceThreshold * 0.8) {
       logger.info('Wake word detected but confidence too low:', confidence);
       return;
     }
@@ -272,6 +316,7 @@ class VoiceRecognition extends EventHandler {
   async stop() {
     if (this.recognition && this.isListening) {
       try {
+        this.isManualStop = true;
         this.isListening = false;
         this.retryCount = 0;
         this.recognition.stop();

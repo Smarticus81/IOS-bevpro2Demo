@@ -1,0 +1,1934 @@
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:03.901Z",
+  "level": "info",
+  "message": "Speech recognition initialized successfully",
+  "context": {}
+}
+hook.js:608 OpenAI API key not found - voice features will be limited
+overrideMethod @ hook.js:608Understand this warningAI
+5The AudioContext was not allowed to start. It must be resumed (or created) after a user gesture on the page. <URL>Understand this warningAI
+sound-effects.ts:37 Audio context initialized successfully
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:06.870Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+hook.js:377 {  "timestamp": "2024-12-31T15:05:06.870Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 0,    "itemCount": 0,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:06.872Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+hook.js:377 {  "timestamp": "2024-12-31T15:05:06.872Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 0,    "itemCount": 0,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:07.006Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+hook.js:377 {  "timestamp": "2024-12-31T15:05:07.006Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 0,    "itemCount": 0,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:09.316Z",
+  "level": "info",
+  "message": "Voice Control: Listening... Say \"help\" for commands",
+  "context": {}
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:09.321Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+hook.js:377 {  "timestamp": "2024-12-31T15:05:09.321Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 0,    "itemCount": 0,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:09.322Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+hook.js:377 {  "timestamp": "2024-12-31T15:05:09.322Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 0,    "itemCount": 0,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:15.088Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "hey"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:15.089Z",
+  "level": "info",
+  "message": "Wake word detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:15.302Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "hey"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:15.755Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "hey"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:16.436Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "hey"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:16.436Z",
+  "level": "info",
+  "message": "Wake word detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:17.027Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "hey"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:17.451Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "hey"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:17.452Z",
+  "level": "info",
+  "message": "Wake word detected but confidence too low:",
+  "context": 0.6362850666046143
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:29.412Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "hey"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:29.412Z",
+  "level": "info",
+  "message": "Wake word detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:34.467Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "dad"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:34.467Z",
+  "level": "info",
+  "message": "Wake word detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:34.838Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "dad"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:40.093Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "hey"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:40.093Z",
+  "level": "info",
+  "message": "Wake word detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:55.177Z",
+  "level": "info",
+  "message": "Recognition ended, restarting...",
+  "context": {}
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:58.112Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "stop"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:58.112Z",
+  "level": "info",
+  "message": "Wake word detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:58.291Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "stop listen"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:58.372Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "stop listening"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:58.645Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "stop"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:58.645Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "listening"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:05:59.040Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "stop listening"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:00.770Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "shut"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:00.770Z",
+  "level": "info",
+  "message": "Wake word detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:00.957Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "shut down"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:01.348Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "shut"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:01.348Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "down"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:01.547Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "shut down"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:01.654Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:01.655Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 0,    "itemCount": 0,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:01.655Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:01.655Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 0,    "itemCount": 0,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:04.842Z",
+  "level": "info",
+  "message": "Voice Control: Listening... Say \"help\" for commands",
+  "context": {}
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:04.849Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:04.849Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 0,    "itemCount": 0,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:04.850Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:04.850Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 0,    "itemCount": 0,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:06.033Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "hey"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:06.033Z",
+  "level": "info",
+  "message": "Wake word detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:06.484Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "hey babe"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:06.660Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "hey"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:06.660Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "babe"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:07.037Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "hey babe"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:07.199Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "be"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:07.199Z",
+  "level": "info",
+  "message": "Voice command received:",
+  "context": {
+    "text": "be",
+    "drinksAvailable": 65
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:07.200Z",
+  "level": "info",
+  "message": "Found best partial match:",
+  "context": {
+    "searchTerm": "be",
+    "matchedDrink": "Cucumber Cooler"
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:07.200Z",
+  "level": "info",
+  "message": "Successfully parsed order items:",
+  "context": [
+    {
+      "name": "Cucumber Cooler",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:07.200Z",
+  "level": "info",
+  "message": "Processing drink order:",
+  "context": [
+    {
+      "name": "Cucumber Cooler",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:07.200Z",
+  "level": "info",
+  "message": "Adding item to cart",
+  "context": {
+    "drinkId": 2,
+    "quantity": 1,
+    "currentCartSize": 0
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:07.207Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:07.207Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 1,    "itemCount": 1,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:07.208Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:07.208Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 1,    "itemCount": 1,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:07.321Z",
+  "level": "info",
+  "message": "Voice Command Tracked:",
+  "context": {
+    "type": "drink_order",
+    "success": true,
+    "command": "1 Cucumber Cooler",
+    "successRate": 100
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:07.328Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:07.328Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 1,    "itemCount": 1,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:07.329Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:07.329Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 1,    "itemCount": 1,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:07.442Z",
+  "level": "info",
+  "message": "Added to Cart: Added 1 Cucumber Cooler(s) to your cart.",
+  "context": {}
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:07.448Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:07.448Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 1,    "itemCount": 1,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:07.448Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:07.448Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 1,    "itemCount": 1,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:11.960Z",
+  "level": "info",
+  "message": "Removing item from cart:",
+  "context": {
+    "drinkId": 2
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:11.966Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:11.966Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 0,    "itemCount": 0,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:11.967Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:11.967Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 0,    "itemCount": 0,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:13.437Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "can"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:13.437Z",
+  "level": "info",
+  "message": "Command detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:13.545Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "can i"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:13.545Z",
+  "level": "info",
+  "message": "Command detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:13.594Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "can i get"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:13.594Z",
+  "level": "info",
+  "message": "Command detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.037Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "can"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.037Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "can"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.037Z",
+  "level": "info",
+  "message": "Voice command received:",
+  "context": {
+    "text": "can",
+    "drinksAvailable": 65
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.037Z",
+  "level": "info",
+  "message": "Found best partial match:",
+  "context": {
+    "searchTerm": "can",
+    "matchedDrink": "Canyon Rd Cab"
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.037Z",
+  "level": "info",
+  "message": "Successfully parsed order items:",
+  "context": [
+    {
+      "name": "Canyon Rd Cab",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.037Z",
+  "level": "info",
+  "message": "Processing drink order:",
+  "context": [
+    {
+      "name": "Canyon Rd Cab",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.037Z",
+  "level": "info",
+  "message": "Adding item to cart",
+  "context": {
+    "drinkId": 18,
+    "quantity": 1,
+    "currentCartSize": 0
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.038Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "i get"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.038Z",
+  "level": "info",
+  "message": "Command detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.044Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.044Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 1,    "itemCount": 1,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.045Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.045Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 1,    "itemCount": 1,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.052Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "can i"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.052Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "can i"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.052Z",
+  "level": "info",
+  "message": "Voice command received:",
+  "context": {
+    "text": "can i",
+    "drinksAvailable": 65
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.052Z",
+  "level": "info",
+  "message": "Found best partial match:",
+  "context": {
+    "searchTerm": "",
+    "matchedDrink": "Cucumber Cooler"
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.052Z",
+  "level": "info",
+  "message": "Successfully parsed order items:",
+  "context": [
+    {
+      "name": "Cucumber Cooler",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.052Z",
+  "level": "info",
+  "message": "Processing drink order:",
+  "context": [
+    {
+      "name": "Cucumber Cooler",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.052Z",
+  "level": "info",
+  "message": "Adding item to cart",
+  "context": {
+    "drinkId": 2,
+    "quantity": 1,
+    "currentCartSize": 0
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.052Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "get"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.052Z",
+  "level": "info",
+  "message": "Command detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.058Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 2,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.058Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 2,    "itemCount": 2,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.058Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 2,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.058Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 2,    "itemCount": 2,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.136Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "can i"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.136Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "can i"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.136Z",
+  "level": "info",
+  "message": "Debouncing similar command:",
+  "context": "can i"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.136Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "get a"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.136Z",
+  "level": "info",
+  "message": "Command detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.158Z",
+  "level": "info",
+  "message": "Voice Command Tracked:",
+  "context": {
+    "type": "drink_order",
+    "success": true,
+    "command": "1 Canyon Rd Cab",
+    "successRate": 100
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.163Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 2,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.163Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 2,    "itemCount": 2,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.164Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 2,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.164Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 2,    "itemCount": 2,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.173Z",
+  "level": "info",
+  "message": "Voice Command Tracked:",
+  "context": {
+    "type": "drink_order",
+    "success": true,
+    "command": "1 Cucumber Cooler",
+    "successRate": 100
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.178Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 2,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.178Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 2,    "itemCount": 2,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.178Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 2,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.178Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 2,    "itemCount": 2,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.241Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "can i get"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.241Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "can i get"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.242Z",
+  "level": "info",
+  "message": "Voice command received:",
+  "context": {
+    "text": "can i get",
+    "drinksAvailable": 65
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.242Z",
+  "level": "info",
+  "message": "Found best partial match:",
+  "context": {
+    "searchTerm": "",
+    "matchedDrink": "Cucumber Cooler"
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.242Z",
+  "level": "info",
+  "message": "Successfully parsed order items:",
+  "context": [
+    {
+      "name": "Cucumber Cooler",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.242Z",
+  "level": "info",
+  "message": "Processing drink order:",
+  "context": [
+    {
+      "name": "Cucumber Cooler",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.242Z",
+  "level": "info",
+  "message": "Adding item to cart",
+  "context": {
+    "drinkId": 2,
+    "quantity": 1,
+    "currentCartSize": 0
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.242Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "a"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.242Z",
+  "level": "info",
+  "message": "Command detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.247Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 3,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.247Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 2,    "itemCount": 3,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.247Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 3,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.247Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 2,    "itemCount": 3,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.280Z",
+  "level": "info",
+  "message": "Added to Cart: Added 1 Canyon Rd Cab(s) to your cart.",
+  "context": {}
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.285Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 3,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.285Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 2,    "itemCount": 3,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.286Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 3,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.286Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 2,    "itemCount": 3,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.294Z",
+  "level": "info",
+  "message": "Added to Cart: Added 1 Cucumber Cooler(s) to your cart.",
+  "context": {}
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.299Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 3,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.299Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 2,    "itemCount": 3,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.299Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 3,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.299Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 2,    "itemCount": 3,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.363Z",
+  "level": "info",
+  "message": "Voice Command Tracked:",
+  "context": {
+    "type": "drink_order",
+    "success": true,
+    "command": "1 Cucumber Cooler",
+    "successRate": 100
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.368Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 3,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.368Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 2,    "itemCount": 3,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.368Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 3,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.368Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 2,    "itemCount": 3,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.483Z",
+  "level": "info",
+  "message": "Added to Cart: Added 1 Cucumber Cooler(s) to your cart.",
+  "context": {}
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.488Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 3,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.489Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 2,    "itemCount": 3,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.489Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 3,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.489Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 2,    "itemCount": 3,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.732Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "can i get a"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.732Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "can i get a"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.732Z",
+  "level": "info",
+  "message": "Voice command received:",
+  "context": {
+    "text": "can i get a",
+    "drinksAvailable": 65
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.732Z",
+  "level": "info",
+  "message": "Found best partial match:",
+  "context": {
+    "searchTerm": "a",
+    "matchedDrink": "Lav Lemonade"
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.732Z",
+  "level": "info",
+  "message": "Successfully parsed order items:",
+  "context": [
+    {
+      "name": "Lav Lemonade",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.732Z",
+  "level": "info",
+  "message": "Processing drink order:",
+  "context": [
+    {
+      "name": "Lav Lemonade",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.732Z",
+  "level": "info",
+  "message": "Adding item to cart",
+  "context": {
+    "drinkId": 63,
+    "quantity": 1,
+    "currentCartSize": 0
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.737Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 4,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.737Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 4,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.738Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 4,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.738Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 4,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.853Z",
+  "level": "info",
+  "message": "Voice Command Tracked:",
+  "context": {
+    "type": "drink_order",
+    "success": true,
+    "command": "1 Lav Lemonade",
+    "successRate": 100
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.859Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 4,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.859Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 4,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.860Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 4,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.860Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 4,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.974Z",
+  "level": "info",
+  "message": "Added to Cart: Added 1 Lav Lemonade(s) to your cart.",
+  "context": {}
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.979Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 4,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.979Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 4,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:14.979Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 4,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:14.979Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 4,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:15.126Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "can i get a"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:15.127Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "can i get a"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:15.127Z",
+  "level": "info",
+  "message": "Debouncing similar command:",
+  "context": "can i get a"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:19.940Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "can"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:19.941Z",
+  "level": "info",
+  "message": "Command detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.040Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "can i"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.041Z",
+  "level": "info",
+  "message": "Command detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.434Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "can i get"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.435Z",
+  "level": "info",
+  "message": "Command detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.445Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "can"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.445Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "can"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.446Z",
+  "level": "info",
+  "message": "Voice command received:",
+  "context": {
+    "text": "can",
+    "drinksAvailable": 65
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.446Z",
+  "level": "info",
+  "message": "Found best partial match:",
+  "context": {
+    "searchTerm": "can",
+    "matchedDrink": "Canyon Rd Cab"
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.446Z",
+  "level": "info",
+  "message": "Successfully parsed order items:",
+  "context": [
+    {
+      "name": "Canyon Rd Cab",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.446Z",
+  "level": "info",
+  "message": "Processing drink order:",
+  "context": [
+    {
+      "name": "Canyon Rd Cab",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.446Z",
+  "level": "info",
+  "message": "Adding item to cart",
+  "context": {
+    "drinkId": 18,
+    "quantity": 1,
+    "currentCartSize": 0
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.446Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "i get"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.446Z",
+  "level": "info",
+  "message": "Command detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.451Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 5,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:20.451Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 5,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.451Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 5,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:20.452Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 5,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.566Z",
+  "level": "info",
+  "message": "Voice Command Tracked:",
+  "context": {
+    "type": "drink_order",
+    "success": true,
+    "command": "1 Canyon Rd Cab",
+    "successRate": 100
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.571Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 5,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:20.571Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 5,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.571Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 5,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:20.571Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 5,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.660Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "can i"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.660Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "can i"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.660Z",
+  "level": "info",
+  "message": "Voice command received:",
+  "context": {
+    "text": "can i",
+    "drinksAvailable": 65
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.661Z",
+  "level": "info",
+  "message": "Found best partial match:",
+  "context": {
+    "searchTerm": "",
+    "matchedDrink": "Cucumber Cooler"
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.661Z",
+  "level": "info",
+  "message": "Successfully parsed order items:",
+  "context": [
+    {
+      "name": "Cucumber Cooler",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.661Z",
+  "level": "info",
+  "message": "Processing drink order:",
+  "context": [
+    {
+      "name": "Cucumber Cooler",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.661Z",
+  "level": "info",
+  "message": "Adding item to cart",
+  "context": {
+    "drinkId": 2,
+    "quantity": 1,
+    "currentCartSize": 0
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.661Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "get"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.661Z",
+  "level": "info",
+  "message": "Command detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.665Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 6,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:20.665Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 6,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.666Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 6,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:20.666Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 6,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.687Z",
+  "level": "info",
+  "message": "Added to Cart: Added 1 Canyon Rd Cab(s) to your cart.",
+  "context": {}
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.692Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 6,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:20.692Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 6,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.692Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 6,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:20.692Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 6,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.782Z",
+  "level": "info",
+  "message": "Voice Command Tracked:",
+  "context": {
+    "type": "drink_order",
+    "success": true,
+    "command": "1 Cucumber Cooler",
+    "successRate": 100
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.786Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 6,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:20.786Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 6,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.787Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 6,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:20.787Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 6,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.902Z",
+  "level": "info",
+  "message": "Added to Cart: Added 1 Cucumber Cooler(s) to your cart.",
+  "context": {}
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.907Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 6,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:20.907Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 6,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.907Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 6,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:20.908Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 6,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.941Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "can i"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.941Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "can i"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.941Z",
+  "level": "info",
+  "message": "Debouncing similar command:",
+  "context": "can i"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.941Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "get a"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:20.941Z",
+  "level": "info",
+  "message": "Command detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.043Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "can i get"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.044Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "can i get"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.044Z",
+  "level": "info",
+  "message": "Voice command received:",
+  "context": {
+    "text": "can i get",
+    "drinksAvailable": 65
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.044Z",
+  "level": "info",
+  "message": "Found best partial match:",
+  "context": {
+    "searchTerm": "",
+    "matchedDrink": "Cucumber Cooler"
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.044Z",
+  "level": "info",
+  "message": "Successfully parsed order items:",
+  "context": [
+    {
+      "name": "Cucumber Cooler",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.044Z",
+  "level": "info",
+  "message": "Processing drink order:",
+  "context": [
+    {
+      "name": "Cucumber Cooler",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.044Z",
+  "level": "info",
+  "message": "Adding item to cart",
+  "context": {
+    "drinkId": 2,
+    "quantity": 1,
+    "currentCartSize": 0
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.044Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "a"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.044Z",
+  "level": "info",
+  "message": "Command detected but confidence too low:",
+  "context": 0.009999999776482582
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.049Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 7,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:21.049Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 7,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.049Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 7,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:21.049Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 7,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.166Z",
+  "level": "info",
+  "message": "Voice Command Tracked:",
+  "context": {
+    "type": "drink_order",
+    "success": true,
+    "command": "1 Cucumber Cooler",
+    "successRate": 100
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.171Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 7,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:21.171Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 7,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.171Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 7,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:21.171Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 7,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.287Z",
+  "level": "info",
+  "message": "Added to Cart: Added 1 Cucumber Cooler(s) to your cart.",
+  "context": {}
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.292Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 7,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:21.292Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 7,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.293Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 7,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:21.293Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 7,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.619Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "can i get a"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.620Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "can i get a"
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.620Z",
+  "level": "info",
+  "message": "Voice command received:",
+  "context": {
+    "text": "can i get a",
+    "drinksAvailable": 65
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.620Z",
+  "level": "info",
+  "message": "Found best partial match:",
+  "context": {
+    "searchTerm": "a",
+    "matchedDrink": "Lav Lemonade"
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.620Z",
+  "level": "info",
+  "message": "Successfully parsed order items:",
+  "context": [
+    {
+      "name": "Lav Lemonade",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.620Z",
+  "level": "info",
+  "message": "Processing drink order:",
+  "context": [
+    {
+      "name": "Lav Lemonade",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.620Z",
+  "level": "info",
+  "message": "Adding item to cart",
+  "context": {
+    "drinkId": 63,
+    "quantity": 1,
+    "currentCartSize": 0
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.625Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 8,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:21.625Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 8,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.626Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 8,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:21.626Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 8,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.741Z",
+  "level": "info",
+  "message": "Voice Command Tracked:",
+  "context": {
+    "type": "drink_order",
+    "success": true,
+    "command": "1 Lav Lemonade",
+    "successRate": 100
+  }
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.747Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 8,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:21.747Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 8,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.748Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 8,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:21.748Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 8,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.862Z",
+  "level": "info",
+  "message": "Added to Cart: Added 1 Lav Lemonade(s) to your cart.",
+  "context": {}
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.866Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 8,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:21.866Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 8,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:21.866Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 8,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:21.867Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 8,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:23.178Z",
+  "level": "info",
+  "message": "Voice Control: Stopped listening",
+  "context": {}
+}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:23.182Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 8,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:23.182Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 8,    "isProcessing": false  }}
+logger.ts:15 {
+  "timestamp": "2024-12-31T15:06:23.183Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 8,
+    "isProcessing": false
+  }
+}
+logger.ts:15 {  "timestamp": "2024-12-31T15:06:23.183Z",  "level": "debug",  "message": "OrderSummaryDrawer render",  "context": {    "cartItems": 3,    "itemCount": 8,    "isProcessing": false  }}
