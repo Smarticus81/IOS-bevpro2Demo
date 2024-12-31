@@ -22,7 +22,7 @@ function generateContextualResponse(
   items?: OrderItem[]
 ): string {
   const uncertaintyPrefix = confidence < 0.6 ? 
-    "I think you want to " : 
+    "I'm not quite sure, but I think you want to " : 
     confidence < 0.8 ? 
     "If I understand correctly, you want to " : 
     "";
@@ -39,36 +39,81 @@ function generateContextualResponse(
     `${items.map(i => `${i.quantity} ${i.name}`).join(", ")}` : 
     "";
 
-  const responses: Record<CommandIntent, string[]> = {
-    'add_item': [
+  const contextAwareResponses: Record<CommandIntent, (items?: OrderItem[]) => string[]> = {
+    'add_item': (items) => [
       `Adding ${itemSummary} to your order.`,
-      `I'll add ${itemSummary}.`,
-      `Got it, adding ${itemSummary}.`
+      `I'll add ${itemSummary} for you.`,
+      `Got it, adding ${itemSummary} to your order.`
     ],
-    'remove_item': [
+    'remove_item': (items) => [
       `Removing ${itemSummary} from your order.`,
       `I'll take ${itemSummary} off your order.`,
-      `Removing ${itemSummary}.`
+      `OK, removing ${itemSummary}.`
     ],
-    'modify_item': [
+    'modify_item': (items) => [
       `Modifying your order: ${itemSummary}.`,
       `Changing that to ${itemSummary}.`,
       `Updating your order with ${itemSummary}.`
     ],
-    'cancel_order': [
-      `Canceling your entire order.`,
-      `I'll cancel everything.`,
-      `Starting fresh.`
+    'void_item': () => [
+      "Voiding the last item from your order.",
+      "Removing that last item for you.",
+      "I'll void that last item."
     ],
-    'help': [
-      `Here's what I can help you with: ordering drinks, modifying orders, or checking status.`,
-      `I can help you order drinks, modify your order, or check status. What would you like to do?`,
-      `I can take your order, make changes, or help you check status. What do you need?`
+    'cancel_order': () => [
+      "Canceling your entire order.",
+      "I'll cancel everything and we can start fresh.",
+      "Starting over with a clean slate."
+    ],
+    'split_order': () => [
+      "I'll help you split this order.",
+      "Let's divide this order up.",
+      "We can split this order for you."
+    ],
+    'apply_discount': () => [
+      "I'll apply that discount for you.",
+      "Adding the discount to your order.",
+      "Applying your discount now."
+    ],
+    'complete_order': () => [
+      "Great, I'll complete this order for you.",
+      "Finalizing your order now.",
+      "Processing your order to completion."
+    ],
+    'help': () => [
+      "I can help you order drinks, modify orders, or check status. What would you like to do?",
+      "Here's what I can do: take orders, make changes, apply discounts, or process payments.",
+      "I can assist with ordering, modifications, or checking your order status."
+    ],
+    'repeat_last': () => [
+      `Let me repeat that last part for you.`,
+      `Here's what was last ordered: ${context.lastOrder ? `${context.lastOrder.quantity} ${context.lastOrder.name}` : 'nothing yet'}`,
+      `The last order was: ${context.lastOrder ? `${context.lastOrder.quantity} ${context.lastOrder.name}` : 'nothing yet'}`
+    ],
+    'undo_last': () => [
+      "I'll undo that last action.",
+      "Reverting the last change.",
+      "Going back one step."
+    ],
+    'quantity_change': (items) => [
+      `Changing the quantity to ${items?.[0]?.quantity || 'the requested amount'}.`,
+      `Updating the quantity as requested.`,
+      `Adjusting the amount to ${items?.[0]?.quantity || 'what you asked for'}.`
+    ],
+    'list_orders': () => [
+      "Here's what's currently in your order.",
+      "Let me show you your current order.",
+      "I'll list out your order for you."
+    ],
+    'stop': () => [
+      "Okay, I'll stop listening.",
+      "Stopping voice recognition now.",
+      "Voice commands deactivated."
     ]
   };
 
-  const baseResponse = responses[intent]?.[Math.floor(Math.random() * responses[intent].length)] || 
-    "I'll help you with that.";
+  const responses = contextAwareResponses[intent]?.(items) || ["I'll help you with that."];
+  const baseResponse = responses[Math.floor(Math.random() * responses.length)];
 
   return `${emotionalPrefix}${uncertaintyPrefix}${baseResponse}`;
 }
@@ -77,16 +122,19 @@ function generateContextualResponse(
 async function handleAmbiguousCommand(
   text: string, 
   confidence: number, 
-  alternativeIntents: CommandIntent[]
+  alternativeIntents: CommandIntent[],
+  context: OrderContext
 ): Promise<{
   resolvedIntent: CommandIntent;
   clarification?: string;
+  suggestedResponse?: string;
 }> {
   if (!openai) {
     // Fallback to best guess if OpenAI not available
     return {
       resolvedIntent: alternativeIntents[0],
-      clarification: "I'm not entirely sure, but I'll try to help."
+      clarification: "I'm not entirely sure what you want to do. Could you please be more specific?",
+      suggestedResponse: generateContextualResponse(alternativeIntents[0], confidence, context)
     };
   }
 
@@ -95,11 +143,23 @@ async function handleAmbiguousCommand(
     messages: [
       {
         role: "system",
-        content: `You are a helpful POS assistant. Analyze this ambiguous command and determine the most likely intent. Available intents: ${Object.keys(intentPatterns).join(", ")}`
+        content: `You are an AI assistant for a bar POS system. Analyze this ambiguous command and determine the most likely intent.
+          Available intents: ${Object.keys(intentPatterns).join(", ")}.
+          Consider the conversation context and previous orders.
+          Return a JSON object with:
+          {
+            "intent": string (one of the available intents),
+            "clarification": string (a question to ask the user for clarity),
+            "confidence": number (between 0 and 1),
+            "suggestedResponse": string (how to respond to the user)
+          }`
       },
       {
         role: "user",
-        content: `Command: "${text}"\nConfidence: ${confidence}\nPossible intents: ${alternativeIntents.join(", ")}`
+        content: `Command: "${text}"
+          Confidence: ${confidence}
+          Possible intents: ${alternativeIntents.join(", ")}
+          Previous context: ${JSON.stringify(context)}`
       }
     ],
     response_format: { type: "json_object" }
@@ -107,8 +167,9 @@ async function handleAmbiguousCommand(
 
   const result = JSON.parse(completion.choices[0].message.content);
   return {
-    resolvedIntent: result.intent,
-    clarification: result.clarification
+    resolvedIntent: result.intent as CommandIntent,
+    clarification: result.clarification,
+    suggestedResponse: result.suggestedResponse
   };
 }
 
@@ -454,13 +515,17 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
 
   // Handle ambiguous commands
   if (needsClarification) {
-    const { resolvedIntent, clarification: resolvedClarification } = await handleAmbiguousCommand(
+    const { resolvedIntent, clarification: resolvedClarification, suggestedResponse } = await handleAmbiguousCommand(
       text,
       confidence,
-      [detectedIntent]
+      [detectedIntent],
+      orderContext
     );
     finalIntent = resolvedIntent;
     clarification = resolvedClarification;
+    if(suggestedResponse){
+        console.log("Using suggested response from OpenAI:", suggestedResponse);
+    }
   }
 
   const emotionalTone = detectEmotionalTone(text);
