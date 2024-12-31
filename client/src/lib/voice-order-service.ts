@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Initialize OpenAI client with proper error handling
 let openai: OpenAI | null = null;
@@ -21,6 +22,7 @@ interface OrderItem {
   name: string;
   quantity: number;
   modifiers?: string[];
+  id?:string; //added for inventory check
 }
 
 interface OrderContext {
@@ -79,6 +81,47 @@ function normalizeCommand(text: string): string {
     .join(' ');
 
   return normalized;
+}
+
+// Check inventory availability for requested items
+async function checkInventory(items: OrderItem[]): Promise<{ 
+  available: boolean; 
+  insufficientItems?: string[] 
+}> {
+  try {
+    const response = await fetch("/api/drinks/inventory/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        items: items.map(item => ({
+          drink_id: item.id, // Assuming 'id' is present in OrderItem
+          quantity: item.quantity
+        }))
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to check inventory");
+    }
+
+    const result = await response.json();
+
+    if (!result.all_available) {
+      const unavailable = result.inventory_status
+        .filter((status: any) => !status.is_available)
+        .map((status: any) => `${status.name} (${status.available_quantity} available)`);
+
+      return {
+        available: false,
+        insufficientItems: unavailable
+      };
+    }
+
+    return { available: true };
+  } catch (error) {
+    console.error("Error checking inventory:", error);
+    throw error;
+  }
 }
 
 // Local command processing for better latency
@@ -238,7 +281,7 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
         role: "system",
         content: `Extract drink orders from voice commands.
           Return a JSON object with: {
-            "items": [{ "name": string, "quantity": number, "modifiers": string[] }],
+            "items": [{ "name": string, "quantity": number, "modifiers": string[], "id": string }],
             "action": "complete_order" | "modify_last" | "cancel_last" | null,
             "context": {
               "lastIntent": string,
@@ -284,8 +327,24 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
     if (parsed.items.length > 0) {
       orderContext.lastOrder = parsed.items[parsed.items.length - 1];
     }
-    // Normalize and deduplicate items
-    parsed.items = consolidateOrderItems(parsed.items);
+
+    // Check inventory before confirming order
+    try {
+      const inventoryStatus = await checkInventory(parsed.items);
+
+      if (!inventoryStatus.available) {
+        throw new Error(
+          `Insufficient inventory for: ${inventoryStatus.insufficientItems?.join(', ')}`
+        );
+      }
+
+      // Normalize and deduplicate items
+      parsed.items = consolidateOrderItems(parsed.items);
+    } catch (error) {
+      console.error('Inventory check failed:', error);
+      orderContext.emotionalTone = 'apologetic';
+      throw error;
+    }
   }
 
   return {

@@ -148,6 +148,22 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
+      // Verify inventory levels before processing
+      for (const item of items) {
+        const [drink] = await db
+          .select({ inventory: drinks.inventory })
+          .from(drinks)
+          .where(eq(drinks.id, item.drink.id))
+          .limit(1);
+
+        if (!drink || drink.inventory < item.quantity) {
+          return res.status(400).json({
+            error: `Insufficient inventory for ${item.drink.name}. Available: ${drink?.inventory || 0}`,
+            drinkId: item.drink.id
+          });
+        }
+      }
+
       // Create order
       const [order] = await db
         .insert(orders)
@@ -197,6 +213,72 @@ export function registerRoutes(app: Express): Server {
         error: "Failed to create order",
         details: error instanceof Error ? error.message : 'Unknown error'
       });
+    }
+  });
+
+  // Add inventory check endpoint
+  app.get("/api/drinks/:id/inventory", async (req, res) => {
+    try {
+      const drinkId = parseInt(req.params.id);
+      const [drink] = await db
+        .select({ 
+          id: drinks.id,
+          name: drinks.name,
+          inventory: drinks.inventory,
+          sales: drinks.sales
+        })
+        .from(drinks)
+        .where(eq(drinks.id, drinkId))
+        .limit(1);
+
+      if (!drink) {
+        return res.status(404).json({ error: "Drink not found" });
+      }
+
+      res.json(drink);
+    } catch (error) {
+      console.error("Error checking inventory:", error);
+      res.status(500).json({ error: "Failed to check inventory" });
+    }
+  });
+
+  // Bulk inventory check endpoint
+  app.post("/api/drinks/inventory/check", async (req, res) => {
+    try {
+      const { items } = req.body;
+
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ error: "Items must be an array" });
+      }
+
+      const inventoryChecks = await Promise.all(
+        items.map(async (item: any) => {
+          const [drink] = await db
+            .select({ 
+              id: drinks.id,
+              name: drinks.name,
+              inventory: drinks.inventory
+            })
+            .from(drinks)
+            .where(eq(drinks.id, item.drink_id))
+            .limit(1);
+
+          return {
+            drink_id: item.drink_id,
+            requested_quantity: item.quantity,
+            available_quantity: drink?.inventory || 0,
+            is_available: drink && drink.inventory >= item.quantity
+          };
+        })
+      );
+
+      res.json({
+        inventory_status: inventoryChecks,
+        all_available: inventoryChecks.every(check => check.is_available)
+      });
+    } catch (error) {
+      console.error("Error checking bulk inventory:", error);
+      res.status(500).json({ error: "Failed to check inventory" });
     }
   });
 
