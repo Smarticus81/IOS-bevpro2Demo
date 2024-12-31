@@ -82,7 +82,7 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
   if (!openai) throw new Error('Voice processing service is not configured');
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o", // Using latest model for faster processing
+    model: "gpt-4-1106-preview", // Using latest model for faster processing
     messages: [
       {
         role: "system",
