@@ -38,7 +38,7 @@ export function registerRoutes(app: Express): Server {
         todaySales: sum(transactions.amount).mapWith(Number)
       })
       .from(transactions)
-      .where(sql`${transactions.created_at} >= ${todayStart} AND ${transactions.status} = 'completed'`);
+      .where(sql`${transactions.created_at}::date = ${todayStart.toISOString().split('T')[0]} AND ${transactions.status} = 'completed'`);
 
       // Get active orders count
       const activeOrders = await db.select({
@@ -48,11 +48,14 @@ export function registerRoutes(app: Express): Server {
       .where(eq(orders.status, 'pending'));
 
       // Get total customers (unique tabs)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
       const customerStats = await db.select({
         totalCustomers: count().mapWith(Number)
       })
       .from(tabs)
-      .where(sql`${tabs.created_at} >= ${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)}`);
+      .where(sql`${tabs.created_at}::date >= ${thirtyDaysAgo.toISOString().split('T')[0]}`);
 
       // Get category sales distribution
       const categorySales = await db.select({
@@ -64,14 +67,17 @@ export function registerRoutes(app: Express): Server {
       .groupBy(drinks.category);
 
       // Get weekly sales trend
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
       const weeklyTrend = await db.select({
-        date: sql<string>`DATE(${transactions.created_at})`,
+        date: sql<string>`to_char(${transactions.created_at}, 'YYYY-MM-DD')`,
         sales: sum(transactions.amount).mapWith(Number)
       })
       .from(transactions)
-      .where(sql`${transactions.created_at} >= ${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)}`)
-      .groupBy(sql`DATE(${transactions.created_at})`)
-      .orderBy(sql`DATE(${transactions.created_at})`);
+      .where(sql`${transactions.created_at}::date >= ${sevenDaysAgo.toISOString().split('T')[0]}`)
+      .groupBy(sql`to_char(${transactions.created_at}, 'YYYY-MM-DD')`)
+      .orderBy(sql`to_char(${transactions.created_at}, 'YYYY-MM-DD')`);
 
       // Get popular drinks
       const popularDrinks = await db.select({
