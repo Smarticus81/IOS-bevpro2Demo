@@ -5,15 +5,40 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { Progress } from "@/components/ui/progress";
 
 export function PaymentConfirmation() {
   const [, setLocation] = useLocation();
   const [message, setMessage] = useState("");
+  const [progress, setProgress] = useState(0);
+  const REDIRECT_DELAY = 3000; // 3 seconds
 
   useEffect(() => {
     // In demo mode, always show success
     setMessage("Thank you! Your payment has been processed successfully.");
-  }, []);
+
+    // Start progress animation
+    const startTime = Date.now();
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const newProgress = Math.min((elapsed / REDIRECT_DELAY) * 100, 100);
+      setProgress(newProgress);
+
+      if (elapsed < REDIRECT_DELAY) {
+        requestAnimationFrame(animate);
+      }
+    };
+    requestAnimationFrame(animate);
+
+    // Set up redirect timer
+    const timer = setTimeout(() => {
+      setLocation("/");
+    }, REDIRECT_DELAY);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [setLocation]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -32,6 +57,13 @@ export function PaymentConfirmation() {
                   <CheckCircle2 className="h-12 w-12 text-green-500" />
                   <h2 className="text-xl font-semibold text-green-700">Payment Successful!</h2>
                   <p className="text-gray-600">{message}</p>
+
+                  <div className="w-full mt-6 space-y-2">
+                    <Progress value={progress} className="h-1" />
+                    <p className="text-sm text-muted-foreground">
+                      Redirecting to home page...
+                    </p>
+                  </div>
 
                   <Button
                     onClick={() => setLocation("/")}
