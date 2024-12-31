@@ -13,6 +13,7 @@ interface VoiceEvent {
 
 interface VoiceErrorEvent extends VoiceError {
   name: string;
+  type: ErrorType;
 }
 
 class EventHandler {
@@ -53,14 +54,15 @@ class VoiceRecognition extends EventHandler {
   private retryCount = 0;
   private maxRetries = 5;
   private cleanup: (() => void) | null = null;
-  private confidenceThreshold = 0.4; // Lowered from 0.7 for better wake word detection
+  private confidenceThreshold = 0.4;
   private lastWakeWordAttempt = 0;
-  private wakeWordCooldown = 500; // Lowered from 1000ms to 500ms for more responsive detection
-  private partialPhrases: Array<{text: string, timestamp: number}> = [];
-  private readonly PARTIAL_PHRASE_TIMEOUT = 1500; // 1.5 seconds to combine partial phrases
-  private isManualStop = false;
-  private isPaused = false;
-
+  private wakeWordCooldown = 500;
+  private lastProcessedCommand = '';
+  private lastProcessedTimestamp = 0;
+  private readonly COMMAND_DEBOUNCE_TIME = 2000;
+  private partialResults: string[] = [];
+  private lastPartialResultTime = 0;
+  private readonly PARTIAL_RESULT_TIMEOUT = 1000;
 
   constructor() {
     super();
@@ -82,7 +84,7 @@ class VoiceRecognition extends EventHandler {
       logger.info('Speech recognition initialized successfully');
     } catch (error) {
       logger.error('Failed to initialize speech recognition:', error);
-      this.emitError('InitializationError', 'Speech recognition initialization failed');
+      this.emitError('InitializationError', 'Speech recognition initialization failed', 'initialization');
     }
   }
 
@@ -94,60 +96,21 @@ class VoiceRecognition extends EventHandler {
     this.recognition.lang = 'en-US';
   }
 
-  private cleanPartialPhrases() {
+  private clearPartialResults() {
     const now = Date.now();
-    this.partialPhrases = this.partialPhrases.filter(
-      phrase => now - phrase.timestamp < this.PARTIAL_PHRASE_TIMEOUT
-    );
-  }
-
-  private combinePartialPhrases(): string {
-    this.cleanPartialPhrases();
-    return this.partialPhrases
-      .map(phrase => phrase.text)
-      .join(' ')
-      .toLowerCase()
-      .trim();
-  }
-
-  private matchesWakeWord(text: string, wakeWordList: string[]): boolean {
-    const normalizedText = text.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "");
-
-    // Check for exact matches first
-    if (wakeWordList.some(word => normalizedText.includes(word))) {
-      return true;
+    if (now - this.lastPartialResultTime > this.PARTIAL_RESULT_TIMEOUT) {
+      this.partialResults = [];
     }
-
-    // Check for close matches using Levenshtein distance
-    return wakeWordList.some(wakeWord => {
-      const distance = this.levenshteinDistance(normalizedText, wakeWord);
-      // More lenient distance threshold for wake word detection
-      const maxDistance = Math.max(2, Math.floor(wakeWord.length / 4));
-      return distance <= maxDistance;
-    });
   }
 
-  private levenshteinDistance(a: string, b: string): number {
-    if (a.length === 0) return b.length;
-    if (b.length === 0) return a.length;
-
-    const matrix = Array(b.length + 1).fill(null).map(() => Array(a.length + 1).fill(null));
-
-    for (let i = 0; i <= a.length; i++) matrix[0][i] = i;
-    for (let j = 0; j <= b.length; j++) matrix[j][0] = j;
-
-    for (let j = 1; j <= b.length; j++) {
-      for (let i = 1; i <= a.length; i++) {
-        const substitutionCost = a[i - 1] === b[j - 1] ? 0 : 1;
-        matrix[j][i] = Math.min(
-          matrix[j][i - 1] + 1,
-          matrix[j - 1][i] + 1,
-          matrix[j - 1][i - 1] + substitutionCost
-        );
-      }
+  private shouldProcessCommand(text: string): boolean {
+    const now = Date.now();
+    if (text === this.lastProcessedCommand && 
+        now - this.lastProcessedTimestamp < this.COMMAND_DEBOUNCE_TIME) {
+      logger.info('Duplicate command detected, skipping:', text);
+      return false;
     }
-
-    return matrix[b.length][a.length];
+    return true;
   }
 
   private emitError(name: string | Error, message: string, type: ErrorType = 'recognition') {
@@ -164,16 +127,17 @@ class VoiceRecognition extends EventHandler {
 
     this.recognition.onstart = () => {
       this.isListening = true;
-      this.isManualStop = false;
-      this.isPaused = false;
+      this.partialResults = [];
+      this.lastProcessedCommand = '';
+      this.lastProcessedTimestamp = 0;
     };
 
     this.recognition.onend = () => {
-      if (this.isListening && !this.isManualStop && !this.isPaused) {
+      if (this.isListening && !this.cleanup) {
         try {
           this.recognition?.start();
         } catch (error) {
-          console.error('Failed to restart speech recognition:', error);
+          logger.error('Failed to restart speech recognition:', error);
           this.isListening = false;
           this.cleanup = null;
         }
@@ -186,45 +150,53 @@ class VoiceRecognition extends EventHandler {
 
   private handleRecognitionResult(event: SpeechRecognitionEvent) {
     try {
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        if (!result?.[0]?.transcript) continue;
+      const results = Array.from(event.results);
+      if (!results.length) return;
 
-        const text = result[0].transcript.toLowerCase().trim();
-        const confidence = result[0].confidence;
-        const isFinal = result.isFinal;
+      const result = results[results.length - 1];
+      if (!result?.[0]?.transcript) return;
 
-        logger.info('Recognized text:', text, 'Confidence:', confidence, 'Final:', isFinal);
+      const text = result[0].transcript.toLowerCase().trim();
+      const confidence = result[0].confidence;
+      const isFinal = result.isFinal;
 
-        if (!isFinal) {
-          // Store partial phrases
-          this.partialPhrases.push({
-            text,
-            timestamp: Date.now()
-          });
-          continue;
-        }
-
-        // For final results, combine with recent partial phrases
-        const combinedText = this.combinePartialPhrases() + ' ' + text;
-
-        if (combinedText.includes('shut down') && confidence > this.confidenceThreshold) {
-          this.handleShutdown();
-          return;
-        }
-
-        switch (this.mode) {
-          case 'wake_word':
-            this.handleWakeWordMode(combinedText, confidence);
-            break;
-          case 'command':
-            this.handleCommandMode(combinedText, confidence);
-            break;
-        }
-
-        // Clear partial phrases after processing final result
-        this.partialPhrases = [];
+      if (!isFinal) {
+        this.lastPartialResultTime = Date.now();
+        this.partialResults.push(text);
+        return;
       }
+
+      this.clearPartialResults();
+
+      // Only process final results that meet confidence threshold
+      if (confidence < this.confidenceThreshold) {
+        logger.info('Low confidence result ignored:', { text, confidence });
+        return;
+      }
+
+      // Debounce processing of similar commands
+      if (!this.shouldProcessCommand(text)) {
+        return;
+      }
+
+      if (text.includes('shut down') || text.includes('shutdown')) {
+        this.handleShutdown();
+        return;
+      }
+
+      switch (this.mode) {
+        case 'wake_word':
+          this.handleWakeWordMode(text, confidence);
+          break;
+        case 'command':
+          this.handleCommandMode(text, confidence);
+          break;
+      }
+
+      this.lastProcessedCommand = text;
+      this.lastProcessedTimestamp = Date.now();
+      this.partialResults = [];
+
     } catch (error) {
       logger.error('Error processing speech result:', error);
       this.emitError('ProcessingError', 'Failed to process speech input', 'processing');
@@ -234,7 +206,7 @@ class VoiceRecognition extends EventHandler {
   private handleRecognitionError(event: SpeechRecognitionErrorEvent) {
     const nonFatalErrors = ['no-speech', 'audio-capture', 'network', 'aborted'];
     if (!nonFatalErrors.includes(event.error)) {
-      this.emitError(new Error(`Speech recognition error: ${event.error}`));
+      this.emitError('RecognitionError', `Speech recognition error: ${event.error}`, 'recognition');
     }
   }
 
@@ -245,20 +217,15 @@ class VoiceRecognition extends EventHandler {
     }
     this.lastWakeWordAttempt = now;
 
-    // More lenient confidence check for wake words
-    if (confidence < this.confidenceThreshold * 0.8) {
-      logger.info('Wake word detected but confidence too low:', confidence);
-      return;
-    }
-
-    const isOrderWake = this.matchesWakeWord(text, this.wakeWords.order);
-    const isInquiryWake = this.matchesWakeWord(text, this.wakeWords.inquiry);
+    const isOrderWake = this.wakeWords.order.some(word => text.includes(word));
+    const isInquiryWake = this.wakeWords.inquiry.some(word => text.includes(word));
 
     if (isOrderWake || isInquiryWake) {
       this.mode = 'command';
       await soundEffects.playWakeWord();
       this.emit('modeChange', { mode: this.mode, isActive: true });
 
+      // Extract any command that follows the wake word
       const wakeWord = isOrderWake ? this.wakeWords.order[0] : this.wakeWords.inquiry[0];
       const commandText = text.substring(text.indexOf(wakeWord) + wakeWord.length).trim();
 
@@ -269,11 +236,6 @@ class VoiceRecognition extends EventHandler {
   }
 
   private async handleCommandMode(text: string, confidence: number) {
-    if (confidence < this.confidenceThreshold) {
-      logger.info('Command detected but confidence too low:', confidence);
-      return;
-    }
-
     if (text.includes('stop listening')) {
       await soundEffects.playListeningStop();
       this.mode = 'wake_word';
@@ -293,7 +255,7 @@ class VoiceRecognition extends EventHandler {
 
   async start() {
     if (!this.recognition) {
-      this.emitError('UnavailableError', 'Speech recognition not available');
+      this.emitError('UnavailableError', 'Speech recognition not available', 'initialization');
       return;
     }
 
@@ -302,12 +264,15 @@ class VoiceRecognition extends EventHandler {
         this.isListening = true;
         this.retryCount = 0;
         this.mode = 'wake_word';
+        this.partialResults = [];
+        this.lastProcessedCommand = '';
+        this.lastProcessedTimestamp = 0;
         this.recognition.start();
         await soundEffects.playListeningStart();
         this.emit('start', { mode: this.mode, isActive: true });
       } catch (error) {
         logger.error('Error starting speech recognition:', error);
-        this.emitError('StartError', 'Failed to start speech recognition');
+        this.emitError('StartError', 'Failed to start speech recognition', 'initialization');
         this.isListening = false;
       }
     }
@@ -316,16 +281,16 @@ class VoiceRecognition extends EventHandler {
   async stop() {
     if (this.recognition && this.isListening) {
       try {
-        this.isManualStop = true;
         this.isListening = false;
         this.retryCount = 0;
+        this.cleanup?.();
+        this.cleanup = null;
         this.recognition.stop();
         await soundEffects.playListeningStop();
         this.emit('stop', { mode: 'shutdown', isActive: false });
-        this.cleanup?.();
       } catch (error) {
         logger.error('Error stopping speech recognition:', error);
-        this.emitError('StopError', 'Failed to stop speech recognition');
+        this.emitError('StopError', 'Failed to stop speech recognition', 'recognition');
       }
     }
   }

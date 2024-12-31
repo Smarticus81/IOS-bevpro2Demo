@@ -9,6 +9,9 @@ class GoogleVoiceService {
   private readonly MAX_INIT_ATTEMPTS = 3;
   private isManualStop: boolean = false;
   private isPaused: boolean = false;
+  private lastProcessedText: string = '';
+  private lastProcessedTime: number = 0;
+  private readonly DEBOUNCE_TIME = 2000;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -49,6 +52,16 @@ class GoogleVoiceService {
     this.recognition.maxAlternatives = 1;
   }
 
+  private shouldProcessText(text: string): boolean {
+    const now = Date.now();
+    if (text === this.lastProcessedText && 
+        now - this.lastProcessedTime < this.DEBOUNCE_TIME) {
+      console.log('Duplicate text detected, skipping:', text);
+      return false;
+    }
+    return true;
+  }
+
   private setupEventHandlers() {
     if (!this.recognition) return;
 
@@ -56,6 +69,8 @@ class GoogleVoiceService {
       this.isListening = true;
       this.isManualStop = false;
       this.isPaused = false;
+      this.lastProcessedText = '';
+      this.lastProcessedTime = 0;
     };
 
     this.recognition.onend = () => {
@@ -77,13 +92,23 @@ class GoogleVoiceService {
   private handleRecognitionResult(event: SpeechRecognitionEvent) {
     try {
       const results = event.results;
-      if (results && results.length > 0) {
-        const result = results[results.length - 1];
-        if (result.isFinal) {
-          const text = result[0].transcript;
-          if (this.callback) {
-            this.callback(text);
-          }
+      if (!results || results.length === 0) return;
+
+      const result = results[results.length - 1];
+      if (!result?.[0]?.transcript) return;
+
+      const text = result[0].transcript.trim();
+
+      if (result.isFinal) {
+        if (!this.shouldProcessText(text)) {
+          return;
+        }
+
+        this.lastProcessedText = text;
+        this.lastProcessedTime = Date.now();
+
+        if (this.callback) {
+          this.callback(text);
         }
       }
     } catch (error) {
@@ -125,6 +150,8 @@ class GoogleVoiceService {
       this.callback = callback;
       this.isManualStop = false;
       this.isPaused = false;
+      this.lastProcessedText = '';
+      this.lastProcessedTime = 0;
       await this.recognition.start();
     } catch (error) {
       console.error('Error starting voice recognition:', error);
