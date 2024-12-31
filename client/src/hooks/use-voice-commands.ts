@@ -59,6 +59,19 @@ export function useVoiceCommands({
     [toast]
   );
 
+  const resetVoiceState = useCallback(async () => {
+    try {
+      await voiceRecognition.stop();
+      setIsListening(false);
+      await soundEffects.playListeningStop();
+      await voiceRecognition.start(); // Restart in wake word mode
+      setIsListening(true);
+      logger.info('Voice state reset to wake word detection mode');
+    } catch (error) {
+      logger.error('Failed to reset voice state:', error);
+    }
+  }, []);
+
   const handleVoiceCommand = useCallback(async (text: string) => {
     if (!text?.trim()) return;
 
@@ -121,6 +134,8 @@ export function useVoiceCommands({
             await soundEffects.playSuccess();
             showFeedback('Processing Order', 'Placing your order...');
             await onPlaceOrder();
+            // Reset voice state after successful order completion
+            await resetVoiceState();
             return;
 
           case 'help':
@@ -196,7 +211,7 @@ export function useVoiceCommands({
         'destructive'
       );
     }
-  }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder, cart, isProcessing, showFeedback]);
+  }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder, cart, isProcessing, showFeedback, resetVoiceState]);
 
   useEffect(() => {
     if (isListening) {
