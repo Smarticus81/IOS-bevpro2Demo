@@ -11,13 +11,95 @@ import {
   splitPayments,
   eventPackages 
 } from "@db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, count, sum } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
   console.log('Setting up routes and realtime proxy...');
   setupRealtimeProxy(httpServer);
+
+  // Dashboard Statistics
+  app.get("/api/dashboard/stats", async (_req, res) => {
+    try {
+      // Get total sales and today's sales
+      const salesStats = await db.select({
+        totalSales: sum(transactions.amount).mapWith(Number),
+        totalOrders: count(orders.id).mapWith(Number)
+      })
+      .from(transactions)
+      .leftJoin(orders, eq(transactions.order_id, orders.id))
+      .where(eq(transactions.status, 'completed'));
+
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const todayStats = await db.select({
+        todaySales: sum(transactions.amount).mapWith(Number)
+      })
+      .from(transactions)
+      .where(sql`${transactions.created_at} >= ${todayStart} AND ${transactions.status} = 'completed'`);
+
+      // Get active orders count
+      const activeOrders = await db.select({
+        count: count().mapWith(Number)
+      })
+      .from(orders)
+      .where(eq(orders.status, 'pending'));
+
+      // Get total customers (unique tabs)
+      const customerStats = await db.select({
+        totalCustomers: count().mapWith(Number)
+      })
+      .from(tabs)
+      .where(sql`${tabs.created_at} >= ${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)}`);
+
+      // Get category sales distribution
+      const categorySales = await db.select({
+        category: drinks.category,
+        totalSales: sum(orderItems.quantity).mapWith(Number)
+      })
+      .from(orderItems)
+      .leftJoin(drinks, eq(orderItems.drink_id, drinks.id))
+      .groupBy(drinks.category);
+
+      // Get weekly sales trend
+      const weeklyTrend = await db.select({
+        date: sql<string>`DATE(${transactions.created_at})`,
+        sales: sum(transactions.amount).mapWith(Number)
+      })
+      .from(transactions)
+      .where(sql`${transactions.created_at} >= ${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)}`)
+      .groupBy(sql`DATE(${transactions.created_at})`)
+      .orderBy(sql`DATE(${transactions.created_at})`);
+
+      // Get popular drinks
+      const popularDrinks = await db.select({
+        id: drinks.id,
+        name: drinks.name,
+        sales: sum(orderItems.quantity).mapWith(Number)
+      })
+      .from(orderItems)
+      .leftJoin(drinks, eq(orderItems.drink_id, drinks.id))
+      .groupBy(drinks.id, drinks.name)
+      .orderBy(sql`sum(${orderItems.quantity}) DESC`)
+      .limit(5);
+
+      res.json({
+        totalSales: salesStats[0]?.totalSales || 0,
+        todaySales: todayStats[0]?.todaySales || 0,
+        activeOrders: activeOrders[0]?.count || 0,
+        totalCustomers: customerStats[0]?.totalCustomers || 0,
+        categorySales,
+        weeklyTrend,
+        popularDrinks,
+        totalOrders: salesStats[0]?.totalOrders || 0
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      res.status(500).json({ error: "Failed to fetch dashboard statistics" });
+    }
+  });
 
   // Get all drinks
   app.get("/api/drinks", async (_req, res) => {
@@ -29,7 +111,7 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ error: "Failed to fetch drinks" });
     }
   });
-
+  
   // Create new order with improved validation and error handling
   app.post("/api/orders", async (req, res) => {
     try {
