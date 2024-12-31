@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { useLocation } from 'wouter';
-import type { DrinkItem, AddToCartAction, NavigationCommand } from '@/types/speech';
+import type { DrinkItem, AddToCartAction } from '@/types/speech';
 import { voiceRecognition } from '@/lib/voice';
 import type { CartItem } from '@/types/cart';
 import { logger } from '@/lib/logger';
@@ -10,15 +9,6 @@ import { soundEffects } from '@/lib/sound-effects';
 import { voiceAnalytics } from '@/lib/analytics';
 
 const TUTORIAL_EVENT = 'tutorial_step_complete';
-
-// Navigation commands
-const navigationCommands: NavigationCommand[] = [
-  { command: 'go to home', path: '/', description: 'Main menu' },
-  { command: 'go to dashboard', path: '/dashboard', description: 'View analytics' },
-  { command: 'open cart', path: '/cart', description: 'View order' },
-  { command: 'go to events', path: '/events', description: 'Event packages' },
-  { command: 'open settings', path: '/settings', description: 'App settings' },
-];
 
 interface VoiceCommandsProps {
   drinks: DrinkItem[];
@@ -38,10 +28,7 @@ export function useVoiceCommands({
   isProcessing = false,
 }: VoiceCommandsProps) {
   const [isListening, setIsListening] = useState(false);
-  const [showNavigationMenu, setShowNavigationMenu] = useState(false);
-  const [activeCommand, setActiveCommand] = useState<string>('');
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
   const lastCommandRef = useRef<{ text: string; timestamp: number }>({ text: '', timestamp: 0 });
   const COMMAND_DEBOUNCE_MS = 500;
 
@@ -72,33 +59,24 @@ export function useVoiceCommands({
     [toast]
   );
 
-  const handleNavigation = useCallback((command: string) => {
-    const navigationCommand = navigationCommands.find(
-      cmd => command.toLowerCase().includes(cmd.command.toLowerCase())
-    );
-
-    if (navigationCommand) {
-      setLocation(navigationCommand.path);
-      voiceAnalytics.trackCommand('navigation', true, { command });
-      showFeedback('Navigation', `Navigating to ${navigationCommand.description}`);
-      return true;
+  const resetVoiceState = useCallback(async () => {
+    try {
+      await voiceRecognition.stop();
+      setIsListening(false);
+      await soundEffects.playListeningStop();
+      await voiceRecognition.start(); // Restart in wake word mode
+      setIsListening(true);
+      logger.info('Voice state reset to wake word detection mode');
+    } catch (error) {
+      logger.error('Failed to reset voice state:', error);
     }
-    return false;
-  }, [setLocation, showFeedback]);
+  }, []);
 
   const handleVoiceCommand = useCallback(async (text: string) => {
     if (!text?.trim()) return;
 
     const command = text.toLowerCase().trim();
     const now = Date.now();
-
-    setActiveCommand(command);
-
-    // Show navigation menu for navigation-related commands
-    if (command.includes('navigate') || command.includes('go to') || command.includes('open')) {
-      setShowNavigationMenu(true);
-      setTimeout(() => setShowNavigationMenu(false), 5000); // Hide after 5 seconds
-    }
 
     // Log incoming command
     logger.info('Processing voice command:', command);
@@ -114,11 +92,6 @@ export function useVoiceCommands({
     lastCommandRef.current = { text: command, timestamp: now };
 
     try {
-      // Check for navigation commands first
-      if (handleNavigation(command)) {
-        return;
-      }
-
       const parsedCommand = parseVoiceCommand(command, drinks);
 
       if (!parsedCommand) {
@@ -237,24 +210,8 @@ export function useVoiceCommands({
         error instanceof Error ? error.message : 'Failed to process command',
         'destructive'
       );
-    } finally {
-      // Clear active command after processing
-      setTimeout(() => setActiveCommand(''), 2000);
     }
-  }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder, cart, isProcessing, showFeedback, handleNavigation]);
-
-  const resetVoiceState = useCallback(async () => {
-    try {
-      await voiceRecognition.stop();
-      setIsListening(false);
-      await soundEffects.playListeningStop();
-      await voiceRecognition.start(); // Restart in wake word mode
-      setIsListening(true);
-      logger.info('Voice state reset to wake word detection mode');
-    } catch (error) {
-      logger.error('Failed to reset voice state:', error);
-    }
-  }, []);
+  }, [drinks, onAddToCart, onRemoveItem, onPlaceOrder, cart, isProcessing, showFeedback, resetVoiceState]);
 
   useEffect(() => {
     if (isListening) {
@@ -309,9 +266,6 @@ export function useVoiceCommands({
     startListening,
     stopListening,
     isSupported: voiceRecognition.isSupported(),
-    metrics: voiceAnalytics.getMetricsSummary(),
-    showNavigationMenu,
-    activeCommand,
-    navigationCommands
+    metrics: voiceAnalytics.getMetricsSummary()
   };
 }

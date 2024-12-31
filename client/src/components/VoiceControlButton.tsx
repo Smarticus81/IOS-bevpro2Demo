@@ -26,8 +26,7 @@ import {
 } from "@/components/ui/tooltip";
 import { VoiceCustomization } from './VoiceCustomization';
 import type { VoiceSettings } from '@/types/voice';
-import { VoiceNavigationMenu } from './VoiceNavigationMenu';
-import { useLocation } from 'wouter';
+
 
 const TUTORIAL_SHOWN_KEY = 'voice_tutorial_completed';
 
@@ -63,7 +62,6 @@ export function VoiceControlButton() {
       }
     ]
   });
-  const [, setLocation] = useLocation();
 
   const handleSaveSettings = (newSettings: VoiceSettings) => {
     setVoiceSettings(newSettings);
@@ -77,12 +75,14 @@ export function VoiceControlButton() {
   };
 
 
+  // Fetch drinks data with optimized caching
   const { data: drinks = [] } = useQuery<DrinkItem[]>({
     queryKey: ["/api/drinks"],
     retry: 1,
     staleTime: 30000,
   });
 
+  // Check if tutorial has been shown before
   useEffect(() => {
     const tutorialShown = localStorage.getItem(TUTORIAL_SHOWN_KEY);
     if (!tutorialShown) {
@@ -90,7 +90,8 @@ export function VoiceControlButton() {
     }
   }, []);
 
-  const { isListening, startListening, stopListening, isSupported, metrics, showNavigationMenu, activeCommand } =
+  // Initialize voice commands with proper cart state
+  const { isListening, startListening, stopListening, isSupported, metrics } =
     useVoiceCommands({
       drinks,
       cart,
@@ -100,6 +101,7 @@ export function VoiceControlButton() {
       isProcessing,
     });
 
+  // Handle tutorial completion
   const handleTutorialComplete = () => {
     localStorage.setItem(TUTORIAL_SHOWN_KEY, 'true');
     setShowTutorial(false);
@@ -110,6 +112,7 @@ export function VoiceControlButton() {
     });
   };
 
+  // Initialize voice control
   const initializeVoiceControl = async () => {
     if (!isSupported) {
       setShowDialog(true);
@@ -118,6 +121,7 @@ export function VoiceControlButton() {
 
     try {
       if (!isInitialized) {
+        // Set up event listeners
         const handleModeChange = (data: { mode: string; isActive: boolean }) => {
           setMode(data.mode as 'wake_word' | 'command' | 'shutdown');
           toast({
@@ -142,6 +146,7 @@ export function VoiceControlButton() {
         voiceRecognition.on('modeChange', handleModeChange);
         voiceRecognition.on('shutdown', handleShutdown);
 
+        // Start listening
         await startListening();
         setIsInitialized(true);
 
@@ -161,6 +166,7 @@ export function VoiceControlButton() {
     }
   };
 
+  // Handle shutdown
   const handleShutdown = async () => {
     try {
       if (!isSupported) {
@@ -220,17 +226,9 @@ export function VoiceControlButton() {
     }
   };
 
+  // Format success rate for display
   const formatSuccessRate = (rate: number) => {
     return `${Math.round(rate)}%`;
-  };
-
-  const handleNavigation = (path: string) => {
-    setLocation(path);
-    toast({
-      title: "Navigation",
-      description: "Navigating to " + path,
-      duration: 2000,
-    });
   };
 
   return (
@@ -287,12 +285,6 @@ export function VoiceControlButton() {
           />
         </div>
       </motion.div>
-
-      <VoiceNavigationMenu
-        isVisible={showNavigationMenu}
-        activeCommand={activeCommand}
-        onNavigate={handleNavigation}
-      />
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent>
