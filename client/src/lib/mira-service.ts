@@ -24,8 +24,8 @@ class MiraService {
   private context: string = '';
   private voiceEnabled: boolean = true;
   private emotionState: 'neutral' | 'excited' | 'apologetic' = 'neutral';
-  // Use the current hostname/host for the Rasa endpoint
-  private rasaEndpoint: string = `${window.location.protocol}//${window.location.hostname}:5005/webhooks/rest/webhook`;
+  // Use the relative path since we're proxying through Express
+  private rasaEndpoint: string = '/webhooks/rest/webhook';
 
   private constructor() {
     logger.info('Initializing Mira service with Rasa NLU');
