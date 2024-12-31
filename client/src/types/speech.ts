@@ -34,10 +34,23 @@ export interface RecognitionError {
   message: string;
 }
 
-// New interfaces for voice command customization
+// Navigation related types
+export interface NavigationCommand {
+  command: string;
+  path: string;
+  description: string;
+  icon?: string;
+}
+
+export interface NavigationAction {
+  type: 'navigation';
+  path: string;
+}
+
+// Voice command customization
 export interface VoiceCommandPreference {
   command: string;
-  action: 'order' | 'inquiry' | 'modify' | 'cancel' | 'system';
+  action: 'order' | 'inquiry' | 'modify' | 'cancel' | 'system' | 'navigation';
   aliases: string[];
   enabled: boolean;
 }
@@ -46,6 +59,7 @@ export interface VoiceSettings {
   wakeWord: string;
   volume: number;
   commandPreferences: VoiceCommandPreference[];
+  navigationShortcuts?: NavigationCommand[];
 }
 
 export interface VoiceCustomization {
