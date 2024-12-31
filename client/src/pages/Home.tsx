@@ -36,90 +36,104 @@ export function Home() {
       <VoiceControlButton />
 
       <main className="container mx-auto px-4 pt-4 pb-8 sm:px-6 lg:px-8">
-        {/* Category Selector */}
-        <div className="flex overflow-x-auto gap-2 py-2 mb-4 -mx-4 px-4 scrollbar-hide">
-          <motion.button
-            onClick={() => setSelectedCategory(null)}
-            className={`
-              shrink-0 px-4 h-8
-              flex items-center gap-2
-              text-sm font-medium
-              rounded-full
-              transition-all duration-300
-              bg-white/80 hover:bg-white/90
-              shadow-sm hover:shadow-md
-              ${!selectedCategory ? 
-                'ring-1 ring-primary text-primary scale-105' : 
-                'text-gray-600 hover:text-gray-800'}
-            `}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <span className="text-base">🍷</span>
-            <span className="text-xs font-medium">All</span>
-          </motion.button>
-
-          {categories.map((category) => (
-            <motion.button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`
-                shrink-0 px-4 h-8
-                flex items-center gap-2
-                text-sm font-medium
-                rounded-full
-                transition-all duration-300
-                bg-white/80 hover:bg-white/90
-                shadow-sm hover:shadow-md
-                ${selectedCategory === category ?
-                  'ring-1 ring-primary text-primary scale-105' :
-                  'text-gray-600 hover:text-gray-800'}
-              `}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <span className="text-base">
-                {category === 'Spirits' ? '🥃' :
-                 category === 'Beer' ? '🍺' :
-                 category === 'Wine' ? '🍷' :
-                 category === 'Signature' ? '🍸' :
-                 category === 'Classics' ? '🥂' :
-                 category === 'Non-Alcoholic' ? '🥤' : '🍹'}
-              </span>
-              <span className="text-xs font-medium">{category}</span>
-            </motion.button>
-          ))}
-        </div>
-
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Drinks Grid - Optimized for mobile */}
-          <div className="lg:col-span-3">
-            <motion.div 
-              layout
-              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4"
-            >
-              <AnimatePresence>
-                {filteredDrinks.map((drink) => {
-                  const cartItem = cart.find(item => item.drink.id === drink.id);
-                  return (
-                    <DrinkCard
-                      key={drink.id}
-                      drink={drink}
-                      quantity={cartItem?.quantity || 0}
-                      onAdd={() => addToCart({ type: 'ADD_ITEM', drink, quantity: 1 })}
-                      onRemove={() => removeFromCart(drink.id)}
-                    />
-                  );
-                })}
-              </AnimatePresence>
-            </motion.div>
+          {/* Category and Drinks Section */}
+          <div className="lg:col-span-3 space-y-8">
+            {/* Categories Grid */}
+            {!selectedCategory && (
+              <motion.div 
+                layout
+                className="grid grid-cols-2 sm:grid-cols-3 gap-4"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                {categories.map((category) => (
+                  <motion.div
+                    key={category}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="relative"
+                  >
+                    <button
+                      onClick={() => setSelectedCategory(category)}
+                      className="w-full h-full"
+                    >
+                      <Card className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+                        <CardContent className="p-6 bg-gradient-to-br from-white/90 to-white/70 backdrop-blur-md">
+                          <div className="flex flex-col items-center text-center space-y-3">
+                            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center shadow-xl transform transition-transform border border-white/10">
+                              <span className="text-3xl">
+                                {category === 'Spirits' ? '🥃' :
+                                 category === 'Beer' ? '🍺' :
+                                 category === 'Wine' ? '🍷' :
+                                 category === 'Signature' ? '🍸' :
+                                 category === 'Classics' ? '🥂' :
+                                 category === 'Non-Alcoholic' ? '🥤' : '🍹'}
+                              </span>
+                            </div>
+                            <h3 className="font-semibold text-gray-900">{category}</h3>
+                            <Badge variant="secondary" className="bg-gray-100/80">
+                              {drinks.filter(d => d.category === category).length} items
+                            </Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </button>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+
+            {/* Back Button when category is selected */}
+            {selectedCategory && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6"
+              >
+                <button
+                  onClick={() => setSelectedCategory(null)}
+                  className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  <span className="text-lg">←</span>
+                  Back to Categories
+                </button>
+              </motion.div>
+            )}
+
+            {/* Drinks Grid - Only show when category is selected */}
+            {selectedCategory && (
+              <motion.div 
+                layout
+                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                <AnimatePresence>
+                  {filteredDrinks.map((drink) => {
+                    const cartItem = cart.find(item => item.drink.id === drink.id);
+                    return (
+                      <DrinkCard
+                        key={drink.id}
+                        drink={drink}
+                        quantity={cartItem?.quantity || 0}
+                        onAdd={() => addToCart({ type: 'ADD_ITEM', drink, quantity: 1 })}
+                        onRemove={() => removeFromCart(drink.id)}
+                      />
+                    );
+                  })}
+                </AnimatePresence>
+              </motion.div>
+            )}
           </div>
 
           {/* Order Summary - Desktop */}
           <div className="hidden lg:block">
             <div className="sticky top-24">
-              <Card className="glass-effect premium-shadow backdrop-blur-md">
+              <Card className="glass-effect premium-shadow backdrop-blur-md border-white/20">
                 <CardContent className="p-6">
                   <OrderSummary
                     cart={cart}
