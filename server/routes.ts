@@ -9,9 +9,10 @@ import {
   transactions,
   tabs,
   splitPayments,
-  eventPackages 
+  eventPackages,
+  taxConfig 
 } from "@db/schema";
-import { eq, sql, count, sum } from "drizzle-orm";
+import { eq, sql, count, sum, desc } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
 
 export function registerRoutes(app: Express): Server {
@@ -107,125 +108,84 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get all drinks
-  app.get("/api/drinks", async (_req, res) => {
+  // Add tax calculation endpoints
+  app.get("/api/tax-summary", async (_req, res) => {
     try {
-      const allDrinks = await db.select().from(drinks);
-      res.json(allDrinks);
-    } catch (error) {
-      console.error("Error fetching drinks:", error);
-      res.status(500).json({ error: "Failed to fetch drinks" });
-    }
-  });
-  
-  // Create new order with improved validation and error handling
-  app.post("/api/orders", async (req, res) => {
-    try {
-      const { items, total } = req.body;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-      if (!items?.length || typeof total !== 'number' || total <= 0) {
-        console.error("Invalid order data:", { items, total });
-        return res.status(400).json({ 
-          error: "Invalid order data. Must include items array and valid total." 
-        });
-      }
+      // Get daily tax totals
+      const dailyTaxes = await db.select({
+        salesTax: sum(transactions.sales_tax).mapWith(Number),
+        liquorTax: sum(transactions.liquor_tax).mapWith(Number),
+        totalTax: sum(transactions.total_tax).mapWith(Number),
+        transactionCount: count().mapWith(Number)
+      })
+      .from(transactions)
+      .where(sql`${transactions.created_at}::date = ${today.toISOString().split('T')[0]} AND ${transactions.status} = 'completed'`);
 
-      // Validate all items have required fields
-      const invalidItems = items.filter((item: any) => {
-        const isValid = item.drink?.id && 
-                       typeof item.quantity === 'number' && 
-                       item.quantity > 0;
-        if (!isValid) {
-          console.error("Invalid item in order:", item);
-        }
-        return !isValid;
+      // Get monthly tax totals
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      const monthlyTaxes = await db.select({
+        salesTax: sum(transactions.sales_tax).mapWith(Number),
+        liquorTax: sum(transactions.liquor_tax).mapWith(Number),
+        totalTax: sum(transactions.total_tax).mapWith(Number),
+        transactionCount: count().mapWith(Number)
+      })
+      .from(transactions)
+      .where(sql`${transactions.created_at}::date >= ${monthStart.toISOString().split('T')[0]} AND ${transactions.status} = 'completed'`);
+
+      // Get tax rates
+      const taxRates = await db.select()
+        .from(taxConfig)
+        .where(eq(taxConfig.is_active, true));
+
+      res.json({
+        daily: {
+          salesTax: dailyTaxes[0]?.salesTax || 0,
+          liquorTax: dailyTaxes[0]?.liquorTax || 0,
+          totalTax: dailyTaxes[0]?.totalTax || 0,
+          transactionCount: dailyTaxes[0]?.transactionCount || 0
+        },
+        monthly: {
+          salesTax: monthlyTaxes[0]?.salesTax || 0,
+          liquorTax: monthlyTaxes[0]?.liquorTax || 0,
+          totalTax: monthlyTaxes[0]?.totalTax || 0,
+          transactionCount: monthlyTaxes[0]?.transactionCount || 0
+        },
+        rates: taxRates
       });
-
-      if (invalidItems.length > 0) {
-        return res.status(400).json({
-          error: "Invalid items in order. Each item must have a valid drink ID and quantity.",
-          invalidItems
-        });
-      }
-
-      // Create order
-      const [order] = await db
-        .insert(orders)
-        .values({ 
-          total, 
-          items, 
-          status: 'pending',
-          payment_status: 'pending',
-          created_at: new Date()
-        })
-        .returning();
-
-      console.log("Order created successfully:", order);
-
-      // Create order items with validation
-      const orderItemsData = items.map((item: any) => ({
-        order_id: order.id,
-        drink_id: item.drink.id,
-        quantity: item.quantity,
-        price: item.drink.price
-      }));
-
-      await db.insert(orderItems).values(orderItemsData);
-      console.log("Order items created:", orderItemsData);
-
-      // Update inventory and sales with proper error handling
-      for (const item of items) {
-        const [updatedDrink] = await db
-          .update(drinks)
-          .set({ 
-            inventory: sql`${drinks.inventory} - ${item.quantity}`,
-            sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
-          })
-          .where(eq(drinks.id, item.drink.id))
-          .returning();
-
-        if (!updatedDrink) {
-          throw new Error(`Failed to update inventory for drink ${item.drink.id}`);
-        }
-        console.log("Updated drink inventory:", updatedDrink);
-      }
-
-      res.json(order);
     } catch (error) {
-      console.error("Error creating order:", error);
-      res.status(500).json({ 
-        error: "Failed to create order",
-        details: error instanceof Error ? error.message : 'Unknown error'
-      });
+      console.error("Error fetching tax summary:", error);
+      res.status(500).json({ error: "Failed to fetch tax summary" });
     }
   });
 
-  // Get order by ID with detailed error logging
-  app.get("/api/orders/:id", async (req, res) => {
+  // Get recent transactions
+  app.get("/api/recent-transactions", async (_req, res) => {
     try {
-      const { id } = req.params;
-      console.log("Fetching order:", id);
+      const recentTransactions = await db.select({
+        id: transactions.id,
+        amount: transactions.amount,
+        subtotal: transactions.subtotal,
+        salesTax: transactions.sales_tax,
+        liquorTax: transactions.liquor_tax,
+        totalTax: transactions.total_tax,
+        status: transactions.status,
+        createdAt: transactions.created_at
+      })
+      .from(transactions)
+      .orderBy(desc(transactions.created_at))
+      .limit(10);
 
-      const order = await db
-        .select()
-        .from(orders)
-        .where(eq(orders.id, parseInt(id)))
-        .limit(1);
-
-      if (!order.length) {
-        console.error("Order not found:", id);
-        return res.status(404).json({ error: "Order not found" });
-      }
-
-      console.log("Order found:", order[0]);
-      res.json(order[0]);
+      res.json(recentTransactions);
     } catch (error) {
-      console.error("Error fetching order:", error);
-      res.status(500).json({ error: "Failed to fetch order" });
+      console.error("Error fetching recent transactions:", error);
+      res.status(500).json({ error: "Failed to fetch recent transactions" });
     }
   });
 
-  // Payment processing endpoint with error handling and transaction recording
+  // Update the payment processing endpoint to include tax calculations
   app.post("/api/payment/process", async (req, res) => {
     let transactionId: number | null = null;
 
@@ -235,34 +195,43 @@ export function registerRoutes(app: Express): Server {
 
       if (typeof amount !== 'number' || amount <= 0) {
         console.error("Invalid payment amount:", amount);
-        return res.status(400).json({ 
-          error: "Invalid payment amount" 
-        });
+        return res.status(400).json({ error: "Invalid payment amount" });
       }
 
-      if (!orderId || typeof orderId !== 'number') {
-        console.error("Invalid order ID:", orderId);
-        return res.status(400).json({ 
-          error: "Invalid order ID" 
-        });
-      }
+      // Get tax rates
+      const taxRates = await db.select()
+        .from(taxConfig)
+        .where(eq(taxConfig.is_active, true));
 
-      // Create transaction record
+      const salesTaxRate = taxRates.find(t => t.type === 'sales_tax')?.rate || 0.08; // Default 8%
+      const liquorTaxRate = taxRates.find(t => t.type === 'liquor_tax')?.rate || 0.05; // Default 5%
+
+      // Calculate taxes
+      const subtotal = amount;
+      const salesTax = Math.round(subtotal * Number(salesTaxRate));
+      const liquorTax = Math.round(subtotal * Number(liquorTaxRate));
+      const totalTax = salesTax + liquorTax;
+      const total = subtotal + totalTax;
+
+      // Create transaction record with tax information
       const [transaction] = await db.insert(transactions)
         .values({
           order_id: orderId,
-          amount,
+          amount: total,
+          subtotal,
+          sales_tax: salesTax,
+          liquor_tax: liquorTax,
+          total_tax: totalTax,
           status: 'processing',
           attempts: 1,
           created_at: new Date(),
           updated_at: new Date()
         })
         .returning();
-      transactionId = transaction.id;
-      console.log("Transaction created:", transactionId);
 
-      // In demo mode, payment always succeeds
-      // Update transaction record
+      transactionId = transaction.id;
+
+      // Demo mode - payment always succeeds
       await db.update(transactions)
         .set({
           status: 'completed',
@@ -274,9 +243,7 @@ export function registerRoutes(app: Express): Server {
         })
         .where(eq(transactions.id, transactionId));
 
-      // Update order status
-      await db
-        .update(orders)
+      await db.update(orders)
         .set({ 
           status: 'completed',
           payment_status: 'completed',
@@ -287,14 +254,20 @@ export function registerRoutes(app: Express): Server {
       console.log("Payment successful:", {
         orderId,
         transactionId,
-        amount: (amount / 100).toFixed(2)
+        amount: (total / 100).toFixed(2),
+        tax: (totalTax / 100).toFixed(2)
       });
 
       res.json({ 
         success: true,
-        message: `Payment of $${(amount / 100).toFixed(2)} processed successfully`,
+        message: `Payment of $${(total / 100).toFixed(2)} processed successfully`,
         orderId,
         transactionId,
+        tax: {
+          salesTax: (salesTax / 100).toFixed(2),
+          liquorTax: (liquorTax / 100).toFixed(2),
+          totalTax: (totalTax / 100).toFixed(2)
+        },
         timestamp: new Date().toISOString()
       });
 
@@ -317,44 +290,6 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
-
-  // Get OpenAI API configuration
-  app.get("/api/config", (_req, res) => {
-    try {
-      const openaiKey = process.env.OPENAI_API_KEY;
-
-      // Detailed logging for debugging
-      console.log({
-        hasKey: !!openaiKey,
-        keyLength: openaiKey?.length || 0,
-        timestamp: new Date().toISOString()
-      });
-
-      if (!openaiKey) {
-        throw new Error("OpenAI API key not found in environment");
-      }
-
-      if (!openaiKey.startsWith('sk-')) {
-        throw new Error("Invalid OpenAI API key format");
-      }
-
-      res.json({ openaiKey });
-    } catch (error: unknown) {
-      const err = error as Error;
-      console.error("OpenAI config error:", {
-        message: err.message,
-        stack: err.stack,
-        timestamp: new Date().toISOString()
-      });
-
-      res.status(500).json({
-        error: "Configuration error",
-        message: err.message,
-        timestamp: new Date().toISOString()
-      });
-    }
-  });
-
 
   // Payment Methods endpoints
   app.get("/api/payment-methods", async (_req, res) => {
@@ -475,6 +410,44 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ error: "Failed to create event package" });
     }
   });
+
+  // Get OpenAI API configuration
+  app.get("/api/config", (_req, res) => {
+    try {
+      const openaiKey = process.env.OPENAI_API_KEY;
+
+      // Detailed logging for debugging
+      console.log({
+        hasKey: !!openaiKey,
+        keyLength: openaiKey?.length || 0,
+        timestamp: new Date().toISOString()
+      });
+
+      if (!openaiKey) {
+        throw new Error("OpenAI API key not found in environment");
+      }
+
+      if (!openaiKey.startsWith('sk-')) {
+        throw new Error("Invalid OpenAI API key format");
+      }
+
+      res.json({ openaiKey });
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error("OpenAI config error:", {
+        message: err.message,
+        stack: err.stack,
+        timestamp: new Date().toISOString()
+      });
+
+      res.status(500).json({
+        error: "Configuration error",
+        message: err.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
 
   return httpServer;
 }

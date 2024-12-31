@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NavBar } from "@/components/NavBar";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { DollarSign, TrendingUp, Users, Package, Loader2 } from "lucide-react";
+import { DollarSign, TrendingUp, Users, Package, Loader2, Receipt, Calculator } from "lucide-react";
 import type { Drink } from "@db/schema";
+import { motion } from "framer-motion";
 
 interface DashboardStats {
   totalSales: number;
@@ -17,16 +18,55 @@ interface DashboardStats {
   totalOrders: number;
 }
 
+interface TaxSummary {
+  daily: {
+    salesTax: number;
+    liquorTax: number;
+    totalTax: number;
+    transactionCount: number;
+  };
+  monthly: {
+    salesTax: number;
+    liquorTax: number;
+    totalTax: number;
+    transactionCount: number;
+  };
+  rates: Array<{
+    type: string;
+    rate: number;
+    description: string;
+  }>;
+}
+
+interface Transaction {
+  id: number;
+  amount: number;
+  subtotal: number;
+  salesTax: number;
+  liquorTax: number;
+  totalTax: number;
+  status: string;
+  createdAt: string;
+}
+
 export function Dashboard() {
   const [activeCategory, setActiveCategory] = useState<string | undefined>();
   const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month' | 'year'>('week');
   const [chartType, setChartType] = useState<'bar' | 'line' | 'pie'>('bar');
 
-  const { data: stats, isLoading, error } = useQuery<DashboardStats>({
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard/stats"],
   });
 
-  if (isLoading) {
+  const { data: taxSummary, isLoading: taxLoading } = useQuery<TaxSummary>({
+    queryKey: ["/api/tax-summary"],
+  });
+
+  const { data: recentTransactions, isLoading: transactionsLoading } = useQuery<Transaction[]>({
+    queryKey: ["/api/recent-transactions"],
+  });
+
+  if (statsLoading || taxLoading || transactionsLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -34,7 +74,7 @@ export function Dashboard() {
     );
   }
 
-  if (error) {
+  if (statsError) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="w-full max-w-md mx-4">
@@ -46,7 +86,6 @@ export function Dashboard() {
     );
   }
 
-  // Chart colors
   const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD'];
 
   return (
@@ -59,7 +98,6 @@ export function Dashboard() {
           <p className="text-muted-foreground">Welcome to your beverage management dashboard</p>
         </div>
 
-        {/* Summary Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 backdrop-blur-md border-white/20 shadow-xl">
             <CardContent className="p-6">
@@ -118,7 +156,139 @@ export function Dashboard() {
           </Card>
         </div>
 
-        {/* Popular Drinks Chart */}
+        <div className="grid gap-4 md:grid-cols-2 mb-8">
+          <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 backdrop-blur-md border-white/20 shadow-xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calculator className="h-5 w-5 text-emerald-500" />
+                Daily Tax Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="space-y-4"
+              >
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Sales Tax</p>
+                    <p className="text-2xl font-bold text-emerald-600">
+                      ${((taxSummary?.daily.salesTax || 0) / 100).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Liquor Tax</p>
+                    <p className="text-2xl font-bold text-emerald-600">
+                      ${((taxSummary?.daily.liquorTax || 0) / 100).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                <div className="pt-4 border-t border-emerald-200/50">
+                  <div className="flex justify-between items-end">
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Total Tax</p>
+                      <p className="text-3xl font-bold text-emerald-700">
+                        ${((taxSummary?.daily.totalTax || 0) / 100).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">Transactions</p>
+                      <p className="text-lg font-semibold text-emerald-600">
+                        {taxSummary?.daily.transactionCount || 0}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 backdrop-blur-md border-white/20 shadow-xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Receipt className="h-5 w-5 text-blue-500" />
+                Monthly Tax Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="space-y-4"
+              >
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Sales Tax</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      ${((taxSummary?.monthly.salesTax || 0) / 100).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Liquor Tax</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      ${((taxSummary?.monthly.liquorTax || 0) / 100).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                <div className="pt-4 border-t border-blue-200/50">
+                  <div className="flex justify-between items-end">
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Total Tax</p>
+                      <p className="text-3xl font-bold text-blue-700">
+                        ${((taxSummary?.monthly.totalTax || 0) / 100).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">Transactions</p>
+                      <p className="text-lg font-semibold text-blue-600">
+                        {taxSummary?.monthly.transactionCount || 0}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Receipt className="h-5 w-5" />
+              Recent Transactions
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {recentTransactions?.map((transaction, index) => (
+                <motion.div
+                  key={transaction.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                  className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200"
+                >
+                  <div className="space-y-1">
+                    <p className="font-medium">Transaction #{transaction.id}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(transaction.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold">${(transaction.amount / 100).toFixed(2)}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Tax: ${(transaction.totalTax / 100).toFixed(2)}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl mb-8">
           <CardHeader>
             <CardTitle>Popular Drinks</CardTitle>
@@ -171,9 +341,7 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Additional Charts Row */}
         <div className="grid gap-4 md:grid-cols-2 mt-8">
-          {/* Category Distribution */}
           <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
             <CardHeader>
               <CardTitle>Category Distribution</CardTitle>
@@ -211,7 +379,6 @@ export function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Sales Trend */}
           <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
             <CardHeader>
               <CardTitle>Weekly Sales Trend</CardTitle>
