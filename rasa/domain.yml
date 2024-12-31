@@ -1,0 +1,27 @@
+version: "3.1"
+
+intents:
+  - greet
+  - check_inventory
+  - order_drink
+  - check_drink_price
+  - check_ingredients
+
+entities:
+  - drink
+
+responses:
+  utter_greet:
+    - text: "Hello! How can I help you with the bar today?"
+    - text: "Hi! What can I get for you?"
+    - text: "Welcome! What would you like to order?"
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true
+
+actions:
+  - action_check_inventory
+  - action_process_order
+  - action_get_price
+  - action_get_ingredients

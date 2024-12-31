@@ -1,0 +1,27 @@
+version: "3.1"
+
+rules:
+  - rule: Respond to greeting
+    steps:
+      - intent: greet
+      - action: utter_greet
+
+  - rule: Check inventory
+    steps:
+      - intent: check_inventory
+      - action: action_check_inventory
+
+  - rule: Order drink
+    steps:
+      - intent: order_drink
+      - action: action_process_order
+
+  - rule: Check drink price
+    steps:
+      - intent: check_drink_price
+      - action: action_get_price
+
+  - rule: Check ingredients
+    steps:
+      - intent: check_ingredients
+      - action: action_get_ingredients
