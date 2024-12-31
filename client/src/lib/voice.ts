@@ -258,12 +258,35 @@ class VoiceRecognition extends EventHandler {
       return;
     }
 
+    // Enhanced command handling with emotion detection
+    const emotionalMarkers = {
+      frustrated: ['wrong', 'no ', 'not ', 'incorrect'],
+      enthusiastic: ['great', 'perfect', 'awesome', 'yes'],
+      apologetic: ['sorry', 'oops', 'mistake']
+    };
+
+    let detectedEmotion: string | undefined;
+    for (const [emotion, markers] of Object.entries(emotionalMarkers)) {
+      if (markers.some(marker => text.toLowerCase().includes(marker))) {
+        detectedEmotion = emotion;
+        break;
+      }
+    }
+
+    // Handle special commands first
     if (text.includes('stop listening')) {
       await soundEffects.playListeningStop();
       this.mode = 'wake_word';
       this.emit('modeChange', { mode: this.mode, isActive: false });
       return;
     }
+
+    // Enhanced logging for better context tracking
+    logger.info('Processing voice command:', {
+      text,
+      emotion: detectedEmotion,
+      confidence
+    });
 
     this.emit('speech', text);
   }

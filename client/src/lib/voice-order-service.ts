@@ -23,10 +23,18 @@ interface OrderItem {
   modifiers?: string[];
 }
 
+interface OrderContext {
+  lastOrder?: OrderItem;
+  currentItems?: OrderItem[];
+  lastIntent?: string;
+  emotionalTone?: 'neutral' | 'enthusiastic' | 'apologetic' | 'frustrated';
+}
+
 interface OrderDetails {
   items: OrderItem[];
   specialInstructions?: string;
-  action?: 'complete_order' | 'help' | 'stop';
+  action?: 'complete_order' | 'help' | 'stop' | 'modify_last' | 'cancel_last';
+  context?: OrderContext;
 }
 
 interface VoiceOrderResult {
@@ -34,6 +42,11 @@ interface VoiceOrderResult {
   order?: OrderDetails;
   error?: string;
 }
+
+// Track order context for smarter responses
+let orderContext: OrderContext = {
+  emotionalTone: 'neutral'
+};
 
 // Track processed commands to prevent duplicates
 let lastProcessedCommand = '';
@@ -47,7 +60,7 @@ const numberWords = {
   'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10'
 };
 
-// Improved completion command detection
+// Enhanced command normalization
 function normalizeCommand(text: string): string {
   let normalized = text.toLowerCase()
     .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')  // Remove punctuation
@@ -92,7 +105,8 @@ function processSimpleCommands(text: string): OrderDetails | null {
     lastProcessedTimestamp = now;
     return {
       items: [],
-      action: 'complete_order'
+      action: 'complete_order',
+      context: orderContext
     };
   }
 
@@ -104,7 +118,8 @@ function processSimpleCommands(text: string): OrderDetails | null {
     lastProcessedTimestamp = now;
     return {
       items: [],
-      action: 'help'
+      action: 'help',
+      context: orderContext
     };
   }
 
@@ -116,11 +131,58 @@ function processSimpleCommands(text: string): OrderDetails | null {
     lastProcessedTimestamp = now;
     return {
       items: [],
-      action: 'stop'
+      action: 'stop',
+      context: orderContext
+    };
+  }
+
+  // Order modification patterns
+  if (normalizedCommand.includes('make that') || 
+      normalizedCommand.includes('change that to') || 
+      normalizedCommand.includes('instead')) {
+    lastProcessedCommand = normalizedCommand;
+    lastProcessedTimestamp = now;
+    return {
+      items: [],
+      action: 'modify_last',
+      context: {
+        ...orderContext,
+        lastIntent: 'modify'
+      }
     };
   }
 
   return null;
+}
+
+// Detect emotional tone from text
+function detectEmotionalTone(text: string): OrderContext['emotionalTone'] {
+  const normalized = text.toLowerCase();
+
+  // Detect frustration
+  if (normalized.includes('wrong') || 
+      normalized.includes('no ') || 
+      normalized.includes('not ') || 
+      normalized.includes('incorrect')) {
+    return 'frustrated';
+  }
+
+  // Detect enthusiasm
+  if (normalized.includes('great') || 
+      normalized.includes('perfect') || 
+      normalized.includes('awesome') || 
+      normalized.includes('yes')) {
+    return 'enthusiastic';
+  }
+
+  // Detect apology context
+  if (normalized.includes('sorry') || 
+      normalized.includes('oops') || 
+      normalized.includes('mistake')) {
+    return 'apologetic';
+  }
+
+  return 'neutral';
 }
 
 // Deduplicate and normalize order items
@@ -139,6 +201,10 @@ function consolidateOrderItems(items: OrderItem[]): OrderItem[] {
         12 // Hard limit
       );
       existingItem.quantity = combinedQuantity;
+      // Merge modifiers if any
+      if (item.modifiers) {
+        existingItem.modifiers = [...new Set([...(existingItem.modifiers || []), ...item.modifiers])];
+      }
     } else {
       // Add new item with normalized quantity
       itemMap.set(normalizedName, {
@@ -161,9 +227,10 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
 
   if (normalizedCommand === lastProcessedCommand && now - lastProcessedTimestamp < COMMAND_DEBOUNCE_TIME) {
     console.log('Duplicate complex order detected, skipping:', normalizedCommand);
-    return { items: [] };
+    return { items: [], context: orderContext };
   }
 
+  const emotionalTone = detectEmotionalTone(text);
   const completion = await openai.chat.completions.create({
     model: "gpt-4-1106-preview",
     messages: [
@@ -171,8 +238,12 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
         role: "system",
         content: `Extract drink orders from voice commands.
           Return a JSON object with: {
-            "items": [{ "name": string, "quantity": number }],
-            "action": "complete_order" | null
+            "items": [{ "name": string, "quantity": number, "modifiers": string[] }],
+            "action": "complete_order" | "modify_last" | "cancel_last" | null,
+            "context": {
+              "lastIntent": string,
+              "emotionalTone": "neutral" | "enthusiastic" | "apologetic" | "frustrated"
+            }
           }
           Rules:
           - Extract exact quantities (1-12 only)
@@ -182,11 +253,14 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
           - Do not infer quantities, use exactly what was spoken
           - If no quantity specified, default to 1
           - Maximum quantity per item is 12
-          - Detect phrases like "that's it" or "complete order" as completion commands`
+          - Detect order modifications (e.g., "make that three instead")
+          - Detect cancellations (e.g., "cancel the last drink")
+          - Consider emotional context in responses`
       },
       {
         role: "user",
-        content: normalizedCommand
+        content: `Previous context: ${JSON.stringify(orderContext)}
+                 Current command: ${normalizedCommand}`
       }
     ],
     response_format: { type: "json_object" },
@@ -198,12 +272,26 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
   lastProcessedCommand = normalizedCommand;
   lastProcessedTimestamp = now;
 
+  // Update context
+  orderContext = {
+    ...orderContext,
+    ...parsed.context,
+    emotionalTone: emotionalTone
+  };
+
   if (parsed.items) {
+    // Store last order for reference
+    if (parsed.items.length > 0) {
+      orderContext.lastOrder = parsed.items[parsed.items.length - 1];
+    }
     // Normalize and deduplicate items
     parsed.items = consolidateOrderItems(parsed.items);
   }
 
-  return parsed;
+  return {
+    ...parsed,
+    context: orderContext
+  };
 }
 
 export async function processVoiceOrder(text: string): Promise<VoiceOrderResult> {
