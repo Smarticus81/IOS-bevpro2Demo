@@ -5,6 +5,7 @@ import { Events } from "@/pages/Events";
 import { Settings } from "@/pages/Settings";
 import { Dashboard } from "@/pages/Dashboard";
 import { PaymentConfirmation } from "@/pages/PaymentConfirmation";
+import { Mira } from "@/pages/Mira";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -38,6 +39,7 @@ function App() {
         <Route path="/inventory" component={Inventory} />
         <Route path="/events" component={Events} />
         <Route path="/settings" component={Settings} />
+        <Route path="/mira" component={Mira} />
         <Route path="/payment-confirmation" component={PaymentConfirmation} />
         <Route component={NotFound} />
       </Switch>
@@ -47,6 +49,7 @@ function App() {
   );
 }
 
+// fallback 404 not found page
 function NotFound() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
