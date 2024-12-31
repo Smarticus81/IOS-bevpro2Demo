@@ -5,10 +5,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Mic, Send, RefreshCw, Bot, Volume2, VolumeX } from "lucide-react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { Mic, Send, RefreshCw, Volume2, VolumeX } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import type { Drink } from "@db/schema";
 import { miraService } from '@/lib/mira-service';
+import { useToast } from "@/hooks/use-toast";
 
 interface Message {
   role: 'assistant' | 'user' | 'system';
@@ -26,14 +27,18 @@ interface MiraState {
   voiceEnabled: boolean;
 }
 
-// Web Speech API setup
-const speechSynthesis = window.speechSynthesis;
-const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
-const recognition = new SpeechRecognitionClass();
-recognition.continuous = false;
-recognition.interimResults = true;
+// Get the correct SpeechRecognition constructor
+const SpeechRecognitionConstructor = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition: SpeechRecognition | null = null;
+
+if (SpeechRecognitionConstructor) {
+  recognition = new SpeechRecognitionConstructor();
+  recognition.continuous = false;
+  recognition.interimResults = true;
+}
 
 export function Mira() {
+  const { toast } = useToast();
   const [state, setState] = useState<MiraState>({
     context: '',
     messages: [],
@@ -52,11 +57,19 @@ export function Mira() {
   });
 
   useEffect(() => {
-    // Configure recognition
+    if (!recognition) {
+      toast({
+        title: "Speech Recognition Unavailable",
+        description: "Your browser doesn't support speech recognition.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       const transcript = Array.from(event.results)
         .map(result => result[0])
-        .map((result: SpeechRecognitionAlternative) => result.transcript)
+        .map(result => result.transcript)
         .join('');
 
       setInput(transcript);
@@ -66,11 +79,23 @@ export function Mira() {
       setState(prev => ({ ...prev, isListening: false }));
     };
 
-    return () => {
-      recognition.stop();
-      speechSynthesis.cancel();
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error('Speech recognition error:', event.error);
+      setState(prev => ({ ...prev, isListening: false }));
+      toast({
+        title: "Speech Recognition Error",
+        description: `Error: ${event.error}`,
+        variant: "destructive"
+      });
     };
-  }, []);
+
+    return () => {
+      if (recognition) {
+        recognition.stop();
+      }
+      window.speechSynthesis.cancel();
+    };
+  }, [toast]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -84,23 +109,34 @@ export function Mira() {
   };
 
   const startListening = () => {
+    if (!recognition) {
+      toast({
+        title: "Speech Recognition Unavailable",
+        description: "Your browser doesn't support speech recognition.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setState(prev => ({ ...prev, isListening: true }));
     recognition.start();
   };
 
   const stopListening = () => {
+    if (recognition) {
+      recognition.stop();
+    }
     setState(prev => ({ ...prev, isListening: false }));
-    recognition.stop();
   };
 
   const speakResponse = (text: string, config?: { speed?: number; pitch?: number }) => {
     if (!state.voiceEnabled) return;
 
-    speechSynthesis.cancel(); // Stop any current speech
+    window.speechSynthesis.cancel(); // Stop any current speech
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = config?.speed || 1;
     utterance.pitch = config?.pitch || 1;
-    speechSynthesis.speak(utterance);
+    window.speechSynthesis.speak(utterance);
   };
 
   const handleSend = async () => {
@@ -153,6 +189,11 @@ export function Mira() {
           },
           onError: (error: any) => {
             console.error('Streaming error:', error);
+            toast({
+              title: "Error",
+              description: "Failed to process message. Please try again.",
+              variant: "destructive"
+            });
             setState(prev => ({ ...prev, isProcessing: false }));
             setStreamingMessage('');
           }
@@ -160,6 +201,11 @@ export function Mira() {
       );
     } catch (error) {
       console.error('Error processing message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to process message. Please try again.",
+        variant: "destructive"
+      });
       setState(prev => ({ ...prev, isProcessing: false }));
     }
   };

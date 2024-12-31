@@ -1,10 +1,9 @@
-import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 import { logger } from './logger';
 
-// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true
+// the newest Anthropic model is "claude-3-5-sonnet-20241022" which was released October 22, 2024
+const anthropic = new Anthropic({
+  apiKey: import.meta.env.VITE_ANTHROPIC_API_KEY,
 });
 
 interface MiraResponse {
@@ -32,7 +31,12 @@ class MiraService {
   private voiceEnabled: boolean = true;
   private emotionState: 'neutral' | 'excited' | 'apologetic' = 'neutral';
 
-  private constructor() {}
+  private constructor() {
+    logger.info('Initializing Mira service with Anthropic configuration:', {
+      apiKeyExists: !!import.meta.env.VITE_ANTHROPIC_API_KEY,
+      model: "claude-3-5-sonnet-20241022"
+    });
+  }
 
   static getInstance(): MiraService {
     if (!MiraService.instance) {
@@ -99,31 +103,26 @@ Respond in JSON format with:
     try {
       const systemPrompt = await this.getSystemPrompt(inventoryContext);
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          {
-            role: "user",
-            content: message
-          }
-        ],
-        stream: !!streamHandler,
-        temperature: 0.7,
-        max_tokens: 500,
-        response_format: { type: "json_object" }
+      const messageResponse = await anthropic.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: message }],
+        stream: !!streamHandler
       });
 
       if (streamHandler) {
         let fullResponse = '';
 
-        for await (const chunk of completion) {
-          const content = chunk.choices[0]?.delta?.content || '';
-          streamHandler.onToken(content);
-          fullResponse += content;
+        // Type assertion for streaming response
+        const stream = messageResponse as AsyncIterable<Anthropic.MessageStreamEvent>;
+
+        for await (const chunk of stream) {
+          if (chunk.type === 'content_block_delta') {
+            const content = chunk.delta.text || '';
+            streamHandler.onToken(content);
+            fullResponse += content;
+          }
         }
 
         try {
@@ -141,11 +140,11 @@ Respond in JSON format with:
           throw error;
         }
       } else {
-        const choices = completion.choices;
-        const content = choices?.[0]?.message?.content;
+        // Non-streaming response
+        const content = (messageResponse as Anthropic.Message).content[0]?.text;
 
         if (!content) {
-          throw new Error('Invalid response format from OpenAI');
+          throw new Error('Invalid response format from Anthropic');
         }
 
         const parsedResponse: MiraResponse = JSON.parse(content);
@@ -188,26 +187,21 @@ Respond in JSON format with:
 
   async generateInventoryReport(inventory: any[]): Promise<string> {
     try {
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+      const response = await anthropic.messages.create({
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 1024,
+        system: "Generate a concise inventory status report highlighting critical items, trends, and recommendations. Focus on actionable insights.",
         messages: [
-          {
-            role: "system",
-            content: "Generate a concise inventory status report highlighting critical items, trends, and recommendations. Focus on actionable insights."
-          },
-          {
-            role: "user",
+          { 
+            role: "user", 
             content: `Current inventory data: ${JSON.stringify(inventory)}`
           }
-        ],
-        temperature: 0.5,
-        max_tokens: 1000,
-        response_format: { type: "json_object" }
+        ]
       });
 
-      const content = completion.choices[0]?.message?.content;
+      const content = response.content[0]?.text;
       if (!content) {
-        throw new Error('Invalid response format from OpenAI');
+        throw new Error('Invalid response format from Anthropic');
       }
 
       const result = JSON.parse(content);
