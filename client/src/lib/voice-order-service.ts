@@ -62,31 +62,6 @@ interface OrderContext {
   };
 }
 
-interface OrderDetails {
-  items: OrderItem[];
-  specialInstructions?: string;
-  intent: CommandIntent;
-  action?: string;
-  context?: OrderContext;
-  modifications?: {
-    type: 'add' | 'remove' | 'modify' | 'void';
-    item: OrderItem;
-    previousQuantity?: number;
-  }[];
-  naturalLanguageResponse?: {
-    confidence: number;
-    alternativeIntents?: CommandIntent[];
-    needsClarification?: boolean;
-    suggestedResponse?: string;
-  };
-}
-
-interface VoiceOrderResult {
-  success: boolean;
-  order?: OrderDetails;
-  error?: string;
-}
-
 // Track order context for smarter responses
 let orderContext: OrderContext = {
   emotionalTone: 'neutral',
@@ -96,86 +71,42 @@ let orderContext: OrderContext = {
   }
 };
 
-// Intent patterns for better command matching
+// Strict intent patterns - order matters, more specific patterns first
 const intentPatterns = {
+  cancel_order: [
+    /^(cancel|void).*(order|everything)/i,
+    /^(start over|start fresh)\b/i,
+    /^forget (everything|it all|the order)\b/i,
+    /^let'?s start over\b/i,
+    /^(stop|end|clear).*(order|everything)/i
+  ],
   add_item: [
-    /^(add|get|give|make|pour|bring|order)\s/i,
     /^(i('d| would) like|can i (get|have)|may i have)\s/i,
-    /^(get|give|make|pour) me\s/i,
-    /^let('s| us) (get|have)\s/i
+    /^let'?s (get|have)\s/i,
+    /^(add|get|give|make|pour|bring|order)\s/i,
+    /^(get|give|make|pour) me\s/i
   ],
   remove_item: [
-    /^(remove|take off|delete)\s/i,
-    /(don't|do not) want|remove that|take (it|that) off/i,
-    /^(never mind|forget|scratch) (that|the)\s/i
+    /^(remove|take off|delete)\b/i,
+    /^(don't|do not) want|remove that/i,
+    /^(never mind|forget|scratch) (that|the)\b/i,
+    /take (it|that) off\b/i
   ],
   modify_item: [
-    /^(change|modify|make|adjust)\s/i,
-    /\s(instead|rather|change to|make it)\s/i,
-    /^(actually|wait|hold on)\s/i
-  ],
-  void_item: [
-    /^(void|cancel|remove)\s/i,
-    /last (drink|order|item)/i,
-    /^start (over|fresh|again)\s/i
-  ],
-  cancel_order: [
-    /^(cancel|void|stop|end)\s/i,
-    /^(the|this|entire) order\s/i,
-    /^start over|start fresh\s/i,
-    /^forget (everything|it all)\s/i,
-    /^let('s| us) start over\s/i
-  ],
-  split_order: [
-    /^(split|divide|separate)\s/i,
-    /^(the|this) order\s/i,
-    /pay separately|split (it|check|bill)/i,
-    /separate (checks|bills|payments)/i
-  ],
-  apply_discount: [
-    /^(discount|deal|offer|special)\s/i,
-    /happy hour|promotion|coupon/i,
-    /^apply (the|a)\s/i,
-    /^use (the|a|my)\s/i
-  ],
-  complete_order: [
-    /^(complete|finish|done|that's it|checkout|confirm)\s/i,
-    /^(process|submit|place order|ready)\s/i,
-    /^(okay|alright|perfect).*done\s/i
+    /^(change|modify|make|adjust)\b/i,
+    /\b(instead|rather|change to|make it)\b/i,
+    /^(actually|wait|hold on)\b/i,
+    /\bmake that\b/i
   ],
   help: [
-    /^(help|assist|guide|explain|what|how)\s/i,
-    /^(can (i|you)|what's available|menu)\s/i,
-    /^(show|tell) me\s/i,
-    /^what (can|do)\s/i
-  ],
-  repeat_last: [
-    /^(repeat|what|say again|last)\s/i,
-    /^(what was|previous|before)\s/i,
-    /^(sorry|excuse me|pardon)\s/i,
-    /^remind me\s/i
-  ],
-  undo_last: [
-    /^(undo|revert|go back|cancel that)\s/i,
-    /last (thing|action|change)/i,
-    /^(oops|wait|hold on)\s/i
-  ],
-  quantity_change: [
-    /make (it|that)|change to|instead/i,
-    /(\d+|one|two|three|four|five) instead/i,
-    /^actually.*(want|need)/i,
-    /maybe (just|make it|change to)/i
-  ],
-  list_orders: [
-    /^(show|list|display|what's)\s/i,
-    /^(my|the|current) order\s/i,
-    /^what('s| is) in\s/i,
-    /^remind me.*ordered\s/i
+    /^(help|assist|guide|explain|what|how)\b/i,
+    /^(can (i|you)|what's available|menu)\b/i,
+    /^(show|tell) me\b/i,
+    /^what (can|do)\b/i
   ],
   stop: [
-    /^(stop|end|quit|exit|never mind)\s/i,
-    /^(listening|recording|cancel)\s/i,
-    /^(that's|thats) (all|enough)\s/i
+    /^(stop|end|quit|exit)\b/i,
+    /^(that'?s|thats) (all|enough)\b/i
   ]
 };
 
@@ -203,8 +134,36 @@ function detectNaturalLanguageIntent(text: string, context: OrderContext): {
   let detectedIntent: CommandIntent = 'add_item';
   let alternativeIntents: CommandIntent[] = [];
 
-  // Check each intent pattern with fuzzy matching
+  // Check system commands first (cancel, help, stop)
+  const systemPatterns = ['cancel_order', 'help', 'stop'];
+  for (const intent of systemPatterns) {
+    const patterns = intentPatterns[intent as keyof typeof intentPatterns];
+    for (const pattern of patterns) {
+      const match = normalized.match(pattern);
+      if (match) {
+        // System commands get higher base confidence
+        let confidence = 0.8 + (match[0].length / normalized.length) * 0.2;
+        // Earlier matches get higher confidence
+        confidence *= (1 - match.index! / normalized.length);
+
+        if (confidence > maxConfidence) {
+          maxConfidence = confidence;
+          detectedIntent = intent as CommandIntent;
+          console.log(`Detected system command: ${intent} with confidence ${confidence}`);
+          return {
+            intent: detectedIntent,
+            confidence: maxConfidence,
+            needsClarification: false
+          };
+        }
+      }
+    }
+  }
+
+  // Then check other intents
   for (const [intent, patterns] of Object.entries(intentPatterns)) {
+    if (systemPatterns.includes(intent)) continue; // Skip system commands we already checked
+
     for (const pattern of patterns) {
       const match = normalized.match(pattern);
       if (match) {
@@ -249,6 +208,7 @@ function detectNaturalLanguageIntent(text: string, context: OrderContext): {
 
   if (hasUncertainty) {
     maxConfidence *= 0.8; // Reduce confidence when uncertainty is detected
+    console.log('Detected uncertainty in command');
   }
 
   // Check for clarification needs
@@ -296,19 +256,19 @@ function normalizeCommand(text: string): {
     .replace(/\s+/g, ' ')
     .trim();
 
-  // Convert number words to digits
-  Object.entries(numberWords).forEach(([word, num]) => {
-    const regex = new RegExp(`\\b${word}\\b`, 'g');
-    normalized = normalized.replace(regex, num);
-  });
+  // Remove common filler words only for non-system commands
+  const isSystemCommand = normalized.match(/^(cancel|help|stop)/i);
+  if (!isSystemCommand) {
+    normalized = normalized.split(' ')
+      .filter(word => !commonWords.includes(word))
+      .join(' ');
+  }
 
-  // Remove common filler words
-  normalized = normalized.split(' ')
-    .filter(word => !commonWords.includes(word))
-    .join(' ');
+  console.log('Normalized command:', normalized);
 
   // Detect intent with natural language understanding
   const nlpResult = detectNaturalLanguageIntent(normalized, orderContext);
+  console.log('Detected intent:', nlpResult);
 
   return {
     normalized,
@@ -344,6 +304,11 @@ function generateContextualResponse(
     "";
 
   const contextAwareResponses: Record<CommandIntent, (items?: OrderItem[]) => string[]> = {
+    'cancel_order': () => [
+      "Canceling your entire order.",
+      "I'll cancel everything and we can start fresh.",
+      "Starting over with a clean slate."
+    ],
     'add_item': (items) => [
       `Adding ${itemSummary} to your order.`,
       `I'll add ${itemSummary} for you.`,
@@ -359,55 +324,10 @@ function generateContextualResponse(
       `Changing that to ${itemSummary}.`,
       `Updating your order with ${itemSummary}.`
     ],
-    'void_item': () => [
-      "Voiding the last item from your order.",
-      "Removing that last item for you.",
-      "I'll void that last item."
-    ],
-    'cancel_order': () => [
-      "Canceling your entire order.",
-      "I'll cancel everything and we can start fresh.",
-      "Starting over with a clean slate."
-    ],
-    'split_order': () => [
-      "I'll help you split this order.",
-      "Let's divide this order up.",
-      "We can split this order for you."
-    ],
-    'apply_discount': () => [
-      "I'll apply that discount for you.",
-      "Adding the discount to your order.",
-      "Applying your discount now."
-    ],
-    'complete_order': () => [
-      "Great, I'll complete this order for you.",
-      "Finalizing your order now.",
-      "Processing your order to completion."
-    ],
     'help': () => [
       "I can help you order drinks, modify orders, or check status. What would you like to do?",
       "Here's what I can do: take orders, make changes, apply discounts, or process payments.",
       "I can assist with ordering, modifications, or checking your order status."
-    ],
-    'repeat_last': () => [
-      `Let me repeat that last part for you.`,
-      `Here's what was last ordered: ${context.lastOrder ? `${context.lastOrder.quantity} ${context.lastOrder.name}` : 'nothing yet'}`,
-      `The last order was: ${context.lastOrder ? `${context.lastOrder.quantity} ${context.lastOrder.name}` : 'nothing yet'}`
-    ],
-    'undo_last': () => [
-      "I'll undo that last action.",
-      "Reverting the last change.",
-      "Going back one step."
-    ],
-    'quantity_change': (items) => [
-      `Changing the quantity to ${items?.[0]?.quantity || 'the requested amount'}.`,
-      `Updating the quantity as requested.`,
-      `Adjusting the amount to ${items?.[0]?.quantity || 'what you asked for'}.`
-    ],
-    'list_orders': () => [
-      "Here's what's currently in your order.",
-      "Let me show you your current order.",
-      "I'll list out your order for you."
     ],
     'stop': () => [
       "Okay, I'll stop listening.",
@@ -477,7 +397,7 @@ async function handleAmbiguousCommand(
   };
 }
 
-// Enhanced voice order processing with context awareness
+// Enhanced voice order processing
 export async function processVoiceOrder(text: string): Promise<VoiceOrderResult> {
   if (!text) {
     return {
@@ -530,9 +450,50 @@ export async function processVoiceOrder(text: string): Promise<VoiceOrderResult>
       }
     }
 
+    // For system commands, return immediately
+    if (finalIntent === 'cancel_order' || finalIntent === 'help' || finalIntent === 'stop') {
+      console.log(`Executing system command: ${finalIntent}`);
+
+      const response = generateContextualResponse(
+        finalIntent,
+        confidence,
+        orderContext
+      );
+
+      responseHistory.unshift({
+        command: normalizedCommand,
+        intent: finalIntent,
+        confidence,
+        timestamp: now,
+        success: true
+      });
+
+      if (responseHistory.length > MAX_HISTORY_LENGTH) {
+        responseHistory.pop();
+      }
+
+      return {
+        success: true,
+        order: {
+          items: [],
+          intent: finalIntent,
+          context: {
+            ...orderContext,
+            lastIntent: finalIntent
+          },
+          naturalLanguageResponse: {
+            confidence,
+            needsClarification: false,
+            suggestedResponse: response
+          }
+        }
+      };
+    }
+
     const emotionalTone = detectEmotionalTone(text);
     console.log('Detected emotional tone:', emotionalTone);
 
+    // Process order details
     const orderDetails = await processComplexOrder(text);
     console.log('Processed order details:', orderDetails);
 
@@ -604,34 +565,7 @@ export async function processVoiceOrder(text: string): Promise<VoiceOrderResult>
   }
 }
 
-// Detect emotional tone from text
-function detectEmotionalTone(text: string): OrderContext['emotionalTone'] {
-  const normalized = text.toLowerCase();
-
-  if (normalized.includes('wrong') || 
-      normalized.includes('no ') || 
-      normalized.includes('not ') || 
-      normalized.includes('incorrect')) {
-    return 'frustrated';
-  }
-
-  if (normalized.includes('great') || 
-      normalized.includes('perfect') || 
-      normalized.includes('awesome') || 
-      normalized.includes('yes')) {
-    return 'enthusiastic';
-  }
-
-  if (normalized.includes('sorry') || 
-      normalized.includes('oops') || 
-      normalized.includes('mistake')) {
-    return 'apologetic';
-  }
-
-  return 'neutral';
-}
-
-// Enhanced complex order processing with better context handling
+// Enhanced complex order processing
 async function processComplexOrder(text: string): Promise<OrderDetails> {
   if (!openai) throw new Error('Voice processing service is not configured');
 
@@ -717,7 +651,7 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
   lastProcessedCommand = normalizedCommand;
   lastProcessedTimestamp = now;
 
-  // Update context with parsed results
+  // Update context
   orderContext = {
     ...orderContext,
     ...parsed.context,
@@ -754,45 +688,31 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
   };
 }
 
-// Check inventory availability
-async function checkInventory(items: OrderItem[]): Promise<{ 
-  available: boolean; 
-  insufficientItems?: string[] 
-}> {
-  try {
-    const response = await fetch("/api/drinks/inventory/check", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        items: items.map(item => ({
-          drink_id: item.id,
-          quantity: item.quantity
-        }))
-      })
-    });
+// Detect emotional tone from text
+function detectEmotionalTone(text: string): OrderContext['emotionalTone'] {
+  const normalized = text.toLowerCase();
 
-    if (!response.ok) {
-      throw new Error("Failed to check inventory");
-    }
-
-    const result = await response.json();
-
-    if (!result.all_available) {
-      const unavailable = result.inventory_status
-        .filter((status: any) => !status.is_available)
-        .map((status: any) => `${status.name} (${status.available_quantity} available)`);
-
-      return {
-        available: false,
-        insufficientItems: unavailable
-      };
-    }
-
-    return { available: true };
-  } catch (error) {
-    console.error("Error checking inventory:", error);
-    throw error;
+  if (normalized.includes('wrong') || 
+      normalized.includes('no ') || 
+      normalized.includes('not ') || 
+      normalized.includes('incorrect')) {
+    return 'frustrated';
   }
+
+  if (normalized.includes('great') || 
+      normalized.includes('perfect') || 
+      normalized.includes('awesome') || 
+      normalized.includes('yes')) {
+    return 'enthusiastic';
+  }
+
+  if (normalized.includes('sorry') || 
+      normalized.includes('oops') || 
+      normalized.includes('mistake')) {
+    return 'apologetic';
+  }
+
+  return 'neutral';
 }
 
 // Initialize OpenAI client with proper error handling
@@ -810,4 +730,29 @@ try {
   }
 } catch (error) {
   console.error('Failed to initialize OpenAI client:', error);
+}
+
+interface OrderDetails {
+  items: OrderItem[];
+  specialInstructions?: string;
+  intent: CommandIntent;
+  action?: string;
+  context?: OrderContext;
+  modifications?: {
+    type: 'add' | 'remove' | 'modify' | 'void';
+    item: OrderItem;
+    previousQuantity?: number;
+  }[];
+  naturalLanguageResponse?: {
+    confidence: number;
+    alternativeIntents?: CommandIntent[];
+    needsClarification?: boolean;
+    suggestedResponse?: string;
+  };
+}
+
+interface VoiceOrderResult {
+  success: boolean;
+  order?: OrderDetails;
+  error?: string;
 }
