@@ -67,18 +67,21 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
         transition: { duration: 0.1, ease: "easeIn" }
       }}
       onClick={handleCardClick}
-      className="group relative cursor-pointer select-none transform transition-all duration-200 hover:scale-[1.02]"
+      className="relative w-full md:max-w-[280px] lg:max-w-[320px] mx-auto 
+                transform transition-all duration-200 hover:scale-[1.02]"
     >
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-b from-white to-gray-50
-                    shadow-[0_8px_16px_rgba(0,0,0,0.1)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.15)]
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-white/90 to-gray-50/90
+                    dark:from-gray-900/90 dark:to-gray-800/90
+                    shadow-lg hover:shadow-xl
                     transition-all duration-300 border border-white/20
-                    backdrop-blur-sm hover:backdrop-blur-md">
+                    backdrop-blur-lg">
         <div className="aspect-[4/3]">
           {/* Loading Skeleton with Category Icon */}
           <motion.div 
             className={`absolute inset-0 bg-gradient-to-b from-gray-50/90 to-gray-100/90
+                     dark:from-gray-900/90 dark:to-gray-800/90
                      ${imageLoaded ? 'opacity-0' : 'opacity-100'} 
-                     backdrop-blur-sm flex items-center justify-center`}
+                     backdrop-blur-lg flex items-center justify-center`}
             initial={false}
             animate={{
               opacity: imageLoaded ? 0 : 1,
@@ -87,7 +90,7 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
           >
             <div className="flex flex-col items-center gap-2">
               <Icon className={`h-12 w-12 ${color} opacity-60`} />
-              <p className="text-xs font-medium text-gray-500">Loading...</p>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Loading...</p>
             </div>
           </motion.div>
 
@@ -100,10 +103,10 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
           />
 
           {/* Price Tag */}
-          <div className="absolute right-2 top-2 px-2 py-1
-                       bg-white/90 backdrop-blur-sm rounded-lg
-                       shadow-sm border border-gray-100">
-            <span className="text-xs font-semibold text-gray-900">
+          <div className="absolute right-3 top-3 px-3 py-1.5
+                       bg-white/90 dark:bg-gray-800/90 backdrop-blur-lg rounded-xl
+                       shadow-lg border border-white/20">
+            <span className="text-sm font-semibold text-gray-900 dark:text-white">
               ${drink.price}
             </span>
           </div>
@@ -114,30 +117,31 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.8, opacity: 0 }}
-                className="absolute left-2 top-2 flex h-6 w-6 items-center justify-center 
-                          rounded-lg bg-primary shadow-sm
-                          text-xs font-medium text-white"
+                className="absolute left-3 top-3 flex h-7 w-7 items-center justify-center 
+                          rounded-xl bg-primary shadow-lg
+                          text-sm font-medium text-white"
               >
                 {quantity}
               </motion.div>
             )}
           </AnimatePresence>
 
-          <div className="absolute inset-x-0 bottom-0 p-2 bg-white/95 backdrop-blur-sm border-t border-gray-100">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-1.5">
-                <div className="p-1 rounded-md bg-gray-50">
-                  <Icon className={`h-3.5 w-3.5 ${color}`} />
+          <div className="absolute inset-x-0 bottom-0 p-3 bg-white/95 dark:bg-gray-900/95 
+                         backdrop-blur-lg border-t border-white/20">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                  <Icon className={`h-4 w-4 ${color}`} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-medium text-sm text-gray-900 truncate">
+                  <h3 className="font-medium text-sm text-gray-900 dark:text-white truncate">
                     {drink.name}
                   </h3>
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium text-gray-500">
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
                       {drink.category}
                     </p>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <motion.div
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
@@ -172,7 +176,7 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="absolute z-50 top-full left-0 right-0 mt-2"
+            className="absolute z-50 top-full left-0 right-0 mt-3 mx-auto max-w-sm"
             onClick={(e) => e.stopPropagation()}
           >
             <DrinkModifierSelector
