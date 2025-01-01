@@ -9,13 +9,18 @@ interface ResponseHistory {
   confidence: number;
   timestamp: number;
   success: boolean;
+  context?: {
+    previousItems?: string[];
+    modifiedItem?: string;
+    action?: string;
+  };
 }
 
 const responseHistory: ResponseHistory[] = [];
 const MAX_HISTORY_LENGTH = 10;
 
 // Enhanced intent types
-type CommandIntent = 
+type CommandIntent =
   | 'add_item'           // "Add two mojitos"
   | 'remove_item'        // "Remove the last drink"
   | 'modify_item'        // "Make that three instead"
@@ -59,7 +64,14 @@ interface OrderContext {
     lastMentionedItem?: string;
     needsClarification?: boolean;
     uncertaintyLevel?: number;
+    referenceType?: 'previous' | 'current' | 'last';
   };
+  previousCommands?: string[];
+  referencedItems?: {
+    item: string;
+    timestamp: number;
+    action: string;
+  }[];
 }
 
 // Track order context for smarter responses
@@ -67,46 +79,61 @@ let orderContext: OrderContext = {
   emotionalTone: 'neutral',
   conversationState: {
     uncertaintyLevel: 0,
-    pendingConfirmation: false
-  }
+    pendingConfirmation: false,
+    referenceType: 'current'
+  },
+  previousCommands: [],
+  referencedItems: []
 };
 
-// Strict intent patterns - order matters, more specific patterns first
+// Enhanced intent patterns for natural language
 const intentPatterns = {
   cancel_order: [
-    /^(cancel|void).*(order|everything)/i,
-    /^(start over|start fresh)\b/i,
-    /^forget (everything|it all|the order)\b/i,
+    /^(cancel|void|delete|remove).*(order|everything|all|cart)/i,
+    /^(start over|start fresh|begin again)\b/i,
+    /^forget (everything|it all|the order|this|that)\b/i,
     /^let'?s start over\b/i,
-    /^(stop|end|clear).*(order|everything)/i
+    /^(stop|end|clear).*(order|everything)\b/i,
+    /^(actually|wait|hold on).*cancel\b/i,
+    /^never mind.*everything\b/i
   ],
   add_item: [
-    /^(i('d| would) like|can i (get|have)|may i have)\s/i,
-    /^let'?s (get|have)\s/i,
+    /^(i('d| would) like|can i (get|have)|may i have|let me get)\s/i,
+    /^let'?s (get|have|try)\s/i,
     /^(add|get|give|make|pour|bring|order)\s/i,
-    /^(get|give|make|pour) me\s/i
+    /^(get|give|make|pour) me\s/i,
+    /^i('ll| will) (have|take)\s/i,
+    /^how about\s/i
   ],
   remove_item: [
     /^(remove|take off|delete)\b/i,
     /^(don't|do not) want|remove that/i,
     /^(never mind|forget|scratch) (that|the)\b/i,
-    /take (it|that) off\b/i
+    /take (it|that) off\b/i,
+    /^get rid of\b/i,
+    /^no (more|longer want)\b/i
   ],
   modify_item: [
     /^(change|modify|make|adjust)\b/i,
     /\b(instead|rather|change to|make it)\b/i,
     /^(actually|wait|hold on)\b/i,
-    /\bmake that\b/i
+    /\bmake that\b/i,
+    /^(on second thought|thinking about it)\b/i,
+    /^(change|switch) (it|that) to\b/i
   ],
   help: [
     /^(help|assist|guide|explain|what|how)\b/i,
     /^(can (i|you)|what's available|menu)\b/i,
     /^(show|tell) me\b/i,
-    /^what (can|do)\b/i
+    /^what (can|do)\b/i,
+    /^i('m| am) not sure\b/i,
+    /^what (are|do you have)\b/i
   ],
   stop: [
     /^(stop|end|quit|exit)\b/i,
-    /^(that'?s|thats) (all|enough)\b/i
+    /^(that'?s|thats) (all|enough)\b/i,
+    /^(done|finished)\b/i,
+    /^no more\b/i
   ]
 };
 
@@ -119,7 +146,28 @@ const COMMAND_DEBOUNCE_TIME = 2000; // 2 seconds
 const commonWords = ['a', 'an', 'the', 'please', 'thank', 'you', 'get', 'have', 'would', 'like', 'can', 'could', 'will'];
 const numberWords = {
   'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
-  'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10'
+  'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
+  'couple': '2', 'few': '3', 'several': '4'
+};
+
+// Reference phrases for contextual understanding
+const referencePatterns = {
+  previous: [
+    /that (one|drink)/i,
+    /the last (one|drink)/i,
+    /what I (just|previously) (said|ordered)/i,
+    /the previous (order|drink)/i
+  ],
+  current: [
+    /this (one|drink)/i,
+    /the current (order|drink)/i,
+    /what('s| is) in (my cart|the order)/i
+  ],
+  modifier: [
+    /make (it|that)/i,
+    /change (it|that) to/i,
+    /instead of/i
+  ]
 };
 
 // Enhanced natural language understanding
@@ -128,11 +176,24 @@ function detectNaturalLanguageIntent(text: string, context: OrderContext): {
   confidence: number;
   alternativeIntents?: CommandIntent[];
   needsClarification?: boolean;
+  referenceType?: 'previous' | 'current' | 'last';
 } {
   const normalized = text.toLowerCase().trim();
   let maxConfidence = 0;
   let detectedIntent: CommandIntent = 'add_item';
   let alternativeIntents: CommandIntent[] = [];
+  let referenceType: 'previous' | 'current' | 'last' | undefined;
+
+  // Detect references to previous or current items
+  for (const [type, patterns] of Object.entries(referencePatterns)) {
+    for (const pattern of patterns) {
+      if (pattern.test(normalized)) {
+        referenceType = type as 'previous' | 'current' | 'last';
+        break;
+      }
+    }
+    if (referenceType) break;
+  }
 
   // Check system commands first (cancel, help, stop)
   const systemPatterns = ['cancel_order', 'help', 'stop'];
@@ -153,7 +214,8 @@ function detectNaturalLanguageIntent(text: string, context: OrderContext): {
           return {
             intent: detectedIntent,
             confidence: maxConfidence,
-            needsClarification: false
+            needsClarification: false,
+            referenceType
           };
         }
       }
@@ -162,18 +224,19 @@ function detectNaturalLanguageIntent(text: string, context: OrderContext): {
 
   // Then check other intents
   for (const [intent, patterns] of Object.entries(intentPatterns)) {
-    if (systemPatterns.includes(intent)) continue; // Skip system commands we already checked
+    if (systemPatterns.includes(intent)) continue;
 
     for (const pattern of patterns) {
       const match = normalized.match(pattern);
       if (match) {
-        // Calculate confidence based on:
-        // 1. How much of the input matches the pattern
-        // 2. Where in the input the match occurs (earlier = higher confidence)
-        // 3. How specific the pattern is
         let confidence = match[0].length / normalized.length;
-        confidence *= (1 - match.index! / normalized.length); // Earlier matches get higher confidence
-        confidence *= pattern.toString().length / 50; // Longer patterns get higher confidence
+        confidence *= (1 - match.index! / normalized.length);
+        confidence *= pattern.toString().length / 50;
+
+        // Boost confidence for contextually relevant patterns
+        if (referenceType && isIntentRelated(intent as CommandIntent, context.lastIntent)) {
+          confidence *= 1.2;
+        }
 
         if (confidence > maxConfidence) {
           if (maxConfidence > 0.3) {
@@ -192,22 +255,22 @@ function detectNaturalLanguageIntent(text: string, context: OrderContext): {
   if (context.lastIntent) {
     const isRelatedToLast = isIntentRelated(detectedIntent, context.lastIntent);
     if (isRelatedToLast) {
-      maxConfidence *= 1.2; // Boost confidence for related intents
+      maxConfidence *= 1.2;
     }
   }
 
   // Check for uncertainty indicators
   const uncertaintyKeywords = [
     'maybe', 'perhaps', 'possibly', 'not sure', 'think', 'might',
-    'could', 'would', "i'd", 'how about'
+    'could', 'would', "i'd", 'how about', 'what if', 'probably'
   ];
 
-  const hasUncertainty = uncertaintyKeywords.some(keyword => 
+  const hasUncertainty = uncertaintyKeywords.some(keyword =>
     normalized.includes(keyword)
   );
 
   if (hasUncertainty) {
-    maxConfidence *= 0.8; // Reduce confidence when uncertainty is detected
+    maxConfidence *= 0.8;
     console.log('Detected uncertainty in command');
   }
 
@@ -218,7 +281,8 @@ function detectNaturalLanguageIntent(text: string, context: OrderContext): {
     intent: detectedIntent,
     confidence: maxConfidence,
     alternativeIntents: alternativeIntents.length > 0 ? alternativeIntents : undefined,
-    needsClarification
+    needsClarification,
+    referenceType
   };
 }
 
@@ -280,16 +344,16 @@ function normalizeCommand(text: string): {
 
 // Enhanced response generation
 function generateContextualResponse(
-  intent: CommandIntent, 
+  intent: CommandIntent,
   confidence: number,
   context: OrderContext,
   items?: OrderItem[]
 ): string {
-  const uncertaintyPrefix = confidence < 0.6 ? 
-    "I'm not quite sure, but I think you want to " : 
-    confidence < 0.8 ? 
-    "If I understand correctly, you want to " : 
-    "";
+  const uncertaintyPrefix = confidence < 0.6 ?
+    "I'm not quite sure, but I think you want to " :
+    confidence < 0.8 ?
+      "If I understand correctly, you want to " :
+      "";
 
   const emotionalTone = context.emotionalTone || 'neutral';
   const emotionalPrefix = {
@@ -299,8 +363,8 @@ function generateContextualResponse(
     'neutral': ""
   }[emotionalTone];
 
-  const itemSummary = items?.length ? 
-    `${items.map(i => `${i.quantity} ${i.name}`).join(", ")}` : 
+  const itemSummary = items?.length ?
+    `${items.map(i => `${i.quantity} ${i.name}`).join(", ")}` :
     "";
 
   const contextAwareResponses: Record<CommandIntent, (items?: OrderItem[]) => string[]> = {
@@ -344,8 +408,8 @@ function generateContextualResponse(
 
 // Add natural language fallback
 async function handleAmbiguousCommand(
-  text: string, 
-  confidence: number, 
+  text: string,
+  confidence: number,
   alternativeIntents: CommandIntent[],
   context: OrderContext
 ): Promise<{
@@ -415,10 +479,10 @@ export async function processVoiceOrder(text: string): Promise<VoiceOrderResult>
     const { normalized: normalizedCommand, detectedIntent, confidence, needsClarification } = normalizeCommand(text);
     const now = Date.now();
 
-    if (normalizedCommand === lastProcessedCommand && 
-        now - lastProcessedTimestamp < COMMAND_DEBOUNCE_TIME) {
+    if (normalizedCommand === lastProcessedCommand &&
+      now - lastProcessedTimestamp < COMMAND_DEBOUNCE_TIME) {
       console.log('Duplicate command detected, skipping:', normalizedCommand);
-      return { 
+      return {
         success: false,
         error: 'Command debounced'
       };
@@ -445,7 +509,7 @@ export async function processVoiceOrder(text: string): Promise<VoiceOrderResult>
       finalIntent = resolvedIntent;
       clarification = resolvedClarification;
 
-      if(suggestedResponse) {
+      if (suggestedResponse) {
         console.log('Using suggested response:', suggestedResponse);
       }
     }
@@ -514,7 +578,12 @@ export async function processVoiceOrder(text: string): Promise<VoiceOrderResult>
       intent: finalIntent,
       confidence,
       timestamp: now,
-      success: true
+      success: true,
+      context: {
+        previousItems: orderContext.previousCommands,
+        modifiedItem: orderDetails.modifications?.[0]?.item.name,
+        action: orderDetails.action
+      }
     });
 
     if (responseHistory.length > MAX_HISTORY_LENGTH) {
@@ -572,13 +641,13 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
   const { normalized: normalizedCommand, detectedIntent, confidence, needsClarification } = normalizeCommand(text);
   const now = Date.now();
 
-  if (normalizedCommand === lastProcessedCommand && 
-      now - lastProcessedTimestamp < COMMAND_DEBOUNCE_TIME) {
+  if (normalizedCommand === lastProcessedCommand &&
+    now - lastProcessedTimestamp < COMMAND_DEBOUNCE_TIME) {
     console.log('Duplicate complex order detected, skipping:', normalizedCommand);
-    return { 
-      items: [], 
+    return {
+      items: [],
       intent: detectedIntent,
-      context: orderContext 
+      context: orderContext
     };
   }
 
@@ -602,7 +671,7 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
 
     finalIntent = resolvedIntent;
     clarification = resolvedClarification;
-    if(suggestedResponse) {
+    if (suggestedResponse) {
       console.log("Using suggested response from OpenAI:", suggestedResponse);
     }
   }
@@ -660,10 +729,11 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
     conversationState: {
       ...orderContext.conversationState,
       needsClarification: needsClarification,
-      uncertaintyLevel: needsClarification ? 
-        (orderContext.conversationState?.uncertaintyLevel || 0) + 1 : 
+      uncertaintyLevel: needsClarification ?
+        (orderContext.conversationState?.uncertaintyLevel || 0) + 1 :
         0
-    }
+    },
+    previousCommands: [...orderContext.previousCommands, normalizedCommand]
   };
 
   const response = generateContextualResponse(
@@ -692,23 +762,23 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
 function detectEmotionalTone(text: string): OrderContext['emotionalTone'] {
   const normalized = text.toLowerCase();
 
-  if (normalized.includes('wrong') || 
-      normalized.includes('no ') || 
-      normalized.includes('not ') || 
-      normalized.includes('incorrect')) {
+  if (normalized.includes('wrong') ||
+    normalized.includes('no ') ||
+    normalized.includes('not ') ||
+    normalized.includes('incorrect')) {
     return 'frustrated';
   }
 
-  if (normalized.includes('great') || 
-      normalized.includes('perfect') || 
-      normalized.includes('awesome') || 
-      normalized.includes('yes')) {
+  if (normalized.includes('great') ||
+    normalized.includes('perfect') ||
+    normalized.includes('awesome') ||
+    normalized.includes('yes')) {
     return 'enthusiastic';
   }
 
-  if (normalized.includes('sorry') || 
-      normalized.includes('oops') || 
-      normalized.includes('mistake')) {
+  if (normalized.includes('sorry') ||
+    normalized.includes('oops') ||
+    normalized.includes('mistake')) {
     return 'apologetic';
   }
 
