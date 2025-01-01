@@ -2,8 +2,12 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Mic, Volume2, Settings, HelpCircle } from "lucide-react";
+import { Mic, Volume2, Settings, HelpCircle, Play } from "lucide-react";
 import { motion } from "framer-motion";
+import { useState } from "react";
+import { processVoiceOrder } from "@/lib/voice-order-service";
+import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 const commandCategories = {
   system: {
@@ -143,13 +147,50 @@ const commandCategories = {
 };
 
 function CommandExampleCard({ intent, examples }: { intent: string; examples: string[] }) {
+  const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const tryCommand = async (command: string) => {
+    setIsProcessing(true);
+    try {
+      const result = await processVoiceOrder(command);
+      if (result.success) {
+        toast({
+          title: "Command Processed",
+          description: result.order?.naturalLanguageResponse?.suggestedResponse || "Command executed successfully",
+          variant: "default"
+        });
+      } else {
+        toast({
+          title: "Command Failed",
+          description: result.error || "Failed to process command",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to process command",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
-    <Card className="mb-4 bg-white/90 backdrop-blur-sm border-white/20 shadow-lg
-                    hover:shadow-xl transition-all duration-300">
-      <CardHeader>
-        <CardTitle className="text-lg capitalize text-primary">
-          {intent.split('_').join(' ')}
-        </CardTitle>
+    <Card className="mb-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border-white/20 
+                    shadow-lg hover:shadow-xl transition-all duration-300
+                    rounded-xl overflow-hidden">
+      <CardHeader className="bg-gradient-to-br from-primary/5 to-primary/10
+                           dark:from-primary/10 dark:to-primary/20">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg capitalize text-primary flex items-center gap-2">
+            <Badge variant="secondary" className="rounded-lg">
+              {intent.split('_').join(' ')}
+            </Badge>
+          </CardTitle>
+        </div>
       </CardHeader>
       <CardContent>
         <ul className="space-y-2">
@@ -159,10 +200,23 @@ function CommandExampleCard({ intent, examples }: { intent: string; examples: st
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="flex items-center gap-2 text-sm text-gray-600"
+              className="flex items-center justify-between gap-2 p-2 rounded-lg
+                       hover:bg-gray-50 dark:hover:bg-gray-800/50
+                       transition-all duration-200"
             >
-              <Mic className="h-4 w-4 text-primary/60" />
-              "{example}"
+              <span className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <Mic className="h-4 w-4 text-primary/60" />
+                "{example}"
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => tryCommand(example)}
+                disabled={isProcessing}
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Play className="h-4 w-4" />
+              </Button>
             </motion.li>
           ))}
         </ul>
@@ -173,17 +227,25 @@ function CommandExampleCard({ intent, examples }: { intent: string; examples: st
 
 export default function VoiceTutorialPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-6">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 
+                    dark:from-gray-900 dark:to-gray-800 p-6">
       <div className="max-w-4xl mx-auto">
-        <header className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+        <motion.header 
+          className="text-center mb-8"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4
+                       bg-clip-text text-transparent bg-gradient-to-r 
+                       from-primary to-primary/70">
             Voice Command Tutorial
           </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
             Learn how to use voice commands effectively with our POS system.
-            Explore different categories and see example phrases for each command type.
+            Explore different categories and try example phrases for each command type.
           </p>
-        </header>
+        </motion.header>
 
         <Tabs defaultValue="system" className="w-full">
           <TabsList className="grid grid-cols-4 gap-4 bg-transparent mb-8">
@@ -191,7 +253,10 @@ export default function VoiceTutorialPage() {
               <TabsTrigger
                 key={key}
                 value={key}
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground
+                         bg-white/50 dark:bg-gray-800/50 backdrop-blur-xl
+                         border border-gray-200/20 dark:border-gray-700/20
+                         shadow-lg rounded-xl"
               >
                 {category.name}
               </TabsTrigger>
@@ -200,12 +265,17 @@ export default function VoiceTutorialPage() {
 
           {Object.entries(commandCategories).map(([key, category]) => (
             <TabsContent key={key} value={key}>
-              <div className="mb-6">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+              <motion.div 
+                className="mb-6"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
                   {category.name}
                 </h2>
-                <p className="text-gray-600 mb-6">{category.description}</p>
-              </div>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">{category.description}</p>
+              </motion.div>
 
               <ScrollArea className="h-[600px] pr-4">
                 <div className="space-y-4">
@@ -222,20 +292,28 @@ export default function VoiceTutorialPage() {
           ))}
         </Tabs>
 
-        <div className="mt-8 flex justify-center gap-4">
-          <Button variant="outline" className="gap-2">
+        <motion.div 
+          className="mt-8 flex justify-center gap-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <Button variant="outline" className="gap-2 bg-white/50 dark:bg-gray-800/50 
+                                           backdrop-blur-xl shadow-lg rounded-xl">
             <Settings className="h-4 w-4" />
             Voice Settings
           </Button>
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2 bg-white/50 dark:bg-gray-800/50 
+                                           backdrop-blur-xl shadow-lg rounded-xl">
             <Volume2 className="h-4 w-4" />
             Test Commands
           </Button>
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2 bg-white/50 dark:bg-gray-800/50 
+                                           backdrop-blur-xl shadow-lg rounded-xl">
             <HelpCircle className="h-4 w-4" />
             Get Help
           </Button>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

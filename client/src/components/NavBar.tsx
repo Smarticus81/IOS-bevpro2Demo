@@ -1,4 +1,4 @@
-import { Home, Settings, Calendar, Package, BarChart3, Sun, Moon, Menu } from "lucide-react";
+import { Home, Settings, Calendar, Package, BarChart3, Sun, Moon, Menu, Mic } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,13 +17,14 @@ interface NavBarProps {
   drinks?: Drink[];
 }
 
-export function NavBar({ drinks = [], onAddToCart }: NavBarProps) {
+export function NavBar({ drinks }: NavBarProps) {
   const [location] = useLocation();
 
   const navItems = [
     { href: "/", icon: Home, label: "Home" },
     { href: "/inventory", icon: Package, label: "Inventory" },
     { href: "/events", icon: Calendar, label: "Events" },
+    { href: "/voice-tutorial", icon: Mic, label: "Voice Tutorial" },
     { href: "/settings", icon: Settings, label: "Settings" },
     { href: "/dashboard", icon: BarChart3, label: "Dashboard" },
   ];
@@ -33,11 +34,10 @@ export function NavBar({ drinks = [], onAddToCart }: NavBarProps) {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="sticky top-0 z-50 w-full border-b bg-white/80 dark:bg-black/90 backdrop-blur-lg shadow-sm"
+      className="sticky top-0 z-50 w-full border-b bg-white/90 dark:bg-black/90 backdrop-blur-xl shadow-lg"
     >
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
-          {/* Logo or branding can go here */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -46,7 +46,6 @@ export function NavBar({ drinks = [], onAddToCart }: NavBarProps) {
             <BevProLogo />
           </motion.div>
 
-          {/* Navigation Items - Desktop */}
           <motion.div 
             className="hidden md:flex items-center space-x-1"
             initial={{ opacity: 0 }}
@@ -56,14 +55,16 @@ export function NavBar({ drinks = [], onAddToCart }: NavBarProps) {
             {navItems.map((item) => (
               <Link key={item.href} href={item.href}>
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
+                  whileHover={{ scale: 1.05, y: -2 }}
                   whileTap={{ scale: 0.95 }}
                   className={`
-                    px-4 py-2 rounded-lg flex items-center gap-2
+                    px-4 py-2 rounded-xl flex items-center gap-2
                     transition-all duration-200 ease-out
                     ${location === item.href 
-                      ? 'bg-primary/10 text-primary' 
+                      ? 'bg-primary/10 text-primary shadow-lg backdrop-blur-lg' 
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800/50'}
+                    bg-clip-padding backdrop-filter backdrop-blur-xl
+                    border border-gray-200/20 dark:border-gray-700/20
                   `}
                 >
                   <item.icon className="h-4 w-4" />
@@ -73,7 +74,6 @@ export function NavBar({ drinks = [], onAddToCart }: NavBarProps) {
             ))}
           </motion.div>
 
-          {/* Controls */}
           <motion.div 
             className="flex items-center gap-2"
             initial={{ opacity: 0, x: 20 }}
@@ -81,38 +81,46 @@ export function NavBar({ drinks = [], onAddToCart }: NavBarProps) {
             transition={{ delay: 0.2 }}
           >
             <motion.button
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.95 }}
               className="text-gray-600 hover:text-black dark:text-gray-400 dark:hover:text-white
-                       p-2 rounded-lg transition-colors duration-200"
+                       p-2 rounded-xl transition-all duration-200
+                       bg-white/50 dark:bg-gray-800/50 backdrop-blur-lg
+                       border border-gray-200/20 dark:border-gray-700/20
+                       shadow-lg"
               onClick={() => document.documentElement.classList.toggle('dark')}
             >
               <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             </motion.button>
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
+                  whileHover={{ scale: 1.05, y: -2 }}
                   whileTap={{ scale: 0.95 }}
-                  className="md:hidden p-2 rounded-lg text-gray-600 hover:text-gray-900 
-                           hover:bg-gray-100/80 dark:text-gray-400 dark:hover:text-white 
-                           dark:hover:bg-gray-800/50 transition-colors duration-200"
+                  className="md:hidden p-2 rounded-xl text-gray-600 hover:text-gray-900 
+                           bg-white/50 dark:bg-gray-800/50 backdrop-blur-lg
+                           border border-gray-200/20 dark:border-gray-700/20
+                           shadow-lg dark:text-gray-400 dark:hover:text-white 
+                           transition-all duration-200"
                 >
                   <Menu className="h-5 w-5" />
                 </motion.button>
               </DropdownMenuTrigger>
               <DropdownMenuContent 
                 align="end" 
-                className="w-56 bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg
-                         border border-gray-200/50 dark:border-gray-700/50"
+                className="w-56 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl
+                         border border-gray-200/50 dark:border-gray-700/50
+                         shadow-xl rounded-xl"
               >
                 <DropdownMenuGroup>
                   {navItems.map((item) => (
                     <Link key={item.href} href={item.href}>
                       <DropdownMenuItem className="flex items-center gap-2 focus:bg-gray-100/80
-                                               dark:focus:bg-gray-800/50 cursor-pointer">
+                                               dark:focus:bg-gray-800/50 cursor-pointer
+                                               transition-all duration-200
+                                               rounded-lg m-1">
                         <item.icon className="h-4 w-4" />
                         <span className="font-medium">{item.label}</span>
                       </DropdownMenuItem>
