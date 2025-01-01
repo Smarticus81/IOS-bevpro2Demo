@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Drink, PourInventory, TaxCategory, PourTransaction } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { InventoryVisualizations } from "@/components/InventoryVisualizations";
+import { InventoryAnalytics } from "@/components/InventoryAnalytics";
 
 export function Inventory() {
   const [search, setSearch] = useState("");
@@ -83,295 +83,294 @@ export function Inventory() {
     <div className="min-h-screen bg-background">
       <NavBar />
 
-      <div className="px-4 pt-20 pb-8 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Beverage Inventory Management</h1>
-            <p className="text-white/70">Track all beverage inventory with specialized pour and package tracking</p>
-          </div>
+      <div className="container mx-auto p-4 lg:p-8">
+        {/* Analytics Dashboard Section */}
+        <InventoryAnalytics 
+          drinks={drinks}
+          inventoryHistory={pourTransactions}
+        />
 
-          <div className="grid gap-6">
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
-                    <Package className="h-6 w-6 text-primary" />
-                    <div>
-                      <p className="text-sm text-gray-600">Active Inventory</p>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {pourInventory.filter(i => i.is_active).length + 
-                         drinks.filter(d => !needsPourTracking(d.category)).length}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">Beverage Inventory Management</h1>
+          <p className="text-white/70">Track all beverage inventory with specialized pour and package tracking</p>
+        </div>
 
-              <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
-                    <AlertTriangle className="h-6 w-6 text-yellow-500" />
-                    <div>
-                      <p className="text-sm text-gray-600">Low Stock</p>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {getLowStockBottles().length + getLowStockPackages().length}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
-                    <History className="h-6 w-6 text-emerald-500" />
-                    <div>
-                      <p className="text-sm text-gray-600">Today's Activity</p>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {pourTransactions.filter(t => {
-                          const date = t.transaction_time ? new Date(t.transaction_time) : null;
-                          return date && date.toDateString() === new Date().toDateString();
-                        }).length}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
-                    <AlertTriangle className="h-6 w-6 text-blue-500" />
-                    <div>
-                      <p className="text-sm text-gray-600">Tax Owed</p>
-                      <p className="text-2xl font-bold text-gray-900">
-                        ${getTotalTaxOwed().toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Main Content */}
+        <div className="grid gap-6">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
-              <CardHeader className="p-4 flex flex-row items-center justify-between">
-                <CardTitle>Inventory Management</CardTitle>
+              <CardContent className="p-4">
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Search className="h-4 w-4 text-gray-500" />
-                    <Input
-                      placeholder="Search inventory..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="w-[200px]"
-                    />
+                  <Package className="h-6 w-6 text-primary" />
+                  <div>
+                    <p className="text-sm text-gray-600">Active Inventory</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {pourInventory.filter(i => i.is_active).length + 
+                       drinks.filter(d => !needsPourTracking(d.category)).length}
+                    </p>
                   </div>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add Item
-                  </Button>
                 </div>
-              </CardHeader>
+              </CardContent>
+            </Card>
 
-              <CardContent className="p-0">
-                <Tabs defaultValue="pour" className="w-full">
-                  <TabsList className="w-full justify-start rounded-none border-b p-0">
-                    <TabsTrigger value="pour" className="rounded-none border-b-2 data-[state=active]:border-primary">
-                      Pour Tracked Items
-                    </TabsTrigger>
-                    <TabsTrigger value="package" className="rounded-none border-b-2 data-[state=active]:border-primary">
-                      Package Tracked Items
-                    </TabsTrigger>
-                    <TabsTrigger value="transactions" className="rounded-none border-b-2 data-[state=active]:border-primary">
-                      Transaction History
-                    </TabsTrigger>
-                    <TabsTrigger value="insights" className="rounded-none border-b-2 data-[state=active]:border-primary">
-                      Insights
-                    </TabsTrigger>
-                  </TabsList>
+            <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
+                  <AlertTriangle className="h-6 w-6 text-yellow-500" />
+                  <div>
+                    <p className="text-sm text-gray-600">Low Stock</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {getLowStockBottles().length + getLowStockPackages().length}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-                  <TabsContent value="pour" className="mt-0">
-                    <ScrollArea className="h-[60vh]">
-                      <div className="w-full">
-                        <div className="grid grid-cols-8 gap-4 p-4 text-sm font-medium text-gray-500 border-b">
-                          <div className="col-span-2">Drink</div>
-                          <div>Bottle ID</div>
-                          <div>Tax Category</div>
-                          <div>Initial Vol.</div>
-                          <div>Remaining</div>
-                          <div>Last Pour</div>
-                          <div>Status</div>
-                        </div>
+            <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
+                  <History className="h-6 w-6 text-emerald-500" />
+                  <div>
+                    <p className="text-sm text-gray-600">Today's Activity</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {pourTransactions.filter(t => {
+                        const date = t.transaction_time ? new Date(t.transaction_time) : null;
+                        return date && date.toDateString() === new Date().toDateString();
+                      }).length}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-                        <div className="divide-y">
-                          {filteredInventory.pourTracked.map((item) => {
-                            const drink = drinks.find(d => d.id === item.drink_id);
-                            const taxCategory = taxCategories.find(t => t.id === item.tax_category_id);
-                            const remainingPercentage = (item.remaining_volume_ml / item.initial_volume_ml) * 100;
-
-                            return (
-                              <motion.div
-                                key={item.id}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                className="grid grid-cols-8 gap-4 p-4 items-center hover:bg-gray-50/50"
-                              >
-                                <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
-                                  {getBeverageIcon(drink?.category || '')}
-                                  <div>
-                                    {drink?.name}
-                                    <div className="text-xs text-gray-500">{drink?.category}</div>
-                                  </div>
-                                </div>
-                                <div className="font-mono text-sm">{item.bottle_id}</div>
-                                <div>{taxCategory?.name || 'N/A'}</div>
-                                <div>{item.initial_volume_ml}ml</div>
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-16 bg-gray-200 rounded-full h-2">
-                                      <div
-                                        className="bg-primary rounded-full h-2"
-                                        style={{ width: `${remainingPercentage}%` }}
-                                      />
-                                    </div>
-                                    <span className="text-sm">{Math.round(remainingPercentage)}%</span>
-                                  </div>
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  {item.last_pour_at 
-                                    ? new Date(item.last_pour_at).toLocaleDateString()
-                                    : 'Never'
-                                  }
-                                </div>
-                                <div>
-                                  <Badge
-                                    variant={remainingPercentage < 20 ? "destructive" : "default"}
-                                    className="bg-gradient-to-b from-zinc-800 to-black text-white shadow-sm"
-                                  >
-                                    {remainingPercentage < 20 ? "Low" : "OK"}
-                                  </Badge>
-                                </div>
-                              </motion.div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </ScrollArea>
-                  </TabsContent>
-
-                  <TabsContent value="package" className="mt-0">
-                    <ScrollArea className="h-[60vh]">
-                      <div className="w-full">
-                        <div className="grid grid-cols-6 gap-4 p-4 text-sm font-medium text-gray-500 border-b">
-                          <div className="col-span-2">Item</div>
-                          <div>Category</div>
-                          <div>Price</div>
-                          <div>In Stock</div>
-                          <div>Status</div>
-                        </div>
-
-                        <div className="divide-y">
-                          {filteredInventory.packageTracked.map((drink) => (
-                            <motion.div
-                              key={drink.id}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              className="grid grid-cols-6 gap-4 p-4 items-center hover:bg-gray-50/50"
-                            >
-                              <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
-                                {getBeverageIcon(drink.category)}
-                                <div>
-                                  {drink.name}
-                                  <div className="text-xs text-gray-500">{drink.subcategory}</div>
-                                </div>
-                              </div>
-                              <div>{drink.category}</div>
-                              <div>${drink.price}</div>
-                              <div>{drink.inventory} units</div>
-                              <div>
-                                <Badge
-                                  variant={drink.inventory < 10 ? "destructive" : "default"}
-                                  className="bg-gradient-to-b from-zinc-800 to-black text-white shadow-sm"
-                                >
-                                  {drink.inventory < 10 ? "Low" : "OK"}
-                                </Badge>
-                              </div>
-                            </motion.div>
-                          ))}
-                        </div>
-                      </div>
-                    </ScrollArea>
-                  </TabsContent>
-
-                  <TabsContent value="transactions" className="mt-0">
-                    <ScrollArea className="h-[60vh]">
-                      <div className="w-full">
-                        <div className="grid grid-cols-7 gap-4 p-4 text-sm font-medium text-gray-500 border-b">
-                          <div className="col-span-2">Item</div>
-                          <div>Type</div>
-                          <div>Quantity</div>
-                          <div>Tax Amount</div>
-                          <div>Time</div>
-                          <div>Staff</div>
-                        </div>
-
-                        <div className="divide-y">
-                          {pourTransactions.map((transaction) => {
-                            const inventory = pourInventory.find(i => i.id === transaction.pour_inventory_id);
-                            const drink = drinks.find(d => d.id === inventory?.drink_id);
-
-                            return (
-                              <motion.div
-                                key={transaction.id}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                className="grid grid-cols-7 gap-4 p-4 items-center hover:bg-gray-50/50"
-                              >
-                                <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
-                                  {getBeverageIcon(drink?.category || '')}
-                                  <div>
-                                    {drink?.name}
-                                    <div className="text-xs text-gray-500">{drink?.category}</div>
-                                  </div>
-                                </div>
-                                <div>{transaction.pour_size_id ? 'Pour' : 'Package'}</div>
-                                <div>
-                                  {transaction.volume_ml 
-                                    ? `${transaction.volume_ml}ml`
-                                    : '1 unit'
-                                  }
-                                </div>
-                                <div>${transaction.tax_amount?.toFixed(2) || '0.00'}</div>
-                                <div className="text-sm text-gray-500">
-                                  {transaction.transaction_time
-                                    ? new Date(transaction.transaction_time).toLocaleTimeString()
-                                    : 'N/A'
-                                  }
-                                </div>
-                                <div className="text-sm">Staff #{transaction.staff_id}</div>
-                              </motion.div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </ScrollArea>
-                  </TabsContent>
-
-                  <TabsContent value="insights" className="mt-0 p-4">
-                    <InventoryVisualizations 
-                      drinks={drinks}
-                      pourInventory={pourInventory}
-                      taxCategories={taxCategories}
-                      pourTransactions={pourTransactions}
-                    />
-                  </TabsContent>
-
-                </Tabs>
+            <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
+                  <AlertTriangle className="h-6 w-6 text-blue-500" />
+                  <div>
+                    <p className="text-sm text-gray-600">Tax Owed</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      ${getTotalTaxOwed().toFixed(2)}
+                    </p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
+
+          {/* Main Content */}
+          <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
+            <CardHeader className="p-4 flex flex-row items-center justify-between">
+              <CardTitle>Inventory Management</CardTitle>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Search className="h-4 w-4 text-gray-500" />
+                  <Input
+                    placeholder="Search inventory..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-[200px]"
+                  />
+                </div>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Item
+                </Button>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-0">
+              <Tabs defaultValue="pour" className="w-full">
+                <TabsList className="w-full justify-start rounded-none border-b p-0">
+                  <TabsTrigger value="pour" className="rounded-none border-b-2 data-[state=active]:border-primary">
+                    Pour Tracked Items
+                  </TabsTrigger>
+                  <TabsTrigger value="package" className="rounded-none border-b-2 data-[state=active]:border-primary">
+                    Package Tracked Items
+                  </TabsTrigger>
+                  <TabsTrigger value="transactions" className="rounded-none border-b-2 data-[state=active]:border-primary">
+                    Transaction History
+                  </TabsTrigger>
+                  <TabsTrigger value="insights" className="rounded-none border-b-2 data-[state=active]:border-primary">
+                    Insights
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="pour" className="mt-0">
+                  <ScrollArea className="h-[60vh]">
+                    <div className="w-full">
+                      <div className="grid grid-cols-8 gap-4 p-4 text-sm font-medium text-gray-500 border-b">
+                        <div className="col-span-2">Drink</div>
+                        <div>Bottle ID</div>
+                        <div>Tax Category</div>
+                        <div>Initial Vol.</div>
+                        <div>Remaining</div>
+                        <div>Last Pour</div>
+                        <div>Status</div>
+                      </div>
+
+                      <div className="divide-y">
+                        {filteredInventory.pourTracked.map((item) => {
+                          const drink = drinks.find(d => d.id === item.drink_id);
+                          const taxCategory = taxCategories.find(t => t.id === item.tax_category_id);
+                          const remainingPercentage = (item.remaining_volume_ml / item.initial_volume_ml) * 100;
+
+                          return (
+                            <motion.div
+                              key={item.id}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className="grid grid-cols-8 gap-4 p-4 items-center hover:bg-gray-50/50"
+                            >
+                              <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
+                                {getBeverageIcon(drink?.category || '')}
+                                <div>
+                                  {drink?.name}
+                                  <div className="text-xs text-gray-500">{drink?.category}</div>
+                                </div>
+                              </div>
+                              <div className="font-mono text-sm">{item.bottle_id}</div>
+                              <div>{taxCategory?.name || 'N/A'}</div>
+                              <div>{item.initial_volume_ml}ml</div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-16 bg-gray-200 rounded-full h-2">
+                                    <div
+                                      className="bg-primary rounded-full h-2"
+                                      style={{ width: `${remainingPercentage}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-sm">{Math.round(remainingPercentage)}%</span>
+                                </div>
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {item.last_pour_at 
+                                  ? new Date(item.last_pour_at).toLocaleDateString()
+                                  : 'Never'
+                                }
+                              </div>
+                              <div>
+                                <Badge
+                                  variant={remainingPercentage < 20 ? "destructive" : "default"}
+                                  className="bg-gradient-to-b from-zinc-800 to-black text-white shadow-sm"
+                                >
+                                  {remainingPercentage < 20 ? "Low" : "OK"}
+                                </Badge>
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="package" className="mt-0">
+                  <ScrollArea className="h-[60vh]">
+                    <div className="w-full">
+                      <div className="grid grid-cols-6 gap-4 p-4 text-sm font-medium text-gray-500 border-b">
+                        <div className="col-span-2">Item</div>
+                        <div>Category</div>
+                        <div>Price</div>
+                        <div>In Stock</div>
+                        <div>Status</div>
+                      </div>
+
+                      <div className="divide-y">
+                        {filteredInventory.packageTracked.map((drink) => (
+                          <motion.div
+                            key={drink.id}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="grid grid-cols-6 gap-4 p-4 items-center hover:bg-gray-50/50"
+                          >
+                            <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
+                              {getBeverageIcon(drink.category)}
+                              <div>
+                                {drink.name}
+                                <div className="text-xs text-gray-500">{drink.subcategory}</div>
+                              </div>
+                            </div>
+                            <div>{drink.category}</div>
+                            <div>${drink.price}</div>
+                            <div>{drink.inventory} units</div>
+                            <div>
+                              <Badge
+                                variant={drink.inventory < 10 ? "destructive" : "default"}
+                                className="bg-gradient-to-b from-zinc-800 to-black text-white shadow-sm"
+                              >
+                                {drink.inventory < 10 ? "Low" : "OK"}
+                              </Badge>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="transactions" className="mt-0">
+                  <ScrollArea className="h-[60vh]">
+                    <div className="w-full">
+                      <div className="grid grid-cols-7 gap-4 p-4 text-sm font-medium text-gray-500 border-b">
+                        <div className="col-span-2">Item</div>
+                        <div>Type</div>
+                        <div>Quantity</div>
+                        <div>Tax Amount</div>
+                        <div>Time</div>
+                        <div>Staff</div>
+                      </div>
+
+                      <div className="divide-y">
+                        {pourTransactions.map((transaction) => {
+                          const inventory = pourInventory.find(i => i.id === transaction.pour_inventory_id);
+                          const drink = drinks.find(d => d.id === inventory?.drink_id);
+
+                          return (
+                            <motion.div
+                              key={transaction.id}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className="grid grid-cols-7 gap-4 p-4 items-center hover:bg-gray-50/50"
+                            >
+                              <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
+                                {getBeverageIcon(drink?.category || '')}
+                                <div>
+                                  {drink?.name}
+                                  <div className="text-xs text-gray-500">{drink?.category}</div>
+                                </div>
+                              </div>
+                              <div>{transaction.pour_size_id ? 'Pour' : 'Package'}</div>
+                              <div>
+                                {transaction.volume_ml 
+                                  ? `${transaction.volume_ml}ml`
+                                  : '1 unit'
+                                }
+                              </div>
+                              <div>${transaction.tax_amount?.toFixed(2) || '0.00'}</div>
+                              <div className="text-sm text-gray-500">
+                                {transaction.transaction_time
+                                  ? new Date(transaction.transaction_time).toLocaleTimeString()
+                                  : 'N/A'
+                                }
+                              </div>
+                              <div className="text-sm">Staff #{transaction.staff_id}</div>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="insights" className="mt-0 p-4">
+                  {/*InventoryVisualizations component is removed here*/}
+                </TabsContent>
+
+              </Tabs>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

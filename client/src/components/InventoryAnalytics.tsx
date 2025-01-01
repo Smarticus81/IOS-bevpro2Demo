@@ -137,6 +137,7 @@ export function InventoryAnalytics({ drinks, inventoryHistory = [] }: InventoryA
                       backgroundColor: 'hsl(var(--background))',
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '0.5rem',
+                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                     }}
                   />
                   <Bar
