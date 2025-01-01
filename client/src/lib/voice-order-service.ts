@@ -487,11 +487,16 @@ interface DrinkMatch {
   variations: string[];
   matchCount: number;
   lastMatched: number;
+  recentReferences: Array<{
+    phrase: string;
+    timestamp: number;
+  }>;
 }
 
 class DrinkNameCache {
   private cache: Map<string, DrinkMatch>;
   private readonly MAX_VARIATIONS = 5;
+  private readonly MAX_REFERENCES = 10;
 
   constructor() {
     this.cache = new Map();
@@ -503,7 +508,8 @@ class DrinkNameCache {
         name,
         variations: [],
         matchCount: 0,
-        lastMatched: Date.now()
+        lastMatched: Date.now(),
+        recentReferences: []
       });
     }
   }
@@ -517,24 +523,42 @@ class DrinkNameCache {
       }
       drink.matchCount++;
       drink.lastMatched = Date.now();
+      drink.recentReferences.unshift({
+        phrase: variation,
+        timestamp: Date.now()
+      });
+      drink.recentReferences = drink.recentReferences.slice(0, this.MAX_REFERENCES);
     }
   }
 
-  findBestMatch(input: string): { name: string; confidence: number } | null {
+  findBestMatch(input: string, context?: OrderContext): { name: string; confidence: number } | null {
     let bestMatch = null;
-    let highestScore = -Infinity;
+    let highestConfidence = 0;
 
     // First try exact matches including variations
     for (const [name, drink] of this.cache.entries()) {
+      // Exact name match
       if (input.toLowerCase() === name.toLowerCase()) {
         return { name, confidence: 1.0 };
       }
 
+      // Variation matches
       for (const variation of drink.variations) {
         if (input.toLowerCase() === variation.toLowerCase()) {
           return { name, confidence: 0.95 };
         }
       }
+
+      // Check for reference phrases ("another one", "same thing", etc.)
+      const referenceMatch = this.matchReference(input, drink, context);
+      if (referenceMatch && referenceMatch.confidence > highestConfidence) {
+        bestMatch = { name, confidence: referenceMatch.confidence };
+        highestConfidence = referenceMatch.confidence;
+      }
+    }
+
+    if (bestMatch) {
+      return bestMatch;
     }
 
     // Then try fuzzy matching
@@ -558,9 +582,42 @@ class DrinkNameCache {
     return bestMatch;
   }
 
+  private matchReference(input: string, drink: DrinkMatch, context?: OrderContext): { confidence: number } | null {
+    const referencePatterns = [
+      { pattern: /another (one|drink|mule|beer|cocktail)/i, confidence: 0.9 },
+      { pattern: /same (thing|drink|one)/i, confidence: 0.85 },
+      { pattern: /one more/i, confidence: 0.8 },
+      { pattern: /(that|this) again/i, confidence: 0.8 }
+    ];
+
+    // Only consider references if this drink was recently matched
+    const recentTimeWindow = 5 * 60 * 1000; // 5 minutes
+    if (Date.now() - drink.lastMatched > recentTimeWindow) {
+      return null;
+    }
+
+    // Check if this was the last referenced drink
+    const wasLastReferenced = context?.referencedItems?.[0]?.item === drink.name;
+
+    for (const { pattern, confidence } of referencePatterns) {
+      if (pattern.test(input)) {
+        // Boost confidence if this was the last referenced drink
+        const contextBoost = wasLastReferenced ? 0.1 : 0;
+        return { confidence: confidence + contextBoost };
+      }
+    }
+
+    return null;
+  }
+
   getPrioritizedDrinks(): string[] {
     return Array.from(this.cache.values())
-      .sort((a, b) => b.matchCount - a.matchCount)
+      .sort((a, b) => {
+        // Prioritize by recency and frequency
+        const recencyScore = b.lastMatched - a.lastMatched;
+        const frequencyScore = b.matchCount - a.matchCount;
+        return recencyScore + frequencyScore * 1000;
+      })
       .map(drink => drink.name);
   }
 }
@@ -592,15 +649,25 @@ export async function processVoiceOrder(text: string): Promise<VoiceOrderResult>
     const { normalized: normalizedCommand, detectedIntent, confidence, needsClarification } = normalizeCommand(text);
     const now = Date.now();
 
-    // Try to match drink names in the command
+    // Try to match drink names in the command with context
     const words = normalizedCommand.split(' ');
     for (let i = 0; i < words.length; i++) {
       const phrase = words.slice(i).join(' ');
-      const match = drinkNameCache.findBestMatch(phrase);
+      const match = drinkNameCache.findBestMatch(phrase, orderContext);
       if (match) {
         console.log('Found drink name match:', match);
-        // Add successful matches to variations
+        // Add successful matches to variations and update context
         drinkNameCache.addVariation(match.name, phrase);
+
+        // Update referenced items in context
+        orderContext.referencedItems = [
+          {
+            item: match.name,
+            timestamp: now,
+            action: detectedIntent
+          },
+          ...(orderContext.referencedItems || []).slice(0, 4)
+        ];
         break;
       }
     }
