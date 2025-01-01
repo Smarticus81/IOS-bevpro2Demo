@@ -128,16 +128,34 @@ const intentPatterns = {
     /\b(of|for) (them|those|that)\b/i
   ],
   remove_item: [
-    /^(remove|take off|delete)\b/i,
-    /^(don't|do not) want|remove that/i,
-    /^(never mind|forget|scratch) (that|the)\b/i,
-    /take (it|that) off\b/i,
-    /^get rid of\b/i,
-    /^no (more|longer want)\b/i
+    /^(remove|take off|delete)\s+(the|my|that|this)?\s*(last|previous)?\s*(drink|item|order|mojito|margarita|beer|cocktail)/i,
+    /^(don't|do not) want\s+(the|that|this)?\s*(drink|mojito|margarita|beer|cocktail)/i,
+    /^(never mind|forget|scratch)\s+(the|that|this)?\s*(drink|mojito|margarita|beer|cocktail)/i,
+    /^take\s+(the|that|this)?\s*(drink|mojito|margarita|beer|cocktail)\s*off/i,
+    /^get rid of\s+(the|that|this)?\s*(drink|mojito|margarita|beer|cocktail)/i,
+    /^no\s+(more|longer want)\s+(the|that|this)?\s*(drink|mojito|margarita|beer|cocktail)/i,
+    /^cancel\s+(the|that|this)?\s*(drink|mojito|margarita|beer|cocktail)/i,
+    /^delete\s+(the|that|this)?\s*(drink|mojito|margarita|beer|cocktail)/i
   ],
-  split_order: [],
-  apply_discount: [],
-  complete_order: []
+  split_order: [
+    /^split\s+(the|this)?\s*order/i,
+    /^divide\s+(the|this)?\s*(bill|check|order)/i,
+    /^share\s+(the|this)?\s*(bill|check|order)/i,
+    /^can we split\s+(the|this)?\s*(bill|check|order)/i
+  ],
+  apply_discount: [
+    /^apply\s+(a|the)?\s*(discount|coupon|promo|promotion)/i,
+    /^use\s+(a|the|my)?\s*(discount|coupon|promo|promotion)/i,
+    /^add\s+(a|the)?\s*(discount|coupon|promo|promotion)/i,
+    /^give\s+(me|us)?\s*(a|the)?\s*(discount|coupon|promo|promotion)/i
+  ],
+  complete_order: [
+    /^(complete|finish|process|submit)\s+(the|this|my)?\s*order/i,
+    /^check\s*out/i,
+    /^pay\s+(for|the)?\s*(order|bill|check)/i,
+    /^that'?s\s+(all|everything)/i,
+    /^ready to\s+(pay|checkout|complete)/i
+  ]
 };
 
 // Track processed commands to prevent duplicates
@@ -186,12 +204,21 @@ function detectNaturalLanguageIntent(text: string, context: OrderContext): {
   alternativeIntents?: CommandIntent[];
   needsClarification?: boolean;
   referenceType?: 'previous' | 'current' | 'last';
+  targetDrink?: string;
 } {
   const normalized = text.toLowerCase().trim();
   let maxConfidence = 0;
   let detectedIntent: CommandIntent = 'add_item';
   let alternativeIntents: CommandIntent[] = [];
   let referenceType: 'previous' | 'current' | 'last' | undefined;
+  let targetDrink: string | undefined;
+
+  // Check for specific drink mentions in remove commands
+  const drinkPattern = /(mojito|margarita|beer|mule|cocktail|drink|shot|glass)/i;
+  const drinkMatch = normalized.match(drinkPattern);
+  if (drinkMatch) {
+    targetDrink = drinkMatch[0].toLowerCase();
+  }
 
   // First check references
   for (const [type, patterns] of Object.entries(referencePatterns)) {
@@ -227,7 +254,8 @@ function detectNaturalLanguageIntent(text: string, context: OrderContext): {
             intent: detectedIntent,
             confidence: maxConfidence,
             needsClarification: false,
-            referenceType
+            referenceType,
+            targetDrink
           };
         }
       }
@@ -289,7 +317,8 @@ function detectNaturalLanguageIntent(text: string, context: OrderContext): {
     confidence: maxConfidence,
     alternativeIntents: alternativeIntents.length > 0 ? alternativeIntents : undefined,
     needsClarification: maxConfidence < 0.4 || alternativeIntents.length > 2 || hasUncertainty,
-    referenceType
+    referenceType,
+    targetDrink
   };
 }
 
@@ -299,6 +328,7 @@ function normalizeCommand(text: string): {
   detectedIntent: CommandIntent;
   confidence: number;
   needsClarification: boolean;
+  targetDrink?: string;
 } {
   let normalized = text.toLowerCase()
     .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
@@ -333,7 +363,8 @@ function normalizeCommand(text: string): {
     normalized,
     detectedIntent: nlpResult.intent,
     confidence: nlpResult.confidence,
-    needsClarification: nlpResult.needsClarification || false
+    needsClarification: nlpResult.needsClarification || false,
+    targetDrink: nlpResult.targetDrink
   };
 }
 
@@ -497,6 +528,10 @@ class DrinkNameCache {
   private cache: Map<string, DrinkMatch>;
   private readonly MAX_VARIATIONS = 5;
   private readonly MAX_REFERENCES = 10;
+  private recentRemovals: Array<{
+    name: string;
+    timestamp: number;
+  }> = [];
 
   constructor() {
     this.cache = new Map();
@@ -620,6 +655,22 @@ class DrinkNameCache {
       })
       .map(drink => drink.name);
   }
+
+  trackRemoval(drinkName: string) {
+    this.recentRemovals.unshift({
+      name: drinkName,
+      timestamp: Date.now()
+    });
+    // Keep only last 5 removals
+    this.recentRemovals = this.recentRemovals.slice(0, 5);
+  }
+
+  wasRecentlyRemoved(drinkName: string): boolean {
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+    return this.recentRemovals.some(
+      removal => removal.name === drinkName && removal.timestamp > fiveMinutesAgo
+    );
+  }
 }
 
 const drinkNameCache = new DrinkNameCache();
@@ -646,8 +697,51 @@ export async function processVoiceOrder(text: string): Promise<VoiceOrderResult>
   }
 
   try {
-    const { normalized: normalizedCommand, detectedIntent, confidence, needsClarification } = normalizeCommand(text);
+    const { normalized: normalizedCommand, detectedIntent, confidence, needsClarification, targetDrink } = normalizeCommand(text);
     const now = Date.now();
+
+    // Handle drink removal
+    if (detectedIntent === 'remove_item' && targetDrink) {
+      const wasRemoved = drinkNameCache.wasRecentlyRemoved(targetDrink);
+      if (wasRemoved) {
+        return {
+          success: false,
+          error: `${targetDrink} was already removed recently`
+        };
+      }
+
+      // Track the removal
+      drinkNameCache.trackRemoval(targetDrink);
+
+      // Update order context
+      orderContext = {
+        ...orderContext,
+        lastIntent: 'remove_item',
+        emotionalTone: 'neutral',
+        referencedItems: [
+          {
+            item: targetDrink,
+            timestamp: now,
+            action: 'remove_item'
+          },
+          ...(orderContext.referencedItems || []).slice(0, 4)
+        ]
+      };
+
+      return {
+        success: true,
+        order: {
+          items: [],
+          intent: 'remove_item',
+          context: orderContext,
+          naturalLanguageResponse: {
+            confidence,
+            needsClarification: false,
+            suggestedResponse: `Removing ${targetDrink} from your order.`
+          }
+        }
+      };
+    }
 
     // Try to match drink names in the command with context
     const words = normalizedCommand.split(' ');
@@ -820,7 +914,7 @@ export async function processVoiceOrder(text: string): Promise<VoiceOrderResult>
       responseHistory.pop();
     }
 
-    return {
+        return {
       success: false,
       error: errorMessage
     };
@@ -831,7 +925,7 @@ export async function processVoiceOrder(text: string): Promise<VoiceOrderResult>
 async function processComplexOrder(text: string): Promise<OrderDetails> {
   if (!openai) throw new Error('Voice processing service is not configured');
 
-  const { normalized: normalizedCommand, detectedIntent, confidence, needsClarification } = normalizeCommand(text);
+  const { normalized: normalizedCommand, detectedIntent, confidence, needsClarification, targetDrink } = normalizeCommand(text);
   const now = Date.now();
 
   if (normalizedCommand === lastProcessedCommand &&

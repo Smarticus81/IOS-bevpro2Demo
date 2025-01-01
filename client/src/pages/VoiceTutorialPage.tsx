@@ -74,11 +74,13 @@ const commandCategories = {
       {
         intent: "remove_item",
         examples: [
-          "Remove the last drink",
-          "Take that off",
+          "Remove the mojito",
+          "Take off the last drink",
           "Never mind the margarita",
-          "Delete that last one",
-          "Get rid of the beer"
+          "Delete that Moscow Mule",
+          "Get rid of the beer",
+          "Cancel this cocktail",
+          "I don't want that drink anymore"
         ]
       }
     ]
@@ -118,8 +120,8 @@ const commandCategories = {
         examples: [
           "Split this order",
           "Divide the bill",
-          "Split payment",
           "Share the check",
+          "Can we split the bill",
           "Split it evenly"
         ]
       },
@@ -129,17 +131,17 @@ const commandCategories = {
           "Apply happy hour discount",
           "Use my coupon",
           "Add employee discount",
-          "Apply promotion",
-          "Use discount code"
+          "Give me a discount",
+          "Use promotion code"
         ]
       },
       {
         intent: "complete_order",
         examples: [
           "Complete the order",
-          "Finish up",
+          "Check out now",
           "Process payment",
-          "Check out",
+          "Ready to pay",
           "That's everything"
         ]
       }
