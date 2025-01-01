@@ -2,16 +2,21 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { Drink } from "@db/schema";
 import { useState } from "react";
 import { Beer, Wine, GlassWater, Coffee, Droplet } from "lucide-react";
+import { DrinkModifierSelector } from "./DrinkModifierSelector";
 
 interface DrinkCardProps {
   drink: Drink;
-  onAdd: () => void;
+  onAdd: (modifiers?: {
+    pourSize: 'single' | 'double' | 'triple' | 'shot';
+    extras: string[];
+  }) => void;
   onRemove: () => void;
   quantity: number;
 }
 
 export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [showModifiers, setShowModifiers] = useState(false);
 
   const getCategoryIcon = (category: string) => {
     switch (category.toLowerCase()) {
@@ -31,6 +36,22 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
 
   const { icon: Icon, color } = getCategoryIcon(drink.category);
 
+  const handleCardClick = () => {
+    if (drink.category.toLowerCase() === 'spirits') {
+      setShowModifiers(true);
+    } else {
+      onAdd();
+    }
+  };
+
+  const handleModifierChange = (modifiers: {
+    pourSize: 'single' | 'double' | 'triple' | 'shot';
+    extras: string[];
+  }) => {
+    onAdd(modifiers);
+    setShowModifiers(false);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -45,7 +66,7 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
         scale: 0.98,
         transition: { duration: 0.1, ease: "easeIn" }
       }}
-      onClick={onAdd}
+      onClick={handleCardClick}
       className="group relative cursor-pointer select-none transform transition-all duration-200 hover:scale-[1.02]"
     >
       <div className="relative overflow-hidden rounded-xl bg-gradient-to-b from-white to-gray-50
@@ -117,25 +138,25 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
                       {drink.category}
                     </p>
                     <div className="flex items-center gap-1">
-                    <motion.div
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        drink.inventory === 0 ? 'bg-red-500' :
-                        drink.inventory < 10 ? 'bg-yellow-500' :
-                        'bg-emerald-500'
-                      }`}
-                    />
-                    <span className={`text-[10px] font-medium ${
-                      drink.inventory === 0 ? 'text-red-500' :
-                      drink.inventory < 10 ? 'text-yellow-500' :
-                      'text-emerald-500'
-                    }`}>
-                      {drink.inventory === 0 ? 'Out of Stock' :
-                       drink.inventory < 10 ? 'Low Stock' :
-                       `${drink.inventory} Available`}
-                    </span>
-                  </div>
+                      <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          drink.inventory === 0 ? 'bg-red-500' :
+                          drink.inventory < 10 ? 'bg-yellow-500' :
+                          'bg-emerald-500'
+                        }`}
+                      />
+                      <span className={`text-[10px] font-medium ${
+                        drink.inventory === 0 ? 'text-red-500' :
+                        drink.inventory < 10 ? 'text-yellow-500' :
+                        'text-emerald-500'
+                      }`}>
+                        {drink.inventory === 0 ? 'Out of Stock' :
+                         drink.inventory < 10 ? 'Low Stock' :
+                         `${drink.inventory} Available`}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -143,6 +164,24 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
           </div>
         </div>
       </div>
+
+      {/* Modifier Selector Modal */}
+      <AnimatePresence>
+        {showModifiers && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="absolute z-50 top-full left-0 right-0 mt-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <DrinkModifierSelector
+              onModifierChange={handleModifierChange}
+              isSpirit={drink.category.toLowerCase() === 'spirits'}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
