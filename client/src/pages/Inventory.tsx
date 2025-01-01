@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Drink, PourInventory, TaxCategory, PourTransaction } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import { InventoryVisualizations } from "@/components/InventoryVisualizations";
 
 export function Inventory() {
   const [search, setSearch] = useState("");
@@ -186,6 +187,9 @@ export function Inventory() {
                     <TabsTrigger value="transactions" className="rounded-none border-b-2 data-[state=active]:border-primary">
                       Transaction History
                     </TabsTrigger>
+                    <TabsTrigger value="insights" className="rounded-none border-b-2 data-[state=active]:border-primary">
+                      Insights
+                    </TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="pour" className="mt-0">
@@ -354,6 +358,16 @@ export function Inventory() {
                       </div>
                     </ScrollArea>
                   </TabsContent>
+
+                  <TabsContent value="insights" className="mt-0 p-4">
+                    <InventoryVisualizations 
+                      drinks={drinks}
+                      pourInventory={pourInventory}
+                      taxCategories={taxCategories}
+                      pourTransactions={pourTransactions}
+                    />
+                  </TabsContent>
+
                 </Tabs>
               </CardContent>
             </Card>
