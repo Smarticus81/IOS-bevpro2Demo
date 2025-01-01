@@ -8,6 +8,7 @@ import { useState } from "react";
 import { processVoiceOrder } from "@/lib/voice-order-service";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { NavBar } from "@/components/NavBar";
 
 const commandCategories = {
   system: {
@@ -228,92 +229,95 @@ function CommandExampleCard({ intent, examples }: { intent: string; examples: st
 export default function VoiceTutorialPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 
-                    dark:from-gray-900 dark:to-gray-800 p-6">
-      <div className="max-w-4xl mx-auto">
-        <motion.header 
-          className="text-center mb-8"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4
-                       bg-clip-text text-transparent bg-gradient-to-r 
-                       from-primary to-primary/70">
-            Voice Command Tutorial
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            Learn how to use voice commands effectively with our POS system.
-            Explore different categories and try example phrases for each command type.
-          </p>
-        </motion.header>
+                    dark:from-gray-900 dark:to-gray-800">
+      <NavBar />
+      <div className="p-6 pt-20">
+        <div className="max-w-4xl mx-auto">
+          <motion.header 
+            className="text-center mb-8"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4
+                         bg-clip-text text-transparent bg-gradient-to-r 
+                         from-primary to-primary/70">
+              Voice Command Tutorial
+            </h1>
+            <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              Learn how to use voice commands effectively with our POS system.
+              Explore different categories and try example phrases for each command type.
+            </p>
+          </motion.header>
 
-        <Tabs defaultValue="system" className="w-full">
-          <TabsList className="grid grid-cols-4 gap-4 bg-transparent mb-8">
-            {Object.entries(commandCategories).map(([key, category]) => (
-              <TabsTrigger
-                key={key}
-                value={key}
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground
-                         bg-white/50 dark:bg-gray-800/50 backdrop-blur-xl
-                         border border-gray-200/20 dark:border-gray-700/20
-                         shadow-lg rounded-xl"
-              >
-                {category.name}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          {Object.entries(commandCategories).map(([key, category]) => (
-            <TabsContent key={key} value={key}>
-              <motion.div 
-                className="mb-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+          <Tabs defaultValue="system" className="w-full">
+            <TabsList className="grid grid-cols-4 gap-4 bg-transparent mb-8">
+              {Object.entries(commandCategories).map(([key, category]) => (
+                <TabsTrigger
+                  key={key}
+                  value={key}
+                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground
+                           bg-white/50 dark:bg-gray-800/50 backdrop-blur-xl
+                           border border-gray-200/20 dark:border-gray-700/20
+                           shadow-lg rounded-xl"
+                >
                   {category.name}
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400 mb-6">{category.description}</p>
-              </motion.div>
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-              <ScrollArea className="h-[600px] pr-4">
-                <div className="space-y-4">
-                  {category.commands.map((command) => (
-                    <CommandExampleCard
-                      key={command.intent}
-                      intent={command.intent}
-                      examples={command.examples}
-                    />
-                  ))}
-                </div>
-              </ScrollArea>
-            </TabsContent>
-          ))}
-        </Tabs>
+            {Object.entries(commandCategories).map(([key, category]) => (
+              <TabsContent key={key} value={key}>
+                <motion.div 
+                  className="mb-6"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+                    {category.name}
+                  </h2>
+                  <p className="text-gray-600 dark:text-gray-400 mb-6">{category.description}</p>
+                </motion.div>
 
-        <motion.div 
-          className="mt-8 flex justify-center gap-4"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <Button variant="outline" className="gap-2 bg-white/50 dark:bg-gray-800/50 
-                                           backdrop-blur-xl shadow-lg rounded-xl">
-            <Settings className="h-4 w-4" />
-            Voice Settings
-          </Button>
-          <Button variant="outline" className="gap-2 bg-white/50 dark:bg-gray-800/50 
-                                           backdrop-blur-xl shadow-lg rounded-xl">
-            <Volume2 className="h-4 w-4" />
-            Test Commands
-          </Button>
-          <Button variant="outline" className="gap-2 bg-white/50 dark:bg-gray-800/50 
-                                           backdrop-blur-xl shadow-lg rounded-xl">
-            <HelpCircle className="h-4 w-4" />
-            Get Help
-          </Button>
-        </motion.div>
+                <ScrollArea className="h-[600px] pr-4">
+                  <div className="space-y-4">
+                    {category.commands.map((command) => (
+                      <CommandExampleCard
+                        key={command.intent}
+                        intent={command.intent}
+                        examples={command.examples}
+                      />
+                    ))}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+            ))}
+          </Tabs>
+
+          <motion.div 
+            className="mt-8 flex justify-center gap-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <Button variant="outline" className="gap-2 bg-white/50 dark:bg-gray-800/50 
+                                             backdrop-blur-xl shadow-lg rounded-xl">
+              <Settings className="h-4 w-4" />
+              Voice Settings
+            </Button>
+            <Button variant="outline" className="gap-2 bg-white/50 dark:bg-gray-800/50 
+                                             backdrop-blur-xl shadow-lg rounded-xl">
+              <Volume2 className="h-4 w-4" />
+              Test Commands
+            </Button>
+            <Button variant="outline" className="gap-2 bg-white/50 dark:bg-gray-800/50 
+                                             backdrop-blur-xl shadow-lg rounded-xl">
+              <HelpCircle className="h-4 w-4" />
+              Get Help
+            </Button>
+          </motion.div>
+        </div>
       </div>
     </div>
   );
