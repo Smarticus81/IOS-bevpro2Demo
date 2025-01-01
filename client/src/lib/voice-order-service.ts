@@ -14,6 +14,310 @@ interface ResponseHistory {
 const responseHistory: ResponseHistory[] = [];
 const MAX_HISTORY_LENGTH = 10;
 
+// Enhanced intent types
+type CommandIntent = 
+  | 'add_item'           // "Add two mojitos"
+  | 'remove_item'        // "Remove the last drink"
+  | 'modify_item'        // "Make that three instead"
+  | 'void_item'          // "Void the last order"
+  | 'cancel_order'       // "Cancel this order"
+  | 'split_order'        // "Split this order"
+  | 'apply_discount'     // "Apply happy hour discount"
+  | 'complete_order'     // "That's it"
+  | 'help'              // "What can I order?"
+  | 'repeat_last'        // "What was the last order?"
+  | 'undo_last'         // "Undo that"
+  | 'quantity_change'    // "Make that five instead"
+  | 'list_orders'        // "Show my orders"
+  | 'stop';             // "Stop listening"
+
+interface OrderItem {
+  name: string;
+  quantity: number;
+  modifiers?: string[];
+  id?: string;
+  price?: number;
+}
+
+interface OrderContext {
+  lastOrder?: OrderItem;
+  currentItems?: OrderItem[];
+  lastIntent?: CommandIntent;
+  emotionalTone?: 'neutral' | 'enthusiastic' | 'apologetic' | 'frustrated';
+  orderTotal?: number;
+  modificationTarget?: {
+    itemIndex: number;
+    originalQuantity: number;
+  };
+  discounts?: {
+    type: string;
+    amount: number;
+  }[];
+  conversationState?: {
+    currentTopic?: string;
+    pendingConfirmation?: boolean;
+    lastMentionedItem?: string;
+    needsClarification?: boolean;
+    uncertaintyLevel?: number;
+  };
+}
+
+interface OrderDetails {
+  items: OrderItem[];
+  specialInstructions?: string;
+  intent: CommandIntent;
+  action?: string;
+  context?: OrderContext;
+  modifications?: {
+    type: 'add' | 'remove' | 'modify' | 'void';
+    item: OrderItem;
+    previousQuantity?: number;
+  }[];
+  naturalLanguageResponse?: {
+    confidence: number;
+    alternativeIntents?: CommandIntent[];
+    needsClarification?: boolean;
+    suggestedResponse?: string;
+  };
+}
+
+interface VoiceOrderResult {
+  success: boolean;
+  order?: OrderDetails;
+  error?: string;
+}
+
+// Track order context for smarter responses
+let orderContext: OrderContext = {
+  emotionalTone: 'neutral',
+  conversationState: {
+    uncertaintyLevel: 0,
+    pendingConfirmation: false
+  }
+};
+
+// Intent patterns for better command matching
+const intentPatterns = {
+  add_item: [
+    /^(add|get|give|make|pour|bring|order)\s/i,
+    /^(i('d| would) like|can i (get|have)|may i have)\s/i,
+    /^(get|give|make|pour) me\s/i,
+    /^let('s| us) (get|have)\s/i
+  ],
+  remove_item: [
+    /^(remove|take off|delete)\s/i,
+    /(don't|do not) want|remove that|take (it|that) off/i,
+    /^(never mind|forget|scratch) (that|the)\s/i
+  ],
+  modify_item: [
+    /^(change|modify|make|adjust)\s/i,
+    /\s(instead|rather|change to|make it)\s/i,
+    /^(actually|wait|hold on)\s/i
+  ],
+  void_item: [
+    /^(void|cancel|remove)\s/i,
+    /last (drink|order|item)/i,
+    /^start (over|fresh|again)\s/i
+  ],
+  cancel_order: [
+    /^(cancel|void|stop|end)\s/i,
+    /^(the|this|entire) order\s/i,
+    /^start over|start fresh\s/i,
+    /^forget (everything|it all)\s/i,
+    /^let('s| us) start over\s/i
+  ],
+  split_order: [
+    /^(split|divide|separate)\s/i,
+    /^(the|this) order\s/i,
+    /pay separately|split (it|check|bill)/i,
+    /separate (checks|bills|payments)/i
+  ],
+  apply_discount: [
+    /^(discount|deal|offer|special)\s/i,
+    /happy hour|promotion|coupon/i,
+    /^apply (the|a)\s/i,
+    /^use (the|a|my)\s/i
+  ],
+  complete_order: [
+    /^(complete|finish|done|that's it|checkout|confirm)\s/i,
+    /^(process|submit|place order|ready)\s/i,
+    /^(okay|alright|perfect).*done\s/i
+  ],
+  help: [
+    /^(help|assist|guide|explain|what|how)\s/i,
+    /^(can (i|you)|what's available|menu)\s/i,
+    /^(show|tell) me\s/i,
+    /^what (can|do)\s/i
+  ],
+  repeat_last: [
+    /^(repeat|what|say again|last)\s/i,
+    /^(what was|previous|before)\s/i,
+    /^(sorry|excuse me|pardon)\s/i,
+    /^remind me\s/i
+  ],
+  undo_last: [
+    /^(undo|revert|go back|cancel that)\s/i,
+    /last (thing|action|change)/i,
+    /^(oops|wait|hold on)\s/i
+  ],
+  quantity_change: [
+    /make (it|that)|change to|instead/i,
+    /(\d+|one|two|three|four|five) instead/i,
+    /^actually.*(want|need)/i,
+    /maybe (just|make it|change to)/i
+  ],
+  list_orders: [
+    /^(show|list|display|what's)\s/i,
+    /^(my|the|current) order\s/i,
+    /^what('s| is) in\s/i,
+    /^remind me.*ordered\s/i
+  ],
+  stop: [
+    /^(stop|end|quit|exit|never mind)\s/i,
+    /^(listening|recording|cancel)\s/i,
+    /^(that's|thats) (all|enough)\s/i
+  ]
+};
+
+// Track processed commands to prevent duplicates
+let lastProcessedCommand = '';
+let lastProcessedTimestamp = 0;
+const COMMAND_DEBOUNCE_TIME = 2000; // 2 seconds
+
+// Common words to ignore in matching
+const commonWords = ['a', 'an', 'the', 'please', 'thank', 'you', 'get', 'have', 'would', 'like', 'can', 'could', 'will'];
+const numberWords = {
+  'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
+  'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10'
+};
+
+// Enhanced natural language understanding
+function detectNaturalLanguageIntent(text: string, context: OrderContext): {
+  intent: CommandIntent;
+  confidence: number;
+  alternativeIntents?: CommandIntent[];
+  needsClarification?: boolean;
+} {
+  const normalized = text.toLowerCase().trim();
+  let maxConfidence = 0;
+  let detectedIntent: CommandIntent = 'add_item';
+  let alternativeIntents: CommandIntent[] = [];
+
+  // Check each intent pattern with fuzzy matching
+  for (const [intent, patterns] of Object.entries(intentPatterns)) {
+    for (const pattern of patterns) {
+      const match = normalized.match(pattern);
+      if (match) {
+        // Calculate confidence based on:
+        // 1. How much of the input matches the pattern
+        // 2. Where in the input the match occurs (earlier = higher confidence)
+        // 3. How specific the pattern is
+        let confidence = match[0].length / normalized.length;
+        confidence *= (1 - match.index! / normalized.length); // Earlier matches get higher confidence
+        confidence *= pattern.toString().length / 50; // Longer patterns get higher confidence
+
+        if (confidence > maxConfidence) {
+          if (maxConfidence > 0.3) {
+            alternativeIntents.push(detectedIntent);
+          }
+          maxConfidence = confidence;
+          detectedIntent = intent as CommandIntent;
+        } else if (confidence > 0.3) {
+          alternativeIntents.push(intent as CommandIntent);
+        }
+      }
+    }
+  }
+
+  // Consider conversation context
+  if (context.lastIntent) {
+    const isRelatedToLast = isIntentRelated(detectedIntent, context.lastIntent);
+    if (isRelatedToLast) {
+      maxConfidence *= 1.2; // Boost confidence for related intents
+    }
+  }
+
+  // Check for uncertainty indicators
+  const uncertaintyKeywords = [
+    'maybe', 'perhaps', 'possibly', 'not sure', 'think', 'might',
+    'could', 'would', "i'd", 'how about'
+  ];
+
+  const hasUncertainty = uncertaintyKeywords.some(keyword => 
+    normalized.includes(keyword)
+  );
+
+  if (hasUncertainty) {
+    maxConfidence *= 0.8; // Reduce confidence when uncertainty is detected
+  }
+
+  // Check for clarification needs
+  const needsClarification = maxConfidence < 0.4 || alternativeIntents.length > 2 || hasUncertainty;
+
+  return {
+    intent: detectedIntent,
+    confidence: maxConfidence,
+    alternativeIntents: alternativeIntents.length > 0 ? alternativeIntents : undefined,
+    needsClarification
+  };
+}
+
+// Check if intents are related for better context handling
+function isIntentRelated(current: CommandIntent, previous: CommandIntent): boolean {
+  const relatedIntents: Record<CommandIntent, CommandIntent[]> = {
+    'add_item': ['modify_item', 'quantity_change', 'undo_last'],
+    'modify_item': ['add_item', 'quantity_change', 'undo_last'],
+    'remove_item': ['undo_last', 'void_item', 'cancel_order'],
+    'void_item': ['cancel_order', 'remove_item', 'undo_last'],
+    'cancel_order': ['void_item', 'undo_last'],
+    'quantity_change': ['modify_item', 'add_item'],
+    'undo_last': ['modify_item', 'remove_item', 'add_item'],
+    'complete_order': ['split_order', 'apply_discount'],
+    'split_order': ['complete_order', 'apply_discount'],
+    'apply_discount': ['complete_order', 'split_order'],
+    'help': ['repeat_last', 'list_orders'],
+    'repeat_last': ['help', 'list_orders'],
+    'list_orders': ['help', 'repeat_last'],
+    'stop': []
+  };
+
+  return relatedIntents[current]?.includes(previous) || false;
+}
+
+// Enhanced command normalization with natural language processing
+function normalizeCommand(text: string): {
+  normalized: string;
+  detectedIntent: CommandIntent;
+  confidence: number;
+  needsClarification: boolean;
+} {
+  let normalized = text.toLowerCase()
+    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Convert number words to digits
+  Object.entries(numberWords).forEach(([word, num]) => {
+    const regex = new RegExp(`\\b${word}\\b`, 'g');
+    normalized = normalized.replace(regex, num);
+  });
+
+  // Remove common filler words
+  normalized = normalized.split(' ')
+    .filter(word => !commonWords.includes(word))
+    .join(' ');
+
+  // Detect intent with natural language understanding
+  const nlpResult = detectNaturalLanguageIntent(normalized, orderContext);
+
+  return {
+    normalized,
+    detectedIntent: nlpResult.intent,
+    confidence: nlpResult.confidence,
+    needsClarification: nlpResult.needsClarification || false
+  };
+}
+
 // Enhanced response generation
 function generateContextualResponse(
   intent: CommandIntent, 
@@ -173,286 +477,280 @@ async function handleAmbiguousCommand(
   };
 }
 
-// Enhanced intent types
-type CommandIntent = 
-  | 'add_item'           // "Add two mojitos"
-  | 'remove_item'        // "Remove the last drink"
-  | 'modify_item'        // "Make that three instead"
-  | 'void_item'          // "Void the last order"
-  | 'cancel_order'       // "Cancel this order"
-  | 'split_order'        // "Split this order"
-  | 'apply_discount'     // "Apply happy hour discount"
-  | 'complete_order'     // "That's it"
-  | 'help'              // "What can I order?"
-  | 'repeat_last'        // "What was the last order?"
-  | 'undo_last'         // "Undo that"
-  | 'quantity_change'    // "Make that five instead"
-  | 'list_orders'        // "Show my orders"
-  | 'stop';             // "Stop listening"
-
-interface OrderItem {
-  name: string;
-  quantity: number;
-  modifiers?: string[];
-  id?: string;
-  price?: number;
-}
-
-interface OrderContext {
-  lastOrder?: OrderItem;
-  currentItems?: OrderItem[];
-  lastIntent?: CommandIntent;
-  emotionalTone?: 'neutral' | 'enthusiastic' | 'apologetic' | 'frustrated';
-  orderTotal?: number;
-  modificationTarget?: {
-    itemIndex: number;
-    originalQuantity: number;
-  };
-  discounts?: {
-    type: string;
-    amount: number;
-  }[];
-  conversationState?: {
-    currentTopic?: string;
-    pendingConfirmation?: boolean;
-    lastMentionedItem?: string;
-    needsClarification?: boolean;
-    uncertaintyLevel?: number;
-  };
-}
-
-interface OrderDetails {
-  items: OrderItem[];
-  specialInstructions?: string;
-  intent: CommandIntent;
-  action?: string;
-  context?: OrderContext;
-  modifications?: {
-    type: 'add' | 'remove' | 'modify' | 'void';
-    item: OrderItem;
-    previousQuantity?: number;
-  }[];
-  naturalLanguageResponse?: {
-    confidence: number;
-    alternativeIntents?: CommandIntent[];
-    needsClarification?: boolean;
-    suggestedResponse?: string;
-  };
-}
-
-interface VoiceOrderResult {
-  success: boolean;
-  order?: OrderDetails;
-  error?: string;
-}
-
-// Track order context for smarter responses
-let orderContext: OrderContext = {
-  emotionalTone: 'neutral',
-  conversationState: {
-    uncertaintyLevel: 0,
-    pendingConfirmation: false
-  }
-};
-
-// Intent patterns for better command matching
-const intentPatterns = {
-  add_item: [
-    /add|get|give|make|pour|bring|order/i,
-    /(i('d| would) like|can i (get|have)|may i have)/i,
-    /^(get|give|make|pour) me/i,
-    /^let('s| us) (get|have)/i
-  ],
-  remove_item: [
-    /remove|take off|delete/i,
-    /don't want|remove that|take (it|that) off/i,
-    /^(never mind|forget|scratch) (that|the)/i
-  ],
-  modify_item: [
-    /change|modify|make|adjust/i,
-    /instead|rather|change to|make it/i,
-    /^(actually|wait|hold on)/i
-  ],
-  void_item: [
-    /void|cancel|remove/i,
-    /last (drink|order|item)/i,
-    /^start (over|fresh|again)/i
-  ],
-  cancel_order: [
-    /cancel|void|stop|end/i,
-    /(the|this|entire) order/i,
-    /start over|start fresh/i,
-    /^forget (everything|it all)/i,
-    /let('s| us) start over/i
-  ],
-  split_order: [
-    /split|divide|separate/i,
-    /(the|this) order/i,
-    /pay separately|split (it|check|bill)/i,
-    /separate (checks|bills|payments)/i
-  ],
-  apply_discount: [
-    /discount|deal|offer|special/i,
-    /happy hour|promotion|coupon/i,
-    /^apply (the|a)/i,
-    /^use (the|a|my)/i
-  ],
-  complete_order: [
-    /complete|finish|done|that's it|checkout|confirm/i,
-    /process|submit|place order|ready/i,
-    /^(okay|alright|perfect).*done/i
-  ],
-  help: [
-    /help|assist|guide|explain|what|how/i,
-    /can (i|you)|what's available|menu/i,
-    /^(show|tell) me/i,
-    /^what (can|do)/i
-  ],
-  repeat_last: [
-    /repeat|what|say again|last/i,
-    /what was|previous|before/i,
-    /^(sorry|excuse me|pardon)/i,
-    /remind me/i
-  ],
-  undo_last: [
-    /undo|revert|go back|cancel that/i,
-    /last (thing|action|change)/i,
-    /^(oops|wait|hold on)/i
-  ],
-  quantity_change: [
-    /make (it|that)|change to|instead/i,
-    /(\d+|one|two|three|four|five) instead/i,
-    /^actually.*(want|need)/i,
-    /maybe (just|make it|change to)/i
-  ],
-  list_orders: [
-    /show|list|display|what's/i,
-    /(my|the|current) order/i,
-    /^what('s| is) in/i,
-    /remind me.*ordered/i
-  ],
-  stop: [
-    /stop|end|quit|exit|never mind/i,
-    /listening|recording|cancel/i,
-    /^(that's|thats) (all|enough)/i
-  ]
-};
-
-// Track processed commands to prevent duplicates
-let lastProcessedCommand = '';
-let lastProcessedTimestamp = 0;
-const COMMAND_DEBOUNCE_TIME = 2000; // 2 seconds
-
-// Common drink words to ignore in matching
-const commonWords = ['a', 'an', 'the', 'please', 'thank', 'you', 'get', 'have', 'would', 'like', 'can', 'could', 'will'];
-const numberWords = {
-  'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
-  'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10'
-};
-
-// Enhanced natural language understanding
-function detectNaturalLanguageIntent(text: string, context: OrderContext): {
-  intent: CommandIntent;
-  confidence: number;
-  alternativeIntents?: CommandIntent[];
-  needsClarification?: boolean;
-} {
-  const normalized = text.toLowerCase();
-  let maxConfidence = 0;
-  let detectedIntent: CommandIntent = 'add_item';
-  let alternativeIntents: CommandIntent[] = [];
-
-  // Check each intent pattern with fuzzy matching
-  for (const [intent, patterns] of Object.entries(intentPatterns)) {
-    for (const pattern of patterns) {
-      const match = normalized.match(pattern);
-      if (match) {
-        const confidence = match[0].length / normalized.length;
-        if (confidence > maxConfidence) {
-          if (maxConfidence > 0.3) {
-            alternativeIntents.push(detectedIntent);
-          }
-          maxConfidence = confidence;
-          detectedIntent = intent as CommandIntent;
-        } else if (confidence > 0.3) {
-          alternativeIntents.push(intent as CommandIntent);
-        }
-      }
-    }
+// Enhanced voice order processing with context awareness
+export async function processVoiceOrder(text: string): Promise<VoiceOrderResult> {
+  if (!text) {
+    return {
+      success: false,
+      error: 'No command received'
+    };
   }
 
-  // Consider conversation context
-  if (context.lastIntent) {
-    const isRelatedToLast = isIntentRelated(detectedIntent, context.lastIntent);
-    if (isRelatedToLast) {
-      maxConfidence *= 1.2; // Boost confidence for related intents
-    }
-  }
-
-  // Check for clarification needs
-  const needsClarification = maxConfidence < 0.4 || alternativeIntents.length > 2;
-
-  return {
-    intent: detectedIntent,
-    confidence: maxConfidence,
-    alternativeIntents: alternativeIntents.length > 0 ? alternativeIntents : undefined,
-    needsClarification
-  };
-}
-
-// Check if intents are related for better context handling
-function isIntentRelated(current: CommandIntent, previous: CommandIntent): boolean {
-  const relatedIntents: Record<CommandIntent, CommandIntent[]> = {
-    'add_item': ['modify_item', 'quantity_change', 'undo_last'],
-    'modify_item': ['add_item', 'quantity_change', 'undo_last'],
-    'remove_item': ['undo_last', 'void_item', 'cancel_order'],
-    'void_item': ['cancel_order', 'remove_item', 'undo_last'],
-    'cancel_order': ['void_item', 'undo_last'],
-    'quantity_change': ['modify_item', 'add_item'],
-    'undo_last': ['modify_item', 'remove_item', 'add_item'],
-    'complete_order': ['split_order', 'apply_discount'],
-    'split_order': ['complete_order', 'apply_discount'],
-    'apply_discount': ['complete_order', 'split_order'],
-    'help': ['repeat_last', 'list_orders'],
-    'repeat_last': ['help', 'list_orders'],
-    'list_orders': ['help', 'repeat_last'],
-    'stop': []
-  };
-
-  return relatedIntents[current]?.includes(previous) || false;
-}
-
-// Enhanced command normalization with natural language processing
-function normalizeCommand(text: string): {
-  normalized: string;
-  detectedIntent: CommandIntent;
-  confidence: number;
-  needsClarification: boolean;
-} {
-  let normalized = text.toLowerCase()
-    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  // Convert number words to digits
-  Object.entries(numberWords).forEach(([word, num]) => {
-    const regex = new RegExp(`\\b${word}\\b`, 'g');
-    normalized = normalized.replace(regex, num);
+  console.log('Processing voice command:', {
+    text,
+    currentContext: orderContext
   });
 
-  // Remove common filler words
-  normalized = normalized.split(' ')
-    .filter(word => !commonWords.includes(word))
-    .join(' ');
+  try {
+    const { normalized: normalizedCommand, detectedIntent, confidence, needsClarification } = normalizeCommand(text);
+    const now = Date.now();
 
-  // Detect intent with natural language understanding
-  const nlpResult = detectNaturalLanguageIntent(normalized, orderContext);
+    if (normalizedCommand === lastProcessedCommand && 
+        now - lastProcessedTimestamp < COMMAND_DEBOUNCE_TIME) {
+      console.log('Duplicate command detected, skipping:', normalizedCommand);
+      return { 
+        success: false,
+        error: 'Command debounced'
+      };
+    }
+
+    let finalIntent = detectedIntent;
+    let clarification: string | undefined;
+
+    // Handle ambiguous commands
+    if (needsClarification) {
+      console.log('Handling ambiguous command:', {
+        text,
+        confidence,
+        detectedIntent
+      });
+
+      const { resolvedIntent, clarification: resolvedClarification, suggestedResponse } = await handleAmbiguousCommand(
+        text,
+        confidence,
+        [detectedIntent],
+        orderContext
+      );
+
+      finalIntent = resolvedIntent;
+      clarification = resolvedClarification;
+
+      if(suggestedResponse) {
+        console.log('Using suggested response:', suggestedResponse);
+      }
+    }
+
+    const emotionalTone = detectEmotionalTone(text);
+    console.log('Detected emotional tone:', emotionalTone);
+
+    const orderDetails = await processComplexOrder(text);
+    console.log('Processed order details:', orderDetails);
+
+    // Update context
+    orderContext = {
+      ...orderContext,
+      lastIntent: finalIntent,
+      emotionalTone,
+      ...(orderDetails.items?.length && {
+        lastOrder: orderDetails.items[orderDetails.items.length - 1],
+        currentItems: orderDetails.items
+      })
+    };
+
+    // Track response history
+    responseHistory.unshift({
+      command: normalizedCommand,
+      intent: finalIntent,
+      confidence,
+      timestamp: now,
+      success: true
+    });
+
+    if (responseHistory.length > MAX_HISTORY_LENGTH) {
+      responseHistory.pop();
+    }
+
+    return {
+      success: true,
+      order: {
+        ...orderDetails,
+        intent: finalIntent,
+        context: orderContext,
+        naturalLanguageResponse: {
+          confidence,
+          needsClarification,
+          suggestedResponse: generateContextualResponse(
+            finalIntent,
+            confidence,
+            orderContext,
+            orderDetails.items
+          ),
+          alternativeIntents: needsClarification ? [detectedIntent] : undefined
+        }
+      }
+    };
+
+  } catch (error) {
+    console.error('Error processing voice order:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to process voice order';
+
+    // Track failed commands
+    responseHistory.unshift({
+      command: text,
+      intent: 'error',
+      confidence: 0,
+      timestamp: Date.now(),
+      success: false
+    });
+
+    if (responseHistory.length > MAX_HISTORY_LENGTH) {
+      responseHistory.pop();
+    }
+
+    return {
+      success: false,
+      error: errorMessage
+    };
+  }
+}
+
+// Detect emotional tone from text
+function detectEmotionalTone(text: string): OrderContext['emotionalTone'] {
+  const normalized = text.toLowerCase();
+
+  if (normalized.includes('wrong') || 
+      normalized.includes('no ') || 
+      normalized.includes('not ') || 
+      normalized.includes('incorrect')) {
+    return 'frustrated';
+  }
+
+  if (normalized.includes('great') || 
+      normalized.includes('perfect') || 
+      normalized.includes('awesome') || 
+      normalized.includes('yes')) {
+    return 'enthusiastic';
+  }
+
+  if (normalized.includes('sorry') || 
+      normalized.includes('oops') || 
+      normalized.includes('mistake')) {
+    return 'apologetic';
+  }
+
+  return 'neutral';
+}
+
+// Enhanced complex order processing with better context handling
+async function processComplexOrder(text: string): Promise<OrderDetails> {
+  if (!openai) throw new Error('Voice processing service is not configured');
+
+  const { normalized: normalizedCommand, detectedIntent, confidence, needsClarification } = normalizeCommand(text);
+  const now = Date.now();
+
+  if (normalizedCommand === lastProcessedCommand && 
+      now - lastProcessedTimestamp < COMMAND_DEBOUNCE_TIME) {
+    console.log('Duplicate complex order detected, skipping:', normalizedCommand);
+    return { 
+      items: [], 
+      intent: detectedIntent,
+      context: orderContext 
+    };
+  }
+
+  let finalIntent = detectedIntent;
+  let clarification: string | undefined;
+
+  // Handle ambiguous commands
+  if (needsClarification) {
+    console.log('Handling ambiguous command in complex order:', {
+      text,
+      confidence,
+      detectedIntent
+    });
+
+    const { resolvedIntent, clarification: resolvedClarification, suggestedResponse } = await handleAmbiguousCommand(
+      text,
+      confidence,
+      [detectedIntent],
+      orderContext
+    );
+
+    finalIntent = resolvedIntent;
+    clarification = resolvedClarification;
+    if(suggestedResponse) {
+      console.log("Using suggested response from OpenAI:", suggestedResponse);
+    }
+  }
+
+  const emotionalTone = detectEmotionalTone(text);
+  console.log('Processing complex order with tone:', emotionalTone);
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4-1106-preview",
+    messages: [
+      {
+        role: "system",
+        content: `Process bar POS voice commands.
+          Return a JSON object with:
+          {
+            "items": [{
+              "name": string,
+              "quantity": number,
+              "modifiers": string[]
+            }],
+            "intent": "${finalIntent}",
+            "action": string,
+            "context": {
+              "lastIntent": string,
+              "emotionalTone": string,
+              "modificationTarget": {
+                "itemIndex": number,
+                "originalQuantity": number
+              }
+            }
+          }`
+      },
+      {
+        role: "user",
+        content: `Previous context: ${JSON.stringify(orderContext)}
+          Current command: "${normalizedCommand}"
+          Detected intent: ${finalIntent}
+          Confidence: ${confidence}
+          Emotional tone: ${emotionalTone}`
+      }
+    ],
+    response_format: { type: "json_object" }
+  });
+
+  const parsed = JSON.parse(completion.choices[0].message.content);
+  lastProcessedCommand = normalizedCommand;
+  lastProcessedTimestamp = now;
+
+  // Update context with parsed results
+  orderContext = {
+    ...orderContext,
+    ...parsed.context,
+    emotionalTone,
+    lastIntent: finalIntent,
+    conversationState: {
+      ...orderContext.conversationState,
+      needsClarification: needsClarification,
+      uncertaintyLevel: needsClarification ? 
+        (orderContext.conversationState?.uncertaintyLevel || 0) + 1 : 
+        0
+    }
+  };
+
+  const response = generateContextualResponse(
+    finalIntent,
+    confidence,
+    orderContext,
+    parsed.items
+  );
+
+  console.log('Generated response:', response);
 
   return {
-    normalized,
-    detectedIntent: nlpResult.intent,
-    confidence: nlpResult.confidence,
-    needsClarification: nlpResult.needsClarification || false
+    ...parsed,
+    intent: finalIntent,
+    context: orderContext,
+    naturalLanguageResponse: {
+      confidence,
+      needsClarification,
+      suggestedResponse: response,
+      alternativeIntents: needsClarification ? [detectedIntent] : undefined
+    }
   };
 }
 
@@ -495,216 +793,6 @@ async function checkInventory(items: OrderItem[]): Promise<{
     console.error("Error checking inventory:", error);
     throw error;
   }
-}
-
-// Enhanced order processing with context awareness
-async function processComplexOrder(text: string): Promise<OrderDetails> {
-  if (!openai) throw new Error('Voice processing service is not configured');
-
-  const { normalized: normalizedCommand, detectedIntent, confidence, needsClarification } = normalizeCommand(text);
-  const now = Date.now();
-
-  if (normalizedCommand === lastProcessedCommand && 
-      now - lastProcessedTimestamp < COMMAND_DEBOUNCE_TIME) {
-    console.log('Duplicate complex order detected, skipping:', normalizedCommand);
-    return { 
-      items: [], 
-      intent: detectedIntent,
-      context: orderContext 
-    };
-  }
-
-  let finalIntent = detectedIntent;
-  let clarification: string | undefined;
-
-  // Handle ambiguous commands
-  if (needsClarification) {
-    const { resolvedIntent, clarification: resolvedClarification, suggestedResponse } = await handleAmbiguousCommand(
-      text,
-      confidence,
-      [detectedIntent],
-      orderContext
-    );
-    finalIntent = resolvedIntent;
-    clarification = resolvedClarification;
-    if(suggestedResponse){
-        console.log("Using suggested response from OpenAI:", suggestedResponse);
-    }
-  }
-
-  const emotionalTone = detectEmotionalTone(text);
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4-1106-preview",
-    messages: [
-      {
-        role: "system",
-        content: `Process POS voice commands.
-          Return a JSON object with: {
-            "items": [{ 
-              "name": string, 
-              "quantity": number, 
-              "modifiers": string[],
-              "id": string
-            }],
-            "intent": "${Object.keys(intentPatterns).join('" | "')}", 
-            "modifications": [{
-              "type": "add" | "remove" | "modify" | "void",
-              "item": { "name": string, "quantity": number },
-              "previousQuantity": number
-            }],
-            "context": {
-              "lastIntent": string,
-              "emotionalTone": "neutral" | "enthusiastic" | "apologetic" | "frustrated",
-              "orderTotal": number,
-              "modificationTarget": {
-                "itemIndex": number,
-                "originalQuantity": number
-              },
-              "conversationState": {
-                "currentTopic": string,
-                "pendingConfirmation": boolean,
-                "lastMentionedItem": string,
-                "needsClarification": boolean,
-                "uncertaintyLevel": number
-              }
-            }
-          }`
-      },
-      {
-        role: "user",
-        content: `Previous context: ${JSON.stringify(orderContext)}
-                 Current command: ${normalizedCommand}
-                 Detected intent: ${finalIntent}
-                 Confidence: ${confidence}`
-      }
-    ],
-    response_format: { type: "json_object" }
-  });
-
-  const parsed = JSON.parse(completion.choices[0].message.content);
-  lastProcessedCommand = normalizedCommand;
-  lastProcessedTimestamp = now;
-
-  // Update context
-  orderContext = {
-    ...orderContext,
-    ...parsed.context,
-    emotionalTone,
-    lastIntent: finalIntent
-  };
-
-  if (parsed.items?.length > 0) {
-    orderContext.lastOrder = parsed.items[parsed.items.length - 1];
-    orderContext.currentItems = parsed.items;
-
-    try {
-      const inventoryStatus = await checkInventory(parsed.items);
-      if (!inventoryStatus.available) {
-        throw new Error(
-          `Insufficient inventory for: ${inventoryStatus.insufficientItems?.join(', ')}`
-        );
-      }
-    } catch (error) {
-      console.error('Inventory check failed:', error);
-      orderContext.emotionalTone = 'apologetic';
-      throw error;
-    }
-  }
-
-  // Generate contextual response
-  const response = generateContextualResponse(
-    finalIntent,
-    confidence,
-    orderContext,
-    parsed.items
-  );
-
-  // Track response history
-  responseHistory.unshift({
-    command: normalizedCommand,
-    intent: finalIntent,
-    confidence,
-    timestamp: now,
-    success: true
-  });
-
-  if (responseHistory.length > MAX_HISTORY_LENGTH) {
-    responseHistory.pop();
-  }
-
-  return {
-    ...parsed,
-    intent: finalIntent,
-    context: orderContext,
-    naturalLanguageResponse: {
-      confidence,
-      needsClarification: needsClarification,
-      suggestedResponse: response,
-      alternativeIntents: needsClarification ? [detectedIntent] : undefined
-    }
-  };
-}
-
-// Enhanced voice order processing with intent handling
-export async function processVoiceOrder(text: string): Promise<VoiceOrderResult> {
-  if (!text) {
-    return {
-      success: false,
-      error: 'No command received'
-    };
-  }
-
-  try {
-    const orderDetails = await processComplexOrder(text);
-    console.log('Voice command processed:', orderDetails);
-
-    return {
-      success: true,
-      order: orderDetails
-    };
-
-  } catch (error) {
-    console.error('Error processing voice order:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to process voice order';
-    responseHistory.unshift({
-      command: text,
-      intent: 'error',
-      confidence: 0,
-      timestamp: Date.now(),
-      success: false
-    });
-    return {
-      success: false,
-      error: errorMessage
-    };
-  }
-}
-
-// Detect emotional tone from text
-function detectEmotionalTone(text: string): OrderContext['emotionalTone'] {
-  const normalized = text.toLowerCase();
-
-  if (normalized.includes('wrong') || 
-      normalized.includes('no ') || 
-      normalized.includes('not ') || 
-      normalized.includes('incorrect')) {
-    return 'frustrated';
-  }
-
-  if (normalized.includes('great') || 
-      normalized.includes('perfect') || 
-      normalized.includes('awesome') || 
-      normalized.includes('yes')) {
-    return 'enthusiastic';
-  }
-
-  if (normalized.includes('sorry') || 
-      normalized.includes('oops') || 
-      normalized.includes('mistake')) {
-    return 'apologetic';
-  }
-
-  return 'neutral';
 }
 
 // Initialize OpenAI client with proper error handling
