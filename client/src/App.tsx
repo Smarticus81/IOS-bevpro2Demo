@@ -5,6 +5,7 @@ import { Events } from "@/pages/Events";
 import { Settings } from "@/pages/Settings";
 import { Dashboard } from "@/pages/Dashboard";
 import { PaymentConfirmation } from "@/pages/PaymentConfirmation";
+import VoiceTutorialPage from "@/pages/VoiceTutorialPage";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -39,6 +40,7 @@ function App() {
         <Route path="/events" component={Events} />
         <Route path="/settings" component={Settings} />
         <Route path="/payment-confirmation" component={PaymentConfirmation} />
+        <Route path="/voice-tutorial" component={VoiceTutorialPage} />
         <Route component={NotFound} />
       </Switch>
       <OrderSummaryDrawer />
