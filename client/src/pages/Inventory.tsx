@@ -4,7 +4,7 @@ import { NavBar } from "@/components/NavBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Package, AlertTriangle, Search, Plus, History } from "lucide-react";
+import { Package, AlertTriangle, Search, Plus, History, Beer, Wine, Coffee } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,20 +32,49 @@ export function Inventory() {
     queryKey: ["/api/pour-transactions"]
   });
 
-  const filteredInventory = pourInventory.filter(item => {
-    const drink = drinks.find(d => d.id === item.drink_id);
-    return drink?.name.toLowerCase().includes(search.toLowerCase()) ||
-           drink?.category.toLowerCase().includes(search.toLowerCase());
-  });
+  const getBeverageIcon = (category: string) => {
+    switch (category.toLowerCase()) {
+      case 'beer': return <Beer className="h-4 w-4 text-amber-500" />;
+      case 'wine': return <Wine className="h-4 w-4 text-purple-500" />;
+      case 'non-alcoholic': return <Coffee className="h-4 w-4 text-blue-500" />;
+      default: return <Package className="h-4 w-4 text-primary" />;
+    }
+  };
+
+  const needsPourTracking = (category: string) => {
+    return ['spirits', 'classics', 'signature'].includes(category.toLowerCase());
+  };
+
+  const filteredInventory = {
+    pourTracked: pourInventory.filter(item => {
+      const drink = drinks.find(d => d.id === item.drink_id);
+      return drink && needsPourTracking(drink.category) &&
+             (drink.name.toLowerCase().includes(search.toLowerCase()) ||
+              drink.category.toLowerCase().includes(search.toLowerCase()));
+    }),
+    packageTracked: drinks.filter(drink => 
+      !needsPourTracking(drink.category) &&
+      (drink.name.toLowerCase().includes(search.toLowerCase()) ||
+       drink.category.toLowerCase().includes(search.toLowerCase()))
+    )
+  };
 
   const getLowStockBottles = () => 
     pourInventory.filter(item => 
       (item.remaining_volume_ml / item.initial_volume_ml) < 0.2 && item.is_active
     );
 
+  const getLowStockPackages = () =>
+    drinks.filter(drink => 
+      !needsPourTracking(drink.category) && drink.inventory < 10
+    );
+
   const getTotalTaxOwed = () => {
     return pourTransactions.reduce((total, transaction) => {
-      return total + (transaction.tax_amount || 0);
+      if (typeof transaction.tax_amount === 'number') {
+        return total + transaction.tax_amount;
+      }
+      return total;
     }, 0);
   };
 
@@ -56,8 +85,8 @@ export function Inventory() {
       <div className="px-4 pt-20 pb-8 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Pour Inventory Management</h1>
-            <p className="text-white/70">Track pour-level inventory and tax calculations</p>
+            <h1 className="text-3xl font-bold text-white mb-2">Beverage Inventory Management</h1>
+            <p className="text-white/70">Track all beverage inventory with specialized pour and package tracking</p>
           </div>
 
           <div className="grid gap-6">
@@ -68,9 +97,10 @@ export function Inventory() {
                   <div className="flex items-center gap-4">
                     <Package className="h-6 w-6 text-primary" />
                     <div>
-                      <p className="text-sm text-gray-600">Active Bottles</p>
+                      <p className="text-sm text-gray-600">Active Inventory</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {pourInventory.filter(i => i.is_active).length}
+                        {pourInventory.filter(i => i.is_active).length + 
+                         drinks.filter(d => !needsPourTracking(d.category)).length}
                       </p>
                     </div>
                   </div>
@@ -84,7 +114,7 @@ export function Inventory() {
                     <div>
                       <p className="text-sm text-gray-600">Low Stock</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {getLowStockBottles().length}
+                        {getLowStockBottles().length + getLowStockPackages().length}
                       </p>
                     </div>
                   </div>
@@ -96,11 +126,12 @@ export function Inventory() {
                   <div className="flex items-center gap-4">
                     <History className="h-6 w-6 text-emerald-500" />
                     <div>
-                      <p className="text-sm text-gray-600">Pours Today</p>
+                      <p className="text-sm text-gray-600">Today's Activity</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {pourTransactions.filter(t => 
-                          new Date(t.transaction_time).toDateString() === new Date().toDateString()
-                        ).length}
+                        {pourTransactions.filter(t => {
+                          const date = t.transaction_time ? new Date(t.transaction_time) : null;
+                          return date && date.toDateString() === new Date().toDateString();
+                        }).length}
                       </p>
                     </div>
                   </div>
@@ -125,7 +156,7 @@ export function Inventory() {
             {/* Main Content */}
             <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
               <CardHeader className="p-4 flex flex-row items-center justify-between">
-                <CardTitle>Pour Inventory</CardTitle>
+                <CardTitle>Inventory Management</CardTitle>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
                     <Search className="h-4 w-4 text-gray-500" />
@@ -138,26 +169,26 @@ export function Inventory() {
                   </div>
                   <Button variant="outline" size="sm" className="gap-2">
                     <Plus className="h-4 w-4" />
-                    Add Bottle
+                    Add Item
                   </Button>
                 </div>
               </CardHeader>
 
               <CardContent className="p-0">
-                <Tabs defaultValue="active" className="w-full">
+                <Tabs defaultValue="pour" className="w-full">
                   <TabsList className="w-full justify-start rounded-none border-b p-0">
-                    <TabsTrigger value="active" className="rounded-none border-b-2 data-[state=active]:border-primary">
-                      Active Bottles
+                    <TabsTrigger value="pour" className="rounded-none border-b-2 data-[state=active]:border-primary">
+                      Pour Tracked Items
                     </TabsTrigger>
-                    <TabsTrigger value="empty" className="rounded-none border-b-2 data-[state=active]:border-primary">
-                      Empty/Archived
+                    <TabsTrigger value="package" className="rounded-none border-b-2 data-[state=active]:border-primary">
+                      Package Tracked Items
                     </TabsTrigger>
                     <TabsTrigger value="transactions" className="rounded-none border-b-2 data-[state=active]:border-primary">
-                      Pour History
+                      Transaction History
                     </TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="active" className="mt-0">
+                  <TabsContent value="pour" className="mt-0">
                     <ScrollArea className="h-[60vh]">
                       <div className="w-full">
                         <div className="grid grid-cols-8 gap-4 p-4 text-sm font-medium text-gray-500 border-b">
@@ -171,7 +202,7 @@ export function Inventory() {
                         </div>
 
                         <div className="divide-y">
-                          {filteredInventory.filter(item => item.is_active).map((item) => {
+                          {filteredInventory.pourTracked.map((item) => {
                             const drink = drinks.find(d => d.id === item.drink_id);
                             const taxCategory = taxCategories.find(t => t.id === item.tax_category_id);
                             const remainingPercentage = (item.remaining_volume_ml / item.initial_volume_ml) * 100;
@@ -183,9 +214,12 @@ export function Inventory() {
                                 animate={{ opacity: 1 }}
                                 className="grid grid-cols-8 gap-4 p-4 items-center hover:bg-gray-50/50"
                               >
-                                <div className="col-span-2 font-medium text-gray-900">
-                                  {drink?.name}
-                                  <div className="text-xs text-gray-500">{drink?.category}</div>
+                                <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
+                                  {getBeverageIcon(drink?.category || '')}
+                                  <div>
+                                    {drink?.name}
+                                    <div className="text-xs text-gray-500">{drink?.category}</div>
+                                  </div>
                                 </div>
                                 <div className="font-mono text-sm">{item.bottle_id}</div>
                                 <div>{taxCategory?.name || 'N/A'}</div>
@@ -223,17 +257,57 @@ export function Inventory() {
                     </ScrollArea>
                   </TabsContent>
 
-                  <TabsContent value="empty" className="mt-0">
-                    {/* Similar structure for empty/archived bottles */}
+                  <TabsContent value="package" className="mt-0">
+                    <ScrollArea className="h-[60vh]">
+                      <div className="w-full">
+                        <div className="grid grid-cols-6 gap-4 p-4 text-sm font-medium text-gray-500 border-b">
+                          <div className="col-span-2">Item</div>
+                          <div>Category</div>
+                          <div>Price</div>
+                          <div>In Stock</div>
+                          <div>Status</div>
+                        </div>
+
+                        <div className="divide-y">
+                          {filteredInventory.packageTracked.map((drink) => (
+                            <motion.div
+                              key={drink.id}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className="grid grid-cols-6 gap-4 p-4 items-center hover:bg-gray-50/50"
+                            >
+                              <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
+                                {getBeverageIcon(drink.category)}
+                                <div>
+                                  {drink.name}
+                                  <div className="text-xs text-gray-500">{drink.subcategory}</div>
+                                </div>
+                              </div>
+                              <div>{drink.category}</div>
+                              <div>${drink.price}</div>
+                              <div>{drink.inventory} units</div>
+                              <div>
+                                <Badge
+                                  variant={drink.inventory < 10 ? "destructive" : "default"}
+                                  className="bg-gradient-to-b from-zinc-800 to-black text-white shadow-sm"
+                                >
+                                  {drink.inventory < 10 ? "Low" : "OK"}
+                                </Badge>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    </ScrollArea>
                   </TabsContent>
 
                   <TabsContent value="transactions" className="mt-0">
                     <ScrollArea className="h-[60vh]">
                       <div className="w-full">
                         <div className="grid grid-cols-7 gap-4 p-4 text-sm font-medium text-gray-500 border-b">
-                          <div className="col-span-2">Drink</div>
-                          <div>Pour Size</div>
-                          <div>Volume</div>
+                          <div className="col-span-2">Item</div>
+                          <div>Type</div>
+                          <div>Quantity</div>
                           <div>Tax Amount</div>
                           <div>Time</div>
                           <div>Staff</div>
@@ -251,15 +325,26 @@ export function Inventory() {
                                 animate={{ opacity: 1 }}
                                 className="grid grid-cols-7 gap-4 p-4 items-center hover:bg-gray-50/50"
                               >
-                                <div className="col-span-2 font-medium text-gray-900">
-                                  {drink?.name}
-                                  <div className="text-xs text-gray-500">{drink?.category}</div>
+                                <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
+                                  {getBeverageIcon(drink?.category || '')}
+                                  <div>
+                                    {drink?.name}
+                                    <div className="text-xs text-gray-500">{drink?.category}</div>
+                                  </div>
                                 </div>
-                                <div>{transaction.pour_size_id}</div>
-                                <div>{transaction.volume_ml}ml</div>
+                                <div>{transaction.pour_size_id ? 'Pour' : 'Package'}</div>
+                                <div>
+                                  {transaction.volume_ml 
+                                    ? `${transaction.volume_ml}ml`
+                                    : '1 unit'
+                                  }
+                                </div>
                                 <div>${transaction.tax_amount?.toFixed(2) || '0.00'}</div>
                                 <div className="text-sm text-gray-500">
-                                  {new Date(transaction.transaction_time).toLocaleTimeString()}
+                                  {transaction.transaction_time
+                                    ? new Date(transaction.transaction_time).toLocaleTimeString()
+                                    : 'N/A'
+                                  }
                                 </div>
                                 <div className="text-sm">Staff #{transaction.staff_id}</div>
                               </motion.div>
