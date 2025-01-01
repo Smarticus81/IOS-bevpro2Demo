@@ -481,6 +481,92 @@ async function handleAmbiguousCommand(
   };
 }
 
+
+interface DrinkMatch {
+  name: string;
+  variations: string[];
+  matchCount: number;
+  lastMatched: number;
+}
+
+class DrinkNameCache {
+  private cache: Map<string, DrinkMatch>;
+  private readonly MAX_VARIATIONS = 5;
+
+  constructor() {
+    this.cache = new Map();
+  }
+
+  addDrink(name: string) {
+    if (!this.cache.has(name)) {
+      this.cache.set(name, {
+        name,
+        variations: [],
+        matchCount: 0,
+        lastMatched: Date.now()
+      });
+    }
+  }
+
+  addVariation(originalName: string, variation: string) {
+    const drink = this.cache.get(originalName);
+    if (drink) {
+      if (!drink.variations.includes(variation)) {
+        drink.variations = [variation, ...drink.variations]
+          .slice(0, this.MAX_VARIATIONS);
+      }
+      drink.matchCount++;
+      drink.lastMatched = Date.now();
+    }
+  }
+
+  findBestMatch(input: string): { name: string; confidence: number } | null {
+    let bestMatch = null;
+    let highestScore = -Infinity;
+
+    // First try exact matches including variations
+    for (const [name, drink] of this.cache.entries()) {
+      if (input.toLowerCase() === name.toLowerCase()) {
+        return { name, confidence: 1.0 };
+      }
+
+      for (const variation of drink.variations) {
+        if (input.toLowerCase() === variation.toLowerCase()) {
+          return { name, confidence: 0.95 };
+        }
+      }
+    }
+
+    // Then try fuzzy matching
+    const allDrinkNames = Array.from(this.cache.keys());
+    const fuzzyResults = fuzzysort.go(input, allDrinkNames, {
+      threshold: -10000,
+      limit: 1
+    });
+
+    if (fuzzyResults.length > 0) {
+      const topResult = fuzzyResults[0];
+      const normalizedScore = (topResult.score + 1000) / 1000; // Convert to 0-1 range
+      if (normalizedScore > 0.6) {
+        bestMatch = {
+          name: topResult.target,
+          confidence: normalizedScore
+        };
+      }
+    }
+
+    return bestMatch;
+  }
+
+  getPrioritizedDrinks(): string[] {
+    return Array.from(this.cache.values())
+      .sort((a, b) => b.matchCount - a.matchCount)
+      .map(drink => drink.name);
+  }
+}
+
+const drinkNameCache = new DrinkNameCache();
+
 // Enhanced voice order processing
 export async function processVoiceOrder(text: string): Promise<VoiceOrderResult> {
   if (!text) {
@@ -495,9 +581,29 @@ export async function processVoiceOrder(text: string): Promise<VoiceOrderResult>
     currentContext: orderContext
   });
 
+  // Initialize drink cache if needed
+  if (orderContext.currentItems?.length) {
+    orderContext.currentItems.forEach(item => {
+      drinkNameCache.addDrink(item.name);
+    });
+  }
+
   try {
     const { normalized: normalizedCommand, detectedIntent, confidence, needsClarification } = normalizeCommand(text);
     const now = Date.now();
+
+    // Try to match drink names in the command
+    const words = normalizedCommand.split(' ');
+    for (let i = 0; i < words.length; i++) {
+      const phrase = words.slice(i).join(' ');
+      const match = drinkNameCache.findBestMatch(phrase);
+      if (match) {
+        console.log('Found drink name match:', match);
+        // Add successful matches to variations
+        drinkNameCache.addVariation(match.name, phrase);
+        break;
+      }
+    }
 
     if (normalizedCommand === lastProcessedCommand &&
       now - lastProcessedTimestamp < COMMAND_DEBOUNCE_TIME) {
@@ -699,12 +805,15 @@ async function processComplexOrder(text: string): Promise<OrderDetails> {
   const emotionalTone = detectEmotionalTone(text);
   console.log('Processing complex order with tone:', emotionalTone);
 
+  const prioritizedDrinks = drinkNameCache.getPrioritizedDrinks();
+
   const completion = await openai.chat.completions.create({
     model: "gpt-4-1106-preview",
     messages: [
       {
         role: "system",
         content: `Process bar POS voice commands.
+          Available drinks in order of popularity: ${prioritizedDrinks.join(', ')}.
           Return a JSON object with:
           {
             "items": [{
