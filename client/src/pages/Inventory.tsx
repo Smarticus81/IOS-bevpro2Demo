@@ -1,141 +1,132 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { NavBar } from "@/components/NavBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Package, AlertTriangle, Search } from "lucide-react";
+import { Package, AlertTriangle, Search, Plus, History } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import type { Drink } from "@db/schema";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { Drink, PourInventory, TaxCategory, PourTransaction } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
-import { InventoryAnalytics } from "@/components/InventoryAnalytics";
-import { InventoryAlert } from "@/components/InventoryAlert";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 export function Inventory() {
   const [search, setSearch] = useState("");
-  const [inventoryChanges, setInventoryChanges] = useState<Record<number, number>>({});
-  const [alerts, setAlerts] = useState<Array<{
-    id: string;
-    type: 'warning' | 'error' | 'success';
-    message: string;
-    timestamp: Date;
-  }>>([]);
   const { toast } = useToast();
-  
+
   const { data: drinks = [] } = useQuery<Drink[]>({
     queryKey: ["/api/drinks"]
   });
 
-  const updateInventoryMutation = useMutation({
-    mutationFn: async (updates: { id: number; inventory: number }[]) => {
-      const response = await fetch("/api/inventory/bulk-update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ updates })
-      });
-      if (!response.ok) throw new Error("Failed to update inventory");
-      return response.json();
-    }
+  const { data: pourInventory = [] } = useQuery<PourInventory[]>({
+    queryKey: ["/api/pour-inventory"]
   });
 
-  const filteredDrinks = drinks.filter(drink =>
-    drink.name.toLowerCase().includes(search.toLowerCase()) ||
-    drink.category.toLowerCase().includes(search.toLowerCase())
-  );
+  const { data: taxCategories = [] } = useQuery<TaxCategory[]>({
+    queryKey: ["/api/tax-categories"]
+  });
+
+  const { data: pourTransactions = [] } = useQuery<PourTransaction[]>({
+    queryKey: ["/api/pour-transactions"]
+  });
+
+  const filteredInventory = pourInventory.filter(item => {
+    const drink = drinks.find(d => d.id === item.drink_id);
+    return drink?.name.toLowerCase().includes(search.toLowerCase()) ||
+           drink?.category.toLowerCase().includes(search.toLowerCase());
+  });
+
+  const getLowStockBottles = () => 
+    pourInventory.filter(item => 
+      (item.remaining_volume_ml / item.initial_volume_ml) < 0.2 && item.is_active
+    );
+
+  const getTotalTaxOwed = () => {
+    return pourTransactions.reduce((total, transaction) => {
+      return total + (transaction.tax_amount || 0);
+    }, 0);
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <NavBar />
-      <InventoryAlert 
-        alerts={alerts}
-        onDismiss={(id) => setAlerts(prev => prev.filter(alert => alert.id !== id))}
-      />
-      
-      <div className="container mx-auto p-4 lg:p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Inventory Management</h1>
-          <p className="text-white/70">Monitor and manage your beverage inventory</p>
-        </div>
 
-        <div className="grid gap-6">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl 
-                            hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <Package className="h-8 w-8 text-primary" />
-                    <div>
-                      <p className="text-sm text-gray-600">Total Items</p>
-                      <p className="text-2xl font-bold text-gray-900">{drinks.length}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.1 }}
-            >
-              <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl
-                            hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <AlertTriangle className="h-8 w-8 text-yellow-500" />
-                    <div>
-                      <p className="text-sm text-gray-600">Low Stock Items</p>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {drinks.filter(d => d.inventory < 10).length}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.2 }}
-            >
-              <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl
-                            hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <Package className="h-8 w-8 text-emerald-500" />
-                    <div>
-                      <p className="text-sm text-gray-600">Categories</p>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {new Set(drinks.map(d => d.category)).size}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
+      <div className="px-4 pt-20 pb-8 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-white mb-2">Pour Inventory Management</h1>
+            <p className="text-white/70">Track pour-level inventory and tax calculations</p>
           </div>
 
-          {/* Analytics Dashboard */}
-          <InventoryAnalytics drinks={drinks} />
+          <div className="grid gap-6">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-4">
+                    <Package className="h-6 w-6 text-primary" />
+                    <div>
+                      <p className="text-sm text-gray-600">Active Bottles</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {pourInventory.filter(i => i.is_active).length}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          {/* Inventory List */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.3 }}
-          >
+              <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-4">
+                    <AlertTriangle className="h-6 w-6 text-yellow-500" />
+                    <div>
+                      <p className="text-sm text-gray-600">Low Stock</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {getLowStockBottles().length}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-4">
+                    <History className="h-6 w-6 text-emerald-500" />
+                    <div>
+                      <p className="text-sm text-gray-600">Pours Today</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {pourTransactions.filter(t => 
+                          new Date(t.transaction_time).toDateString() === new Date().toDateString()
+                        ).length}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-4">
+                    <AlertTriangle className="h-6 w-6 text-blue-500" />
+                    <div>
+                      <p className="text-sm text-gray-600">Tax Owed</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        ${getTotalTaxOwed().toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Main Content */}
             <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Inventory List</CardTitle>
+              <CardHeader className="p-4 flex flex-row items-center justify-between">
+                <CardTitle>Pour Inventory</CardTitle>
+                <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
                     <Search className="h-4 w-4 text-gray-500" />
                     <Input
@@ -145,94 +136,143 @@ export function Inventory() {
                       className="w-[200px]"
                     />
                   </div>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Bottle
+                  </Button>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="rounded-lg border">
-                  <div className="grid grid-cols-5 gap-4 p-4 font-medium text-sm text-gray-600 border-b">
-                    <div>Item</div>
-                    <div>Category</div>
-                    <div className="text-center">Price</div>
-                    <div className="text-center">Stock</div>
-                    <div className="text-center">Status</div>
-                  </div>
-                  <AnimatePresence>
-                    <div className="divide-y">
-                      {filteredDrinks.map((drink) => (
-                        <motion.div
-                          key={drink.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: 20 }}
-                          transition={{ duration: 0.3, ease: "easeOut" }}
-                          className="grid grid-cols-5 gap-4 p-4 items-center hover:bg-gray-50/50 transition-colors duration-200"
-                        >
-                          <div className="font-medium text-gray-900">{drink.name}</div>
-                          <div className="text-gray-600">{drink.category}</div>
-                          <div className="text-center text-gray-900">${drink.price}</div>
-                          <div className="text-center">
-                            <Input
-                              type="number"
-                              value={inventoryChanges[drink.id] ?? drink.inventory}
-                              onChange={(e) => {
-                                const value = parseInt(e.target.value) || 0;
-                                setInventoryChanges(prev => ({
-                                  ...prev,
-                                  [drink.id]: value
-                                }));
-                              }}
-                              className="w-20 mx-auto text-center"
-                              min={0}
-                            />
-                          </div>
-                          <div className="text-center">
-                            <Badge 
-                              variant={drink.inventory > 10 ? "default" : "destructive"}
-                              className="bg-gradient-to-b from-zinc-800 to-black text-white shadow-sm"
-                            >
-                              {drink.inventory > 10 ? "In Stock" : "Low Stock"}
-                            </Badge>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </AnimatePresence>
-                </div>
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.5 }}
-                  className="mt-4"
-                >
-                  <Button
-                    onClick={() => {
-                      const updates = Object.entries(inventoryChanges).map(([id, inventory]) => ({
-                        id: parseInt(id),
-                        inventory
-                      }));
-                      if (updates.length > 0) {
-                        updateInventoryMutation.mutate(updates, {
-                          onSuccess: () => {
-                            toast({
-                              title: "Inventory Updated",
-                              description: "Changes have been saved successfully"
-                            });
-                            setInventoryChanges({});
-                          }
-                        });
-                      }
-                    }}
-                    disabled={Object.keys(inventoryChanges).length === 0 || updateInventoryMutation.isPending}
-                    className="w-full bg-gradient-to-b from-zinc-800 to-black text-white shadow-sm 
-                             hover:shadow-lg hover:from-zinc-700 hover:to-black 
-                             active:scale-[0.99] transform transition-all duration-200"
-                  >
-                    {updateInventoryMutation.isPending ? "Saving..." : "Save Changes"}
-                  </Button>
-                </motion.div>
+
+              <CardContent className="p-0">
+                <Tabs defaultValue="active" className="w-full">
+                  <TabsList className="w-full justify-start rounded-none border-b p-0">
+                    <TabsTrigger value="active" className="rounded-none border-b-2 data-[state=active]:border-primary">
+                      Active Bottles
+                    </TabsTrigger>
+                    <TabsTrigger value="empty" className="rounded-none border-b-2 data-[state=active]:border-primary">
+                      Empty/Archived
+                    </TabsTrigger>
+                    <TabsTrigger value="transactions" className="rounded-none border-b-2 data-[state=active]:border-primary">
+                      Pour History
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="active" className="mt-0">
+                    <ScrollArea className="h-[60vh]">
+                      <div className="w-full">
+                        <div className="grid grid-cols-8 gap-4 p-4 text-sm font-medium text-gray-500 border-b">
+                          <div className="col-span-2">Drink</div>
+                          <div>Bottle ID</div>
+                          <div>Tax Category</div>
+                          <div>Initial Vol.</div>
+                          <div>Remaining</div>
+                          <div>Last Pour</div>
+                          <div>Status</div>
+                        </div>
+
+                        <div className="divide-y">
+                          {filteredInventory.filter(item => item.is_active).map((item) => {
+                            const drink = drinks.find(d => d.id === item.drink_id);
+                            const taxCategory = taxCategories.find(t => t.id === item.tax_category_id);
+                            const remainingPercentage = (item.remaining_volume_ml / item.initial_volume_ml) * 100;
+
+                            return (
+                              <motion.div
+                                key={item.id}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="grid grid-cols-8 gap-4 p-4 items-center hover:bg-gray-50/50"
+                              >
+                                <div className="col-span-2 font-medium text-gray-900">
+                                  {drink?.name}
+                                  <div className="text-xs text-gray-500">{drink?.category}</div>
+                                </div>
+                                <div className="font-mono text-sm">{item.bottle_id}</div>
+                                <div>{taxCategory?.name || 'N/A'}</div>
+                                <div>{item.initial_volume_ml}ml</div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-16 bg-gray-200 rounded-full h-2">
+                                      <div
+                                        className="bg-primary rounded-full h-2"
+                                        style={{ width: `${remainingPercentage}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-sm">{Math.round(remainingPercentage)}%</span>
+                                  </div>
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {item.last_pour_at 
+                                    ? new Date(item.last_pour_at).toLocaleDateString()
+                                    : 'Never'
+                                  }
+                                </div>
+                                <div>
+                                  <Badge
+                                    variant={remainingPercentage < 20 ? "destructive" : "default"}
+                                    className="bg-gradient-to-b from-zinc-800 to-black text-white shadow-sm"
+                                  >
+                                    {remainingPercentage < 20 ? "Low" : "OK"}
+                                  </Badge>
+                                </div>
+                              </motion.div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+
+                  <TabsContent value="empty" className="mt-0">
+                    {/* Similar structure for empty/archived bottles */}
+                  </TabsContent>
+
+                  <TabsContent value="transactions" className="mt-0">
+                    <ScrollArea className="h-[60vh]">
+                      <div className="w-full">
+                        <div className="grid grid-cols-7 gap-4 p-4 text-sm font-medium text-gray-500 border-b">
+                          <div className="col-span-2">Drink</div>
+                          <div>Pour Size</div>
+                          <div>Volume</div>
+                          <div>Tax Amount</div>
+                          <div>Time</div>
+                          <div>Staff</div>
+                        </div>
+
+                        <div className="divide-y">
+                          {pourTransactions.map((transaction) => {
+                            const inventory = pourInventory.find(i => i.id === transaction.pour_inventory_id);
+                            const drink = drinks.find(d => d.id === inventory?.drink_id);
+
+                            return (
+                              <motion.div
+                                key={transaction.id}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="grid grid-cols-7 gap-4 p-4 items-center hover:bg-gray-50/50"
+                              >
+                                <div className="col-span-2 font-medium text-gray-900">
+                                  {drink?.name}
+                                  <div className="text-xs text-gray-500">{drink?.category}</div>
+                                </div>
+                                <div>{transaction.pour_size_id}</div>
+                                <div>{transaction.volume_ml}ml</div>
+                                <div>${transaction.tax_amount?.toFixed(2) || '0.00'}</div>
+                                <div className="text-sm text-gray-500">
+                                  {new Date(transaction.transaction_time).toLocaleTimeString()}
+                                </div>
+                                <div className="text-sm">Staff #{transaction.staff_id}</div>
+                              </motion.div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
-          </motion.div>
+          </div>
         </div>
       </div>
     </div>
