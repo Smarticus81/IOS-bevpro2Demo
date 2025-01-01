@@ -18,9 +18,9 @@ class SoundEffects {
     try {
       this.audioContext = new AudioContext();
 
-      // Create and configure master gain
+      // Create and configure master gain with lower volume
       this.masterGain = this.audioContext.createGain();
-      this.masterGain.gain.value = 0.15; // Reduced overall volume
+      this.masterGain.gain.value = 0.12; // Reduced overall volume
 
       // Create and configure compressor for better dynamics
       this.compressor = this.audioContext.createDynamicsCompressor();
@@ -106,86 +106,65 @@ class SoundEffects {
   }
 
   async playWakeWord() {
-    // Quick ascending arpeggio
-    await this.playTone(523.25, 0.06, { // C5
+    // Pleasant ascending major third
+    await this.playTone(440, 0.08, { // A4
       type: 'sine',
-      detune: 2,
-      attack: 0.01,
-      decay: 0.02,
-      sustain: 0.8
-    });
-    await this.playTone(659.25, 0.06, { // E5
-      type: 'sine',
-      detune: -2,
-      attack: 0.01,
-      decay: 0.02,
-      sustain: 0.8
-    });
-  }
-
-  async playSuccess() {
-    // Quick major chord
-    await Promise.all([
-      this.playTone(523.25, 0.1, { // C5
-        type: 'sine',
-        attack: 0.01,
-        sustain: 0.8,
-        detune: 2
-      }),
-      this.playTone(659.25, 0.1, { // E5
-        type: 'sine',
-        attack: 0.01,
-        sustain: 0.7,
-        detune: -2
-      }),
-      this.playTone(783.99, 0.1, { // G5
-        type: 'sine',
-        attack: 0.01,
-        sustain: 0.6,
-        detune: 1
-      })
-    ]);
-  }
-
-  async playError() {
-    // Quick descending minor third
-    await this.playTone(523.25, 0.08, { // C5
-      type: 'sine',
-      attack: 0.01,
-      decay: 0.03,
-      sustain: 0.7,
+      attack: 0.02,
+      decay: 0.01,
+      sustain: 0.8,
       release: 0.02
     });
-    await this.playTone(440.00, 0.1, { // A4
+    await this.playTone(554.37, 0.1, { // C#5
       type: 'sine',
       attack: 0.01,
-      decay: 0.03,
-      sustain: 0.6,
+      decay: 0.02,
+      sustain: 0.7,
       release: 0.03
     });
   }
 
+  async playSuccess() {
+    // Pleasant major chord with slight arpeggio
+    await Promise.all([
+      this.playTone(440.00, 0.15, { // A4
+        type: 'sine',
+        attack: 0.02,
+        sustain: 0.8,
+      }),
+      this.playTone(554.37, 0.15, { // C#5
+        type: 'sine',
+        attack: 0.03,
+        sustain: 0.7,
+        detune: -2
+      }),
+      this.playTone(659.25, 0.15, { // E5
+        type: 'sine',
+        attack: 0.04,
+        sustain: 0.6,
+        detune: 2
+      })
+    ]);
+  }
+
   async playListeningStart() {
-    // Single quick bright tone
-    await this.playTone(880, 0.06, { // A5
+    // Single gentle tone
+    await this.playTone(554.37, 0.08, { // C#5
       type: 'sine',
-      attack: 0.01,
-      decay: 0.02,
+      attack: 0.02,
+      decay: 0.01,
       sustain: 0.8,
-      release: 0.02,
-      detune: 2
+      release: 0.02
     });
   }
 
   async playListeningStop() {
-    // Quick mellow tone
-    await this.playTone(659.25, 0.08, { // E5
+    // Gentle descending tone
+    await this.playTone(440.00, 0.1, { // A4
       type: 'sine',
-      attack: 0.01,
-      decay: 0.03,
+      attack: 0.02,
+      decay: 0.02,
       sustain: 0.7,
-      release: 0.02,
-      detune: -2
+      release: 0.03
     });
   }
 }
