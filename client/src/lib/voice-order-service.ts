@@ -19,22 +19,16 @@ interface ResponseHistory {
 const responseHistory: ResponseHistory[] = [];
 const MAX_HISTORY_LENGTH = 10;
 
-// Enhanced intent types
-type CommandIntent =
-  | 'add_item'           // "Add two mojitos"
-  | 'remove_item'        // "Remove the last drink"
-  | 'modify_item'        // "Make that three instead"
-  | 'void_item'          // "Void the last order"
-  | 'cancel_order'       // "Cancel this order"
-  | 'split_order'        // "Split this order"
-  | 'apply_discount'     // "Apply happy hour discount"
-  | 'complete_order'     // "That's it"
-  | 'help'              // "What can I order?"
-  | 'repeat_last'        // "What was the last order?"
-  | 'undo_last'         // "Undo that"
-  | 'quantity_change'    // "Make that five instead"
-  | 'list_orders'        // "Show my orders"
-  | 'stop';             // "Stop listening"
+// Enhanced intent types with clear priorities
+const SYSTEM_INTENTS = ['cancel_order', 'help', 'stop'] as const;
+const ORDER_INTENTS = ['add_item', 'remove_item', 'modify_item'] as const;
+const MANAGEMENT_INTENTS = ['split_order', 'apply_discount', 'complete_order'] as const;
+
+type SystemIntent = typeof SYSTEM_INTENTS[number];
+type OrderIntent = typeof ORDER_INTENTS[number];
+type ManagementIntent = typeof MANAGEMENT_INTENTS[number];
+
+type CommandIntent = SystemIntent | OrderIntent | ManagementIntent;
 
 interface OrderItem {
   name: string;
@@ -86,8 +80,9 @@ let orderContext: OrderContext = {
   referencedItems: []
 };
 
-// Enhanced intent patterns for natural language
+// Enhanced intent patterns with priorities
 const intentPatterns = {
+  // System commands (highest priority)
   cancel_order: [
     /^(cancel|void|delete|remove).*(order|everything|all|cart)/i,
     /^(start over|start fresh|begin again)\b/i,
@@ -95,31 +90,8 @@ const intentPatterns = {
     /^let'?s start over\b/i,
     /^(stop|end|clear).*(order|everything)\b/i,
     /^(actually|wait|hold on).*cancel\b/i,
-    /^never mind.*everything\b/i
-  ],
-  add_item: [
-    /^(i('d| would) like|can i (get|have)|may i have|let me get)\s/i,
-    /^let'?s (get|have|try)\s/i,
-    /^(add|get|give|make|pour|bring|order)\s/i,
-    /^(get|give|make|pour) me\s/i,
-    /^i('ll| will) (have|take)\s/i,
-    /^how about\s/i
-  ],
-  remove_item: [
-    /^(remove|take off|delete)\b/i,
-    /^(don't|do not) want|remove that/i,
-    /^(never mind|forget|scratch) (that|the)\b/i,
-    /take (it|that) off\b/i,
-    /^get rid of\b/i,
-    /^no (more|longer want)\b/i
-  ],
-  modify_item: [
-    /^(change|modify|make|adjust)\b/i,
-    /\b(instead|rather|change to|make it)\b/i,
-    /^(actually|wait|hold on)\b/i,
-    /\bmake that\b/i,
-    /^(on second thought|thinking about it)\b/i,
-    /^(change|switch) (it|that) to\b/i
+    /^never mind.*everything\b/i,
+    /you know what.*start over\b/i
   ],
   help: [
     /^(help|assist|guide|explain|what|how)\b/i,
@@ -134,7 +106,38 @@ const intentPatterns = {
     /^(that'?s|thats) (all|enough)\b/i,
     /^(done|finished)\b/i,
     /^no more\b/i
-  ]
+  ],
+
+  // Order commands (medium priority)
+  add_item: [
+    /^(i('d| would) like|can i (get|have)|may i have|let me get)\s/i,
+    /^let'?s (get|have|try)\s/i,
+    /^(add|get|give|make|pour|bring|order)\s/i,
+    /^(get|give|make|pour) me\s/i,
+    /^i('ll| will) (have|take)\s/i,
+    /^how about\s/i,
+    /^(think|maybe|perhaps) i('d| would) like\s/i
+  ],
+  modify_item: [
+    /^(change|modify|make|adjust)\b/i,
+    /\b(instead|rather|change to|make it)\b/i,
+    /^(actually|wait|hold on)\b/i,
+    /\bmake that\b/i,
+    /^(on second thought|thinking about it)\b/i,
+    /^(change|switch) (it|that) to\b/i,
+    /\b(of|for) (them|those|that)\b/i
+  ],
+  remove_item: [
+    /^(remove|take off|delete)\b/i,
+    /^(don't|do not) want|remove that/i,
+    /^(never mind|forget|scratch) (that|the)\b/i,
+    /take (it|that) off\b/i,
+    /^get rid of\b/i,
+    /^no (more|longer want)\b/i
+  ],
+  split_order: [],
+  apply_discount: [],
+  complete_order: []
 };
 
 // Track processed commands to prevent duplicates
@@ -142,21 +145,15 @@ let lastProcessedCommand = '';
 let lastProcessedTimestamp = 0;
 const COMMAND_DEBOUNCE_TIME = 2000; // 2 seconds
 
-// Common words to ignore in matching
-const commonWords = ['a', 'an', 'the', 'please', 'thank', 'you', 'get', 'have', 'would', 'like', 'can', 'could', 'will'];
-const numberWords = {
-  'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
-  'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
-  'couple': '2', 'few': '3', 'several': '4'
-};
-
-// Reference phrases for contextual understanding
+// Reference patterns for contextual understanding
 const referencePatterns = {
   previous: [
     /that (one|drink)/i,
     /the last (one|drink)/i,
     /what I (just|previously) (said|ordered)/i,
-    /the previous (order|drink)/i
+    /the previous (order|drink)/i,
+    /(of|for) them\b/i,
+    /\b(them|those|that)\b/i
   ],
   current: [
     /this (one|drink)/i,
@@ -166,8 +163,20 @@ const referencePatterns = {
   modifier: [
     /make (it|that)/i,
     /change (it|that) to/i,
-    /instead of/i
+    /instead of/i,
+    /\brather\b/i
   ]
+};
+
+// Common words to ignore in matching
+const commonWords = ['a', 'an', 'the', 'please', 'thank', 'you', 'get', 'have', 'would', 'like', 'can', 'could', 'will'];
+
+// Enhanced number words mapping
+const numberWords = {
+  'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
+  'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
+  'couple': '2', 'few': '3', 'several': '4',
+  'a couple': '2', 'a few': '3'
 };
 
 // Enhanced natural language understanding
@@ -184,32 +193,35 @@ function detectNaturalLanguageIntent(text: string, context: OrderContext): {
   let alternativeIntents: CommandIntent[] = [];
   let referenceType: 'previous' | 'current' | 'last' | undefined;
 
-  // Detect references to previous or current items
+  // First check references
   for (const [type, patterns] of Object.entries(referencePatterns)) {
     for (const pattern of patterns) {
       if (pattern.test(normalized)) {
         referenceType = type as 'previous' | 'current' | 'last';
+        console.log(`Detected reference type: ${type}`);
         break;
       }
     }
     if (referenceType) break;
   }
 
-  // Check system commands first (cancel, help, stop)
-  const systemPatterns = ['cancel_order', 'help', 'stop'];
-  for (const intent of systemPatterns) {
-    const patterns = intentPatterns[intent as keyof typeof intentPatterns];
+  // Check system commands first (highest priority)
+  for (const intent of SYSTEM_INTENTS) {
+    const patterns = intentPatterns[intent];
     for (const pattern of patterns) {
       const match = normalized.match(pattern);
       if (match) {
         // System commands get higher base confidence
-        let confidence = 0.8 + (match[0].length / normalized.length) * 0.2;
+        let confidence = 0.9 + (match[0].length / normalized.length) * 0.1;
+
         // Earlier matches get higher confidence
         confidence *= (1 - match.index! / normalized.length);
 
+        console.log(`Checking system command ${intent}: ${confidence}`);
+
         if (confidence > maxConfidence) {
           maxConfidence = confidence;
-          detectedIntent = intent as CommandIntent;
+          detectedIntent = intent;
           console.log(`Detected system command: ${intent} with confidence ${confidence}`);
           return {
             intent: detectedIntent,
@@ -223,19 +235,26 @@ function detectNaturalLanguageIntent(text: string, context: OrderContext): {
   }
 
   // Then check other intents
-  for (const [intent, patterns] of Object.entries(intentPatterns)) {
-    if (systemPatterns.includes(intent)) continue;
+  for (const intent of [...ORDER_INTENTS, ...MANAGEMENT_INTENTS]) {
+    const patterns = intentPatterns[intent as keyof typeof intentPatterns];
+    if (!patterns) continue;
 
     for (const pattern of patterns) {
       const match = normalized.match(pattern);
       if (match) {
         let confidence = match[0].length / normalized.length;
         confidence *= (1 - match.index! / normalized.length);
-        confidence *= pattern.toString().length / 50;
 
         // Boost confidence for contextually relevant patterns
-        if (referenceType && isIntentRelated(intent as CommandIntent, context.lastIntent)) {
+        if (referenceType && isIntentRelated(intent, context.lastIntent)) {
           confidence *= 1.2;
+          console.log(`Boosting confidence for related intent ${intent}`);
+        }
+
+        // Additional boost for modification commands with references
+        if (intent === 'modify_item' && referenceType) {
+          confidence *= 1.3;
+          console.log(`Boosting confidence for modification with reference`);
         }
 
         if (confidence > maxConfidence) {
@@ -243,19 +262,10 @@ function detectNaturalLanguageIntent(text: string, context: OrderContext): {
             alternativeIntents.push(detectedIntent);
           }
           maxConfidence = confidence;
-          detectedIntent = intent as CommandIntent;
-        } else if (confidence > 0.3) {
-          alternativeIntents.push(intent as CommandIntent);
+          detectedIntent = intent;
+          console.log(`Detected intent ${intent} with confidence ${confidence}`);
         }
       }
-    }
-  }
-
-  // Consider conversation context
-  if (context.lastIntent) {
-    const isRelatedToLast = isIntentRelated(detectedIntent, context.lastIntent);
-    if (isRelatedToLast) {
-      maxConfidence *= 1.2;
     }
   }
 
@@ -271,18 +281,59 @@ function detectNaturalLanguageIntent(text: string, context: OrderContext): {
 
   if (hasUncertainty) {
     maxConfidence *= 0.8;
-    console.log('Detected uncertainty in command');
+    console.log('Detected uncertainty, reducing confidence');
   }
-
-  // Check for clarification needs
-  const needsClarification = maxConfidence < 0.4 || alternativeIntents.length > 2 || hasUncertainty;
 
   return {
     intent: detectedIntent,
     confidence: maxConfidence,
     alternativeIntents: alternativeIntents.length > 0 ? alternativeIntents : undefined,
-    needsClarification,
+    needsClarification: maxConfidence < 0.4 || alternativeIntents.length > 2 || hasUncertainty,
     referenceType
+  };
+}
+
+// Enhanced command normalization
+function normalizeCommand(text: string): {
+  normalized: string;
+  detectedIntent: CommandIntent;
+  confidence: number;
+  needsClarification: boolean;
+} {
+  let normalized = text.toLowerCase()
+    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Don't remove words for system commands
+  const isSystemCommand = SYSTEM_INTENTS.some(intent =>
+    intentPatterns[intent].some(pattern => pattern.test(normalized))
+  );
+
+  if (!isSystemCommand) {
+    // Convert number words to digits
+    Object.entries(numberWords).forEach(([word, num]) => {
+      const regex = new RegExp(`\\b${word}\\b`, 'g');
+      normalized = normalized.replace(regex, num);
+    });
+
+    // Remove common filler words
+    normalized = normalized.split(' ')
+      .filter(word => !commonWords.includes(word))
+      .join(' ');
+  }
+
+  console.log('Normalized command:', normalized);
+
+  // Detect intent with natural language understanding
+  const nlpResult = detectNaturalLanguageIntent(normalized, orderContext);
+  console.log('Detected intent:', nlpResult);
+
+  return {
+    normalized,
+    detectedIntent: nlpResult.intent,
+    confidence: nlpResult.confidence,
+    needsClarification: nlpResult.needsClarification || false
   };
 }
 
@@ -306,40 +357,6 @@ function isIntentRelated(current: CommandIntent, previous: CommandIntent): boole
   };
 
   return relatedIntents[current]?.includes(previous) || false;
-}
-
-// Enhanced command normalization with natural language processing
-function normalizeCommand(text: string): {
-  normalized: string;
-  detectedIntent: CommandIntent;
-  confidence: number;
-  needsClarification: boolean;
-} {
-  let normalized = text.toLowerCase()
-    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  // Remove common filler words only for non-system commands
-  const isSystemCommand = normalized.match(/^(cancel|help|stop)/i);
-  if (!isSystemCommand) {
-    normalized = normalized.split(' ')
-      .filter(word => !commonWords.includes(word))
-      .join(' ');
-  }
-
-  console.log('Normalized command:', normalized);
-
-  // Detect intent with natural language understanding
-  const nlpResult = detectNaturalLanguageIntent(normalized, orderContext);
-  console.log('Detected intent:', nlpResult);
-
-  return {
-    normalized,
-    detectedIntent: nlpResult.intent,
-    confidence: nlpResult.confidence,
-    needsClarification: nlpResult.needsClarification || false
-  };
 }
 
 // Enhanced response generation
@@ -397,7 +414,10 @@ function generateContextualResponse(
       "Okay, I'll stop listening.",
       "Stopping voice recognition now.",
       "Voice commands deactivated."
-    ]
+    ],
+    'split_order': () => ["How would you like to split the order?"],
+    'apply_discount': () => ["What discount would you like to apply?"],
+    'complete_order': () => ["Order complete!"]
   };
 
   const responses = contextAwareResponses[intent]?.(items) || ["I'll help you with that."];
