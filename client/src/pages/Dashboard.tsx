@@ -68,6 +68,21 @@ export function Dashboard() {
     );
   }
 
+  // Default data for optional properties
+  const defaultStats: Partial<DashboardStats> = {
+    topSellingItems: [],
+    monthlyGrowth: 0,
+    averageOrderValue: 0,
+    orderFulfillmentTime: 0,
+    lowStockItems: 0,
+    inventoryValue: 0,
+    systemUptime: 100,
+    activeOrders: 0,
+  };
+
+  // Merge default values with actual data
+  const dashboardStats = { ...defaultStats, ...stats };
+
   return (
     <div className="min-h-screen bg-background">
       <NavBar />
@@ -80,6 +95,7 @@ export function Dashboard() {
 
         {/* Revenue Overview Section */}
         <div className="grid gap-4 md:grid-cols-4 mb-8">
+          {/* Revenue Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -95,28 +111,33 @@ export function Dashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Total Revenue</p>
-                      <p className="text-2xl font-bold">${stats ? (stats.totalSales / 100).toLocaleString('en-US', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      }) : '0.00'}</p>
+                      <p className="text-2xl font-bold">
+                        ${((dashboardStats.totalSales || 0) / 100).toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </p>
                     </div>
                   </div>
-                  {stats?.monthlyGrowth && stats.monthlyGrowth > 0 ? (
-                    <div className="flex items-center text-emerald-500">
-                      <ArrowUpRight className="h-4 w-4" />
-                      <span className="text-sm font-medium">+{stats.monthlyGrowth}%</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center text-red-500">
-                      <ArrowDownRight className="h-4 w-4" />
-                      <span className="text-sm font-medium">{stats?.monthlyGrowth}%</span>
-                    </div>
+                  {typeof dashboardStats.monthlyGrowth === 'number' && (
+                    dashboardStats.monthlyGrowth > 0 ? (
+                      <div className="flex items-center text-emerald-500">
+                        <ArrowUpRight className="h-4 w-4" />
+                        <span className="text-sm font-medium">+{dashboardStats.monthlyGrowth}%</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center text-red-500">
+                        <ArrowDownRight className="h-4 w-4" />
+                        <span className="text-sm font-medium">{dashboardStats.monthlyGrowth}%</span>
+                      </div>
+                    )
                   )}
                 </div>
               </CardContent>
             </Card>
           </motion.div>
 
+          {/* Average Order Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -132,20 +153,23 @@ export function Dashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Average Order</p>
-                      <p className="text-2xl font-bold">${stats ? (stats.averageOrderValue / 100).toLocaleString('en-US', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      }) : '0.00'}</p>
+                      <p className="text-2xl font-bold">
+                        ${((dashboardStats.averageOrderValue || 0) / 100).toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center text-emerald-500">
-                    <span className="text-sm font-medium">{stats?.totalOrders} orders</span>
+                    <span className="text-sm font-medium">{dashboardStats.totalOrders || 0} orders</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
 
+          {/* Order Processing Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -161,17 +185,18 @@ export function Dashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Avg. Fulfillment</p>
-                      <p className="text-2xl font-bold">{stats?.orderFulfillmentTime || 0}m</p>
+                      <p className="text-2xl font-bold">{dashboardStats.orderFulfillmentTime}m</p>
                     </div>
                   </div>
                   <div className="flex items-center">
-                    <span className="text-sm font-medium text-purple-500">Active: {stats?.activeOrders}</span>
+                    <span className="text-sm font-medium text-purple-500">Active: {dashboardStats.activeOrders}</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
 
+          {/* Inventory Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -187,16 +212,18 @@ export function Dashboard() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Inventory Value</p>
-                      <p className="text-2xl font-bold">${stats ? (stats.inventoryValue / 100).toLocaleString('en-US', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      }) : '0.00'}</p>
+                      <p className="text-2xl font-bold">
+                        ${((dashboardStats.inventoryValue || 0) / 100).toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </p>
                     </div>
                   </div>
-                  {stats?.lowStockItems > 0 && (
+                  {dashboardStats.lowStockItems > 0 && (
                     <div className="flex items-center text-amber-500">
                       <AlertCircle className="h-4 w-4" />
-                      <span className="text-sm font-medium ml-1">{stats.lowStockItems} low</span>
+                      <span className="text-sm font-medium ml-1">{dashboardStats.lowStockItems} low</span>
                     </div>
                   )}
                 </div>
@@ -222,7 +249,7 @@ export function Dashboard() {
               <CardContent className="pt-6">
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={stats?.weeklyTrend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <AreaChart data={dashboardStats.weeklyTrend || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor={GRADIENTS.primary.start} stopOpacity={0.2}/>
@@ -240,7 +267,7 @@ export function Dashboard() {
                         tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
                         tickLine={false}
                         axisLine={{ stroke: 'hsl(var(--border))' }}
-                        tickFormatter={(value) => `$${(value / 100).toFixed(0)}`}
+                        tickFormatter={(value: number) => `$${(value / 100).toFixed(0)}`}
                       />
                       <Tooltip
                         contentStyle={{
@@ -281,7 +308,7 @@ export function Dashboard() {
               <CardContent className="pt-6">
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={stats?.categorySales} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <BarChart data={dashboardStats.categorySales || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor={GRADIENTS.secondary.start} stopOpacity={0.8}/>
@@ -313,7 +340,7 @@ export function Dashboard() {
                         fill="url(#barGradient)"
                         radius={[6, 6, 0, 0]}
                       >
-                        {stats?.categorySales.map((_, index) => (
+                        {(dashboardStats.categorySales || []).map((_, index) => (
                           <motion.rect
                             key={`bar-${index}`}
                             initial={{ y: 300, opacity: 0 }}
@@ -350,7 +377,7 @@ export function Dashboard() {
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="space-y-4">
-                  {stats?.topSellingItems.map((item, index) => (
+                  {dashboardStats.topSellingItems?.map((item, index) => (
                     <motion.div
                       key={index}
                       initial={{ opacity: 0, x: -20 }}
@@ -396,12 +423,12 @@ export function Dashboard() {
                   <div className="p-4 rounded-lg bg-gray-50/50">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm font-medium">System Uptime</p>
-                      <p className="text-sm font-medium">{stats?.systemUptime || 100}%</p>
+                      <p className="text-sm font-medium">{dashboardStats.systemUptime}%</p>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <motion.div
                         initial={{ width: 0 }}
-                        animate={{ width: `${stats?.systemUptime || 100}%` }}
+                        animate={{ width: `${dashboardStats.systemUptime}%` }}
                         transition={{ duration: 0.5, delay: 0.8 }}
                         className="bg-violet-500 h-2 rounded-full"
                       />
@@ -411,22 +438,22 @@ export function Dashboard() {
                   <div className="p-4 rounded-lg bg-gray-50/50">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm font-medium">Order Processing</p>
-                      <p className="text-sm font-medium">{stats?.orderFulfillmentTime || 0}m avg</p>
+                      <p className="text-sm font-medium">{dashboardStats.orderFulfillmentTime}m avg</p>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Clock className="h-4 w-4" />
-                      <span>{stats?.activeOrders || 0} orders in queue</span>
+                      <span>{dashboardStats.activeOrders} orders in queue</span>
                     </div>
                   </div>
 
                   <div className="p-4 rounded-lg bg-gray-50/50">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm font-medium">Inventory Status</p>
-                      <p className="text-sm font-medium">{stats?.lowStockItems || 0} items low</p>
+                      <p className="text-sm font-medium">{dashboardStats.lowStockItems} items low</p>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Package className="h-4 w-4" />
-                      <span>${(stats?.inventoryValue || 0).toLocaleString()} total value</span>
+                      <span>${(dashboardStats.inventoryValue / 100).toLocaleString()} total value</span>
                     </div>
                   </div>
                 </div>
