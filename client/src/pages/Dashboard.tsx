@@ -213,7 +213,7 @@ export function Dashboard() {
   const currentRevenue = getCurrentRevenue();
 
   // Calculate average profit margin with defensive coding
-  const averageProfitMargin = stats?.categoryPerformance?.length 
+  const averageProfitMargin = stats?.categoryPerformance?.length
     ? stats.categoryPerformance.reduce((acc, cat) => acc + (cat?.profitMargin || 0), 0) / stats.categoryPerformance.length
     : 0;
 
@@ -254,11 +254,11 @@ export function Dashboard() {
                       >
                         <div className={`p-2 rounded-full ${
                           insight.impact === 'positive' ? 'bg-green-500/10' :
-                          insight.impact === 'negative' ? 'bg-red-500/10' : 'bg-blue-500/10'
+                            insight.impact === 'negative' ? 'bg-red-500/10' : 'bg-blue-500/10'
                         }`}>
                           {insight.type === 'trend' ? <TrendingUp className="h-5 w-5" /> :
-                           insight.type === 'alert' ? <AlertCircle className="h-5 w-5" /> :
-                           <Percent className="h-5 w-5" />}
+                            insight.type === 'alert' ? <AlertCircle className="h-5 w-5" /> :
+                            <Percent className="h-5 w-5" />}
                         </div>
                         <div>
                           <p className="text-sm font-medium">{insight.message}</p>
@@ -447,8 +447,8 @@ export function Dashboard() {
                   <CardContent className="pt-6">
                     <div className="h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart 
-                          data={getSafeChartData(stats?.liveSales)} 
+                        <AreaChart
+                          data={getSafeChartData(stats?.liveSales)}
                           margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                         >
                           <defs>
@@ -510,8 +510,8 @@ export function Dashboard() {
                   <CardContent className="pt-6">
                     <div className="h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart 
-                          data={getSafeChartData(stats?.categoryPerformance)} 
+                        <BarChart
+                          data={getSafeChartData(stats?.categoryPerformance)}
                           margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                         >
                           <defs>
@@ -670,7 +670,7 @@ export function Dashboard() {
             </div>
           </TabsContent>
         </Tabs>
-        {/* Existing inventory and analytics sections */}
+        {/* Top Products & Inventory Alerts */}
         <div className="grid gap-6 md:grid-cols-2 mb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -686,29 +686,29 @@ export function Dashboard() {
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="space-y-4">
-                  {stats.topProducts.map((product, index) => (
+                  {stats?.topProducts?.map((product, index) => (
                     <motion.div
-                      key={product.id}
+                      key={product?.id || index}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.5, delay: index * 0.1 }}
                       className="flex items-center justify-between p-4 rounded-lg bg-gray-50/50"
                     >
                       <div>
-                        <p className="font-medium">{product.name}</p>
+                        <p className="font-medium">{product?.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {product.category} • {product.quantity} units
+                          {product?.category} • {product?.quantity} units
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="font-medium">
-                          ${(product.revenue / 100).toLocaleString('en-US', {
+                          ${((product?.revenue || 0) / 100).toLocaleString('en-US', {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2
                           })}
                         </p>
                         <p className="text-sm text-emerald-500">
-                          {product.profitMargin}% margin
+                          {product?.profitMargin}% margin
                         </p>
                       </div>
                     </motion.div>
@@ -732,9 +732,9 @@ export function Dashboard() {
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="space-y-4">
-                  {stats.lowStockItems.map((item, index) => (
+                  {stats?.lowStockItems?.map((item, index) => (
                     <motion.div
-                      key={item.id}
+                      key={item?.id || index}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.5, delay: index * 0.1 }}
@@ -742,23 +742,23 @@ export function Dashboard() {
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div>
-                          <p className="font-medium">{item.name}</p>
+                          <p className="font-medium">{item?.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            Current stock: {item.currentStock}
+                            Current stock: {item?.currentStock}
                           </p>
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-medium text-amber-500">
-                            Min required: {item.minRequired}
+                            Min required: {item?.minRequired}
                           </p>
-                          {item.expiryDate && (
+                          {item?.expiryDate && (
                             <p className="text-sm text-red-500">
                               Expires: {new Date(item.expiryDate).toLocaleDateString()}
                             </p>
                           )}
                         </div>
                       </div>
-                      {item.supplierName && (
+                      {item?.supplierName && (
                         <div className="text-sm text-muted-foreground">
                           Recommended supplier: {item.supplierName}
                         </div>
