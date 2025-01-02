@@ -217,6 +217,11 @@ export function Dashboard() {
     ? stats.categoryPerformance.reduce((acc, cat) => acc + (cat?.profitMargin || 0), 0) / stats.categoryPerformance.length
     : 0;
 
+  // Safe access helper for chart data
+  const getSafeChartData = <T extends { [key: string]: any }>(data: T[] | undefined | null): T[] => {
+    return Array.isArray(data) ? data : [];
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <NavBar />
@@ -291,9 +296,8 @@ export function Dashboard() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Keep existing revenue content */}
+          {/* Revenue Tab Content */}
           <TabsContent value="revenue">
-            {/* Existing revenue metrics and charts */}
             <div className="grid gap-4 md:grid-cols-4">
               {/* Revenue Card */}
               <motion.div
@@ -310,24 +314,26 @@ export function Dashboard() {
                           <DollarSign className="h-8 w-8 text-blue-500" />
                         </div>
                         <div>
-                          <p className="text-sm text-muted-foreground">{selectedTimeframe.charAt(0).toUpperCase() + selectedTimeframe.slice(1)} Revenue</p>
+                          <p className="text-sm text-muted-foreground">
+                            {selectedTimeframe.charAt(0).toUpperCase() + selectedTimeframe.slice(1)} Revenue
+                          </p>
                           <p className="text-2xl font-bold">
-                            ${(currentRevenue.amount / 100).toLocaleString('en-US', {
+                            ${((currentRevenue?.amount || 0) / 100).toLocaleString('en-US', {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2
                             })}
                           </p>
                         </div>
                       </div>
-                      {currentRevenue.growth > 0 ? (
+                      {(currentRevenue?.growth || 0) > 0 ? (
                         <div className="flex items-center text-emerald-500">
                           <ArrowUpRight className="h-4 w-4" />
-                          <span className="text-sm font-medium">+{currentRevenue.growth}%</span>
+                          <span className="text-sm font-medium">+{currentRevenue?.growth || 0}%</span>
                         </div>
                       ) : (
                         <div className="flex items-center text-red-500">
                           <ArrowDownRight className="h-4 w-4" />
-                          <span className="text-sm font-medium">{currentRevenue.growth}%</span>
+                          <span className="text-sm font-medium">{currentRevenue?.growth || 0}%</span>
                         </div>
                       )}
                     </div>
@@ -352,7 +358,7 @@ export function Dashboard() {
                         <div>
                           <p className="text-sm text-muted-foreground">Avg. Order Value</p>
                           <p className="text-2xl font-bold">
-                            ${(stats.averageOrderValue / 100).toLocaleString('en-US', {
+                            ${((stats?.averageOrderValue || 0) / 100).toLocaleString('en-US', {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2
                             })}
@@ -406,13 +412,15 @@ export function Dashboard() {
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground">Stock Alerts</p>
-                          <p className="text-2xl font-bold">{stats.lowStockItems.length}</p>
+                          <p className="text-2xl font-bold">{stats?.lowStockItems?.length || 0}</p>
                         </div>
                       </div>
-                      {stats.expiringItems.length > 0 && (
+                      {(stats?.expiringItems?.length || 0) > 0 && (
                         <div className="flex items-center text-amber-500">
                           <AlertCircle className="h-4 w-4" />
-                          <span className="text-sm font-medium ml-1">{stats.expiringItems.length} expiring</span>
+                          <span className="text-sm font-medium ml-1">
+                            {stats?.expiringItems?.length || 0} expiring
+                          </span>
                         </div>
                       )}
                     </div>
@@ -421,8 +429,9 @@ export function Dashboard() {
               </motion.div>
             </div>
 
-            {/* Revenue trend chart */}
+            {/* Charts Section */}
             <div className="grid gap-6 md:grid-cols-2 mt-6">
+              {/* Revenue Trend Chart */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -438,7 +447,10 @@ export function Dashboard() {
                   <CardContent className="pt-6">
                     <div className="h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={stats.liveSales} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <AreaChart 
+                          data={getSafeChartData(stats?.liveSales)} 
+                          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                        >
                           <defs>
                             <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor={GRADIENTS.primary.start} stopOpacity={0.2}/>
@@ -482,6 +494,7 @@ export function Dashboard() {
                 </Card>
               </motion.div>
 
+              {/* Category Performance Chart */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -497,7 +510,10 @@ export function Dashboard() {
                   <CardContent className="pt-6">
                     <div className="h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={stats.categoryPerformance} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <BarChart 
+                          data={getSafeChartData(stats?.categoryPerformance)} 
+                          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                        >
                           <defs>
                             <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor={GRADIENTS.secondary.start} stopOpacity={0.8}/>
@@ -544,7 +560,7 @@ export function Dashboard() {
             </div>
           </TabsContent>
 
-          {/* New Events Management Tab */}
+          {/* Events Tab Content */}
           <TabsContent value="events">
             <div className="grid gap-6">
               {/* Upcoming Events Overview */}
@@ -599,7 +615,7 @@ export function Dashboard() {
             </div>
           </TabsContent>
 
-          {/* New Supplier Management Tab */}
+          {/* Suppliers Tab Content */}
           <TabsContent value="suppliers">
             <div className="grid gap-6">
               {/* Supplier Performance Overview */}
@@ -654,7 +670,6 @@ export function Dashboard() {
             </div>
           </TabsContent>
         </Tabs>
-
         {/* Existing inventory and analytics sections */}
         <div className="grid gap-6 md:grid-cols-2 mb-8">
           <motion.div
