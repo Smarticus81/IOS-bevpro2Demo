@@ -211,6 +211,29 @@ export type TaxCategory = typeof taxCategories.$inferSelect;
 export type PourInventory = typeof pourInventory.$inferSelect;
 export type PourTransaction = typeof pourTransactions.$inferSelect;
 
+
+export const voiceTutorialProgress = pgTable("voice_tutorial_progress", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  completedSteps: jsonb("completed_steps").$type<string[]>().default([]),
+  accuracy: decimal("accuracy", { precision: 5, scale: 2 }).default('0'),
+  lastCompletedAt: timestamp("last_completed_at").defaultNow(),
+  metadata: jsonb("metadata").$type<{
+    commandHistory: Array<{
+      command: string;
+      timestamp: number;
+      success: boolean;
+    }>;
+    preferences: {
+      difficulty: string;
+      voiceSpeed: number;
+      requireConfirmation: boolean;
+    };
+  }>(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Schemas
 export const insertDrinkSchema = createInsertSchema(drinks);
 export const selectDrinkSchema = createSelectSchema(drinks);
@@ -234,3 +257,7 @@ export const insertPourInventorySchema = createInsertSchema(pourInventory);
 export const selectPourInventorySchema = createSelectSchema(pourInventory);
 export const insertPourTransactionSchema = createInsertSchema(pourTransactions);
 export const selectPourTransactionSchema = createSelectSchema(pourTransactions);
+
+export type VoiceTutorialProgress = typeof voiceTutorialProgress.$inferSelect;
+export const insertVoiceTutorialProgressSchema = createInsertSchema(voiceTutorialProgress);
+export const selectVoiceTutorialProgressSchema = createSelectSchema(voiceTutorialProgress);
