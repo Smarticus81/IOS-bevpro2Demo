@@ -1,0 +1,165 @@
+{
+  "timestamp": "2025-01-02T21:08:36.096Z",
+  "level": "info",
+  "message": "Voice Command Tracked:",
+  "context": {
+    "type": "system_command",
+    "success": false,
+    "command": "to make it sound like",
+    "error": "Command not recognized",
+    "successRate": 0
+  }
+}
+{
+  "timestamp": "2025-01-02T21:08:36.097Z",
+  "level": "info",
+  "message": "Not Understood: Command not recognized. Say \"help\" for a list of commands.",
+  "context": {}
+}
+{
+  "timestamp": "2025-01-02T21:08:36.100Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2025-01-02T21:08:36.101Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+{
+  "timestamp": "2025-01-02T21:08:39.862Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "i"
+}
+{
+  "timestamp": "2025-01-02T21:08:40.107Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "i want"
+}
+{
+  "timestamp": "2025-01-02T21:08:40.258Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "i want a"
+}
+{
+  "timestamp": "2025-01-02T21:08:40.495Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "want a"
+}
+{
+  "timestamp": "2025-01-02T21:08:40.579Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "want a shar"
+}
+{
+  "timestamp": "2025-01-02T21:08:40.754Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "a shiny"
+}
+{
+  "timestamp": "2025-01-02T21:08:40.845Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "a sharma"
+}
+{
+  "timestamp": "2025-01-02T21:08:40.958Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "sharma"
+}
+{
+  "timestamp": "2025-01-02T21:08:40.994Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "shining back"
+}
+{
+  "timestamp": "2025-01-02T21:08:41.335Z",
+  "level": "info",
+  "message": "Recognized text:",
+  "context": "i want a shining back"
+}
+{
+  "timestamp": "2025-01-02T21:08:41.335Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": {
+    "text": "i want a shining back",
+    "confidence": 0.8402759432792664
+  }
+}
+{
+  "timestamp": "2025-01-02T21:08:41.335Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "i want a shining back"
+}
+{
+  "timestamp": "2025-01-02T21:08:41.335Z",
+  "level": "info",
+  "message": "Voice command received:",
+  "context": {
+    "text": "i want a shining back",
+    "drinksAvailable": 65
+  }
+}
+{
+  "timestamp": "2025-01-02T21:08:41.336Z",
+  "level": "info",
+  "message": "Found best partial match:",
+  "context": {
+    "searchTerm": "shining back",
+    "matchedDrink": "Pinot G"
+  }
+}
+{
+  "timestamp": "2025-01-02T21:08:41.336Z",
+  "level": "info",
+  "message": "Successfully parsed order items:",
+  "context": [
+    {
+      "name": "Pinot G",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+{
+  "timestamp": "2025-01-02T21:08:41.336Z",
+  "level": "info",
+  "message": "Processing drink order:",
+  "context": [
+    {
+      "name": "Pinot G",
+      "quantity": 1,
+      "modifiers": []
+    }
+  ]
+}
+{
+  "timestamp": "2025-01-02T21:08:41.336Z",
+  "level": "info",
+  "message": "Adding item to cart",
+  "context": {
+    "drinkId": 22,
+    "quantity": 1,
+    "currentCartSize": 0
+  }
+}

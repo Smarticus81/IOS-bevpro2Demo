@@ -584,7 +584,7 @@ class DrinkNameCache {
         }
       }
 
-      // Check for reference phrases ("another one", "same thing", etc.)
+      // Check for reference phrases
       const referenceMatch = this.matchReference(input, drink, context);
       if (referenceMatch && referenceMatch.confidence > highestConfidence) {
         bestMatch = { name, confidence: referenceMatch.confidence };
@@ -596,17 +596,18 @@ class DrinkNameCache {
       return bestMatch;
     }
 
-    // Then try fuzzy matching
+    // Then try fuzzy matching with a higher threshold
     const allDrinkNames = Array.from(this.cache.keys());
     const fuzzyResults = fuzzysort.go(input, allDrinkNames, {
-      threshold: -10000,
+      threshold: -5000, // Increased threshold for stricter matching
       limit: 1
     });
 
     if (fuzzyResults.length > 0) {
       const topResult = fuzzyResults[0];
-      const normalizedScore = (topResult.score + 1000) / 1000; // Convert to 0-1 range
-      if (normalizedScore > 0.6) {
+      // Normalize score to be between 0 and 1, with a higher minimum threshold
+      const normalizedScore = Math.max((topResult.score + 1000) / 1000, 0);
+      if (normalizedScore > 0.8) { // Increased confidence threshold
         bestMatch = {
           name: topResult.target,
           confidence: normalizedScore
@@ -1095,4 +1096,34 @@ interface VoiceOrderResult {
   success: boolean;
   order?: OrderDetails;
   error?: string;
+}
+
+// Add this helper function for emotional tone detection
+function detectEmotionalTone(text: string): 'neutral' | 'enthusiastic' | 'apologetic' | 'frustrated' {
+  const normalized = text.toLowerCase();
+
+  // Frustration indicators
+  if (normalized.includes('wrong') ||
+      normalized.includes('no ') ||
+      normalized.includes('not ') ||
+      normalized.includes('incorrect')) {
+    return 'frustrated';
+  }
+
+  // Enthusiasm indicators
+  if (normalized.includes('great') ||
+      normalized.includes('perfect') ||
+      normalized.includes('awesome') ||
+      normalized.includes('yes')) {
+    return 'enthusiastic';
+  }
+
+  // Apologetic indicators
+  if (normalized.includes('sorry') ||
+      normalized.includes('oops') ||
+      normalized.includes('mistake')) {
+    return 'apologetic';
+  }
+
+  return 'neutral';
 }
