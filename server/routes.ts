@@ -13,15 +13,11 @@ import {
 } from "@db/schema";
 import { eq, sql, count, sum } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
-import voiceTutorialRouter from "./routes/voice-tutorial";
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
   console.log('Setting up routes and realtime proxy...');
   setupRealtimeProxy(httpServer);
-
-  // Register voice tutorial routes
-  app.use(voiceTutorialRouter);
 
   // Dashboard Statistics
   app.get("/api/dashboard/stats", async (_req, res) => {

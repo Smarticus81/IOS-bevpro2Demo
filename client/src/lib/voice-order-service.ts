@@ -81,9 +81,9 @@ let orderContext: OrderContext = {
 };
 
 // Enhanced intent patterns with priorities
-const intentPatterns: Record<CommandIntent, RegExp[]> = {
+const intentPatterns = {
   // System commands (highest priority)
-  'cancel_order': [
+  cancel_order: [
     /^(cancel|void|delete|remove).*(order|everything|all|cart)/i,
     /^(start over|start fresh|begin again)\b/i,
     /^forget (everything|it all|the order|this|that)\b/i,
@@ -93,7 +93,7 @@ const intentPatterns: Record<CommandIntent, RegExp[]> = {
     /^never mind.*everything\b/i,
     /you know what.*start over\b/i
   ],
-  'help': [
+  help: [
     /^(help|assist|guide|explain|what|how)\b/i,
     /^(can (i|you)|what's available|menu)\b/i,
     /^(show|tell) me\b/i,
@@ -101,7 +101,7 @@ const intentPatterns: Record<CommandIntent, RegExp[]> = {
     /^i('m| am) not sure\b/i,
     /^what (are|do you have)\b/i
   ],
-  'stop': [
+  stop: [
     /^(stop|end|quit|exit)\b/i,
     /^(that'?s|thats) (all|enough)\b/i,
     /^(done|finished)\b/i,
@@ -109,7 +109,7 @@ const intentPatterns: Record<CommandIntent, RegExp[]> = {
   ],
 
   // Order commands (medium priority)
-  'add_item': [
+  add_item: [
     /^(i('d| would) like|can i (get|have)|may i have|let me get)\s/i,
     /^let'?s (get|have|try)\s/i,
     /^(add|get|give|make|pour|bring|order)\s/i,
@@ -118,7 +118,7 @@ const intentPatterns: Record<CommandIntent, RegExp[]> = {
     /^how about\s/i,
     /^(think|maybe|perhaps) i('d| would) like\s/i
   ],
-  'modify_item': [
+  modify_item: [
     /^(change|modify|make|adjust)\b/i,
     /\b(instead|rather|change to|make it)\b/i,
     /^(actually|wait|hold on)\b/i,
@@ -127,7 +127,7 @@ const intentPatterns: Record<CommandIntent, RegExp[]> = {
     /^(change|switch) (it|that) to\b/i,
     /\b(of|for) (them|those|that)\b/i
   ],
-  'remove_item': [
+  remove_item: [
     /^(remove|take off|delete)\s+(the|my|that|this)?\s*(last|previous)?\s*(drink|item|order|mojito|margarita|beer|cocktail)/i,
     /^(don't|do not) want\s+(the|that|this)?\s*(drink|mojito|margarita|beer|cocktail)/i,
     /^(never mind|forget|scratch)\s+(the|that|this)?\s*(drink|mojito|margarita|beer|cocktail)/i,
@@ -137,19 +137,19 @@ const intentPatterns: Record<CommandIntent, RegExp[]> = {
     /^cancel\s+(the|that|this)?\s*(drink|mojito|margarita|beer|cocktail)/i,
     /^delete\s+(the|that|this)?\s*(drink|mojito|margarita|beer|cocktail)/i
   ],
-  'split_order': [
+  split_order: [
     /^split\s+(the|this)?\s*order/i,
     /^divide\s+(the|this)?\s*(bill|check|order)/i,
     /^share\s+(the|this)?\s*(bill|check|order)/i,
     /^can we split\s+(the|this)?\s*(bill|check|order)/i
   ],
-  'apply_discount': [
+  apply_discount: [
     /^apply\s+(a|the)?\s*(discount|coupon|promo|promotion)/i,
     /^use\s+(a|the|my)?\s*(discount|coupon|promo|promotion)/i,
     /^add\s+(a|the)?\s*(discount|coupon|promo|promotion)/i,
     /^give\s+(me|us)?\s*(a|the)?\s*(discount|coupon|promo|promotion)/i
   ],
-  'complete_order': [
+  complete_order: [
     /^(complete|finish|process|submit)\s+(the|this|my)?\s*order/i,
     /^check\s*out/i,
     /^pay\s+(for|the)?\s*(order|bill|check)/i,
@@ -190,246 +190,18 @@ const referencePatterns = {
 const commonWords = ['a', 'an', 'the', 'please', 'thank', 'you', 'get', 'have', 'would', 'like', 'can', 'could', 'will'];
 
 // Enhanced number words mapping
-const numberWords: Record<string, string> = {
+const numberWords = {
   'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
   'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
   'couple': '2', 'few': '3', 'several': '4',
   'a couple': '2', 'a few': '3'
 };
 
-interface DrinkMatch {
-  name: string;
-  variations: string[];
-  matchCount: number;
-  lastMatched: number;
-  recentReferences: Array<{
-    phrase: string;
-    timestamp: number;
-  }>;
-}
-
-class DrinkNameCache {
-  private cache: Map<string, DrinkMatch>;
-  private readonly MAX_VARIATIONS = 5;
-  private readonly MAX_REFERENCES = 10;
-  private readonly FUZZY_MATCH_THRESHOLD = 0.85; // Increased threshold
-  private recentRemovals: Array<{ name: string; timestamp: number }> = [];
-
-  constructor() {
-    this.cache = new Map();
-  }
-
-  addDrink(name: string) {
-    if (!this.cache.has(name)) {
-      this.cache.set(name, {
-        name,
-        variations: [],
-        matchCount: 0,
-        lastMatched: Date.now(),
-        recentReferences: []
-      });
-    }
-  }
-
-  addVariation(originalName: string, variation: string) {
-    const drink = this.cache.get(originalName);
-    if (drink) {
-      if (!drink.variations.includes(variation)) {
-        drink.variations = [variation, ...drink.variations]
-          .slice(0, this.MAX_VARIATIONS);
-      }
-      drink.matchCount++;
-      drink.lastMatched = Date.now();
-      drink.recentReferences.unshift({
-        phrase: variation,
-        timestamp: Date.now()
-      });
-      drink.recentReferences = drink.recentReferences.slice(0, this.MAX_REFERENCES);
-    }
-  }
-
-  findBestMatch(input: string, context?: OrderContext): { name: string; confidence: number } | null {
-    let bestMatch = null;
-    let highestConfidence = 0;
-    const inputLower = input.toLowerCase().trim();
-
-    // First try exact matches
-    for (const [name, drink] of this.cache.entries()) {
-      const nameLower = name.toLowerCase();
-
-      // Exact match
-      if (inputLower === nameLower) {
-        return { name, confidence: 1.0 };
-      }
-
-      // Check if input contains the full drink name
-      if (inputLower.includes(nameLower)) {
-        const position = inputLower.indexOf(nameLower);
-        const confidence = 0.95 - (position * 0.05); // Slightly lower confidence if name appears later
-        if (confidence > highestConfidence) {
-          bestMatch = { name, confidence };
-          highestConfidence = confidence;
-        }
-      }
-
-      // Check variations
-      for (const variation of drink.variations) {
-        if (inputLower === variation.toLowerCase()) {
-          return { name, confidence: 0.95 };
-        }
-      }
-    }
-
-    if (bestMatch) {
-      return bestMatch;
-    }
-
-    // Try fuzzy matching with strict thresholds
-    const allDrinkNames = Array.from(this.cache.keys());
-    const fuzzyResults = fuzzysort.go(input, allDrinkNames, {
-      threshold: -2000, // Much stricter threshold
-      limit: 3 // Get top 3 matches to compare
-    });
-
-    if (fuzzyResults.length > 0) {
-      // Calculate normalized scores
-      const matches = fuzzyResults.map(result => ({
-        name: result.target,
-        score: Math.max((result.score + 1000) / 1000, 0)
-      }));
-
-      // Only consider matches above threshold
-      const validMatches = matches.filter(m => m.score > this.FUZZY_MATCH_THRESHOLD);
-
-      if (validMatches.length > 0) {
-        // If multiple close matches, check context
-        if (validMatches.length > 1 && context?.referencedItems?.length) {
-          // Prioritize recently referenced drinks
-          const recentDrink = context.referencedItems[0].item;
-          const recentMatch = validMatches.find(m => m.name === recentDrink);
-          if (recentMatch) {
-            return {
-              name: recentMatch.name,
-              confidence: recentMatch.score * 0.95 // Slight penalty for fuzzy match
-            };
-          }
-        }
-
-        // Return the highest scoring match
-        const topMatch = validMatches[0];
-        return {
-          name: topMatch.name,
-          confidence: topMatch.score * 0.9 // Penalty for fuzzy match
-        };
-      }
-    }
-
-    return null;
-  }
-
-  getPrioritizedDrinks(): string[] {
-    return Array.from(this.cache.values())
-      .sort((a, b) => {
-        // Prioritize by recency and frequency
-        const recencyScore = b.lastMatched - a.lastMatched;
-        const frequencyScore = b.matchCount - a.matchCount;
-        return recencyScore + frequencyScore * 1000;
-      })
-      .map(drink => drink.name);
-  }
-
-  trackRemoval(drinkName: string) {
-    this.recentRemovals.unshift({
-      name: drinkName,
-      timestamp: Date.now()
-    });
-    // Keep only last 5 removals
-    this.recentRemovals = this.recentRemovals.slice(0, 5);
-  }
-
-  wasRecentlyRemoved(drinkName: string): boolean {
-    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-    return this.recentRemovals.some(
-      removal => removal.name === drinkName && removal.timestamp > fiveMinutesAgo
-    );
-  }
-}
-
-const drinkNameCache = new DrinkNameCache();
-
-// Initialize OpenAI client
-let openai: OpenAI | null = null;
-
-async function getOpenAIClient(): Promise<OpenAI> {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error('OpenAI API key not found - voice features will be limited');
-  }
-  return new OpenAI({
-    apiKey,
-    dangerouslyAllowBrowser: true
-  });
-}
-
-interface OrderDetails {
-  items: OrderItem[];
-  specialInstructions?: string;
-  intent: CommandIntent;
-  action?: string;
-  context?: OrderContext;
-  modifications?: {
-    type: 'add' | 'remove' | 'modify' | 'void';
-    item: OrderItem;
-    previousQuantity?: number;
-  }[];
-  naturalLanguageResponse?: {
-    confidence: number;
-    alternativeIntents?: CommandIntent[];
-    needsClarification?: boolean;
-    suggestedResponse?: string;
-  };
-}
-
-interface VoiceOrderResult {
-  success: boolean;
-  order?: OrderDetails;
-  error?: string;
-}
-
-// Helper function for emotional tone detection
-function detectEmotionalTone(text: string): 'neutral' | 'enthusiastic' | 'apologetic' | 'frustrated' {
-  const normalized = text.toLowerCase();
-
-  // Frustration indicators
-  if (normalized.includes('wrong') ||
-      normalized.includes('no ') ||
-      normalized.includes('not ') ||
-      normalized.includes('incorrect')) {
-    return 'frustrated';
-  }
-
-  // Enthusiasm indicators
-  if (normalized.includes('great') ||
-      normalized.includes('perfect') ||
-      normalized.includes('awesome') ||
-      normalized.includes('yes')) {
-    return 'enthusiastic';
-  }
-
-  // Apologetic indicators
-  if (normalized.includes('sorry') ||
-      normalized.includes('oops') ||
-      normalized.includes('mistake')) {
-    return 'apologetic';
-  }
-
-  return 'neutral';
-}
-
-// Improved intent detection
+// Enhanced natural language understanding
 function detectNaturalLanguageIntent(text: string, context: OrderContext): {
   intent: CommandIntent;
   confidence: number;
+  alternativeIntents?: CommandIntent[];
   needsClarification?: boolean;
   referenceType?: 'previous' | 'current' | 'last';
   targetDrink?: string;
@@ -438,89 +210,116 @@ function detectNaturalLanguageIntent(text: string, context: OrderContext): {
   let maxConfidence = 0;
   let detectedIntent: CommandIntent = 'add_item';
   let alternativeIntents: CommandIntent[] = [];
+  let referenceType: 'previous' | 'current' | 'last' | undefined;
+  let targetDrink: string | undefined;
 
-  // First check for exact command matches
-  for (const [intent, patterns] of Object.entries(intentPatterns)) {
+  // Check for specific drink mentions in remove commands
+  const drinkPattern = /(mojito|margarita|beer|mule|cocktail|drink|shot|glass)/i;
+  const drinkMatch = normalized.match(drinkPattern);
+  if (drinkMatch) {
+    targetDrink = drinkMatch[0].toLowerCase();
+  }
+
+  // First check references
+  for (const [type, patterns] of Object.entries(referencePatterns)) {
+    for (const pattern of patterns) {
+      if (pattern.test(normalized)) {
+        referenceType = type as 'previous' | 'current' | 'last';
+        console.log(`Detected reference type: ${type}`);
+        break;
+      }
+    }
+    if (referenceType) break;
+  }
+
+  // Check system commands first (highest priority)
+  for (const intent of SYSTEM_INTENTS) {
+    const patterns = intentPatterns[intent];
     for (const pattern of patterns) {
       const match = normalized.match(pattern);
       if (match) {
-        const confidence = calculateIntentConfidence(match, normalized, intent as CommandIntent);
+        // System commands get higher base confidence
+        let confidence = 0.9 + (match[0].length / normalized.length) * 0.1;
+
+        // Earlier matches get higher confidence
+        confidence *= (1 - match.index! / normalized.length);
+
+        console.log(`Checking system command ${intent}: ${confidence}`);
+
         if (confidence > maxConfidence) {
-          if (maxConfidence > 0.3) {
-            alternativeIntents.push(detectedIntent);
-          }
           maxConfidence = confidence;
-          detectedIntent = intent as CommandIntent;
+          detectedIntent = intent;
+          console.log(`Detected system command: ${intent} with confidence ${confidence}`);
+          return {
+            intent: detectedIntent,
+            confidence: maxConfidence,
+            needsClarification: false,
+            referenceType,
+            targetDrink
+          };
         }
       }
     }
   }
 
-  // If we found a strong match, return it
-  if (maxConfidence > 0.7) {
-    return {
-      intent: detectedIntent,
-      confidence: maxConfidence,
-      needsClarification: false
-    };
-  }
+  // Then check other intents
+  for (const intent of [...ORDER_INTENTS, ...MANAGEMENT_INTENTS]) {
+    const patterns = intentPatterns[intent as keyof typeof intentPatterns];
+    if (!patterns) continue;
 
-  // Check for ordering-related words
-  const orderingWords = ['want', 'like', 'give', 'get', 'make', 'order'];
-  if (orderingWords.some(word => normalized.includes(word))) {
-    maxConfidence = Math.max(maxConfidence, 0.8);
-    detectedIntent = 'add_item';
-  }
+    for (const pattern of patterns) {
+      const match = normalized.match(pattern);
+      if (match) {
+        let confidence = match[0].length / normalized.length;
+        confidence *= (1 - match.index! / normalized.length);
 
-  // Check for modification words
-  const modifyWords = ['change', 'modify', 'instead', 'different'];
-  if (modifyWords.some(word => normalized.includes(word))) {
-    maxConfidence = Math.max(maxConfidence, 0.8);
-    detectedIntent = 'modify_item';
-  }
+        // Boost confidence for contextually relevant patterns
+        if (referenceType && isIntentRelated(intent, context.lastIntent)) {
+          confidence *= 1.2;
+          console.log(`Boosting confidence for related intent ${intent}`);
+        }
 
-  // Check for removal words
-  const removeWords = ['remove', 'delete', 'cancel', 'take'];
-  if (removeWords.some(word => normalized.includes(word))) {
-    const targetMatch = normalized.match(/(remove|take off|delete|cancel)\s+(.*)/i);
-    if (targetMatch && targetMatch[2]) {
-      const potentialDrink = targetMatch[2].trim();
-      const bestMatch = drinkNameCache.findBestMatch(potentialDrink);
-      if (bestMatch) {
-        maxConfidence = Math.max(maxConfidence, bestMatch.confidence);
-        detectedIntent = 'remove_item';
-        
+        // Additional boost for modification commands with references
+        if (intent === 'modify_item' && referenceType) {
+          confidence *= 1.3;
+          console.log(`Boosting confidence for modification with reference`);
+        }
+
+        if (confidence > maxConfidence) {
+          if (maxConfidence > 0.3) {
+            alternativeIntents.push(detectedIntent);
+          }
+          maxConfidence = confidence;
+          detectedIntent = intent;
+          console.log(`Detected intent ${intent} with confidence ${confidence}`);
+        }
       }
     }
   }
 
+  // Check for uncertainty indicators
+  const uncertaintyKeywords = [
+    'maybe', 'perhaps', 'possibly', 'not sure', 'think', 'might',
+    'could', 'would', "i'd", 'how about', 'what if', 'probably'
+  ];
+
+  const hasUncertainty = uncertaintyKeywords.some(keyword =>
+    normalized.includes(keyword)
+  );
+
+  if (hasUncertainty) {
+    maxConfidence *= 0.8;
+    console.log('Detected uncertainty, reducing confidence');
+  }
 
   return {
     intent: detectedIntent,
     confidence: maxConfidence,
-    needsClarification: maxConfidence < 0.6,
-    alternativeIntents: alternativeIntents.length > 0 ? alternativeIntents : undefined
+    alternativeIntents: alternativeIntents.length > 0 ? alternativeIntents : undefined,
+    needsClarification: maxConfidence < 0.4 || alternativeIntents.length > 2 || hasUncertainty,
+    referenceType,
+    targetDrink
   };
-}
-
-function calculateIntentConfidence(
-  match: RegExpMatchArray,
-  normalized: string,
-  intent: CommandIntent
-): number {
-  let confidence = match[0].length / normalized.length;
-
-  // Boost confidence for exact matches
-  if (match.index === 0) {
-    confidence *= 1.2;
-  }
-
-  // Adjust confidence based on intent priority
-  if (SYSTEM_INTENTS.includes(intent as any)) {
-    confidence *= 1.3; // Higher priority for system commands
-  }
-
-  return Math.min(confidence, 1.0); // Cap at 1.0
 }
 
 // Enhanced command normalization
@@ -569,7 +368,314 @@ function normalizeCommand(text: string): {
   };
 }
 
-// Export the main process function
+// Check if intents are related for better context handling
+function isIntentRelated(current: CommandIntent, previous: CommandIntent): boolean {
+  const relatedIntents: Record<CommandIntent, CommandIntent[]> = {
+    'add_item': ['modify_item', 'quantity_change', 'undo_last'],
+    'modify_item': ['add_item', 'quantity_change', 'undo_last'],
+    'remove_item': ['undo_last', 'void_item', 'cancel_order'],
+    'void_item': ['cancel_order', 'remove_item', 'undo_last'],
+    'cancel_order': ['void_item', 'undo_last'],
+    'quantity_change': ['modify_item', 'add_item'],
+    'undo_last': ['modify_item', 'remove_item', 'add_item'],
+    'complete_order': ['split_order', 'apply_discount'],
+    'split_order': ['complete_order', 'apply_discount'],
+    'apply_discount': ['complete_order', 'split_order'],
+    'help': ['repeat_last', 'list_orders'],
+    'repeat_last': ['help', 'list_orders'],
+    'list_orders': ['help', 'repeat_last'],
+    'stop': []
+  };
+
+  return relatedIntents[current]?.includes(previous) || false;
+}
+
+// Enhanced response generation
+function generateContextualResponse(
+  intent: CommandIntent,
+  confidence: number,
+  context: OrderContext,
+  items?: OrderItem[]
+): string {
+  const uncertaintyPrefix = confidence < 0.6 ?
+    "I'm not quite sure, but I think you want to " :
+    confidence < 0.8 ?
+      "If I understand correctly, you want to " :
+      "";
+
+  const emotionalTone = context.emotionalTone || 'neutral';
+  const emotionalPrefix = {
+    'apologetic': "I'm sorry, but ",
+    'frustrated': "Let me help fix that. ",
+    'enthusiastic': "Great! ",
+    'neutral': ""
+  }[emotionalTone];
+
+  const itemSummary = items?.length ?
+    `${items.map(i => `${i.quantity} ${i.name}`).join(", ")}` :
+    "";
+
+  const contextAwareResponses: Record<CommandIntent, (items?: OrderItem[]) => string[]> = {
+    'cancel_order': () => [
+      "Canceling your entire order.",
+      "I'll cancel everything and we can start fresh.",
+      "Starting over with a clean slate."
+    ],
+    'add_item': (items) => [
+      `Adding ${itemSummary} to your order.`,
+      `I'll add ${itemSummary} for you.`,
+      `Got it, adding ${itemSummary} to your order.`
+    ],
+    'remove_item': (items) => [
+      `Removing ${itemSummary} from your order.`,
+      `I'll take ${itemSummary} off your order.`,
+      `OK, removing ${itemSummary}.`
+    ],
+    'modify_item': (items) => [
+      `Modifying your order: ${itemSummary}.`,
+      `Changing that to ${itemSummary}.`,
+      `Updating your order with ${itemSummary}.`
+    ],
+    'help': () => [
+      "I can help you order drinks, modify orders, or check status. What would you like to do?",
+      "Here's what I can do: take orders, make changes, apply discounts, or process payments.",
+      "I can assist with ordering, modifications, or checking your order status."
+    ],
+    'stop': () => [
+      "Okay, I'll stop listening.",
+      "Stopping voice recognition now.",
+      "Voice commands deactivated."
+    ],
+    'split_order': () => ["How would you like to split the order?"],
+    'apply_discount': () => ["What discount would you like to apply?"],
+    'complete_order': () => ["Order complete!"]
+  };
+
+  const responses = contextAwareResponses[intent]?.(items) || ["I'll help you with that."];
+  const baseResponse = responses[Math.floor(Math.random() * responses.length)];
+
+  return `${emotionalPrefix}${uncertaintyPrefix}${baseResponse}`;
+}
+
+// Add natural language fallback
+async function handleAmbiguousCommand(
+  text: string,
+  confidence: number,
+  alternativeIntents: CommandIntent[],
+  context: OrderContext
+): Promise<{
+  resolvedIntent: CommandIntent;
+  clarification?: string;
+  suggestedResponse?: string;
+}> {
+  if (!openai) {
+    // Fallback to best guess if OpenAI not available
+    return {
+      resolvedIntent: alternativeIntents[0],
+      clarification: "I'm not entirely sure what you want to do. Could you please be more specific?",
+      suggestedResponse: generateContextualResponse(alternativeIntents[0], confidence, context)
+    };
+  }
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4-1106-preview",
+    messages: [
+      {
+        role: "system",
+        content: `You are an AI assistant for a bar POS system. Analyze this ambiguous command and determine the most likely intent.
+          Available intents: ${Object.keys(intentPatterns).join(", ")}.
+          Consider the conversation context and previous orders.
+          Return a JSON object with:
+          {
+            "intent": string (one of the available intents),
+            "clarification": string (a question to ask the user for clarity),
+            "confidence": number (between 0 and 1),
+            "suggestedResponse": string (how to respond to the user)
+          }`
+      },
+      {
+        role: "user",
+        content: `Command: "${text}"
+          Confidence: ${confidence}
+          Possible intents: ${alternativeIntents.join(", ")}
+          Previous context: ${JSON.stringify(context)}`
+      }
+    ],
+    response_format: { type: "json_object" }
+  });
+
+  const result = JSON.parse(completion.choices[0].message.content);
+  return {
+    resolvedIntent: result.intent as CommandIntent,
+    clarification: result.clarification,
+    suggestedResponse: result.suggestedResponse
+  };
+}
+
+
+interface DrinkMatch {
+  name: string;
+  variations: string[];
+  matchCount: number;
+  lastMatched: number;
+  recentReferences: Array<{
+    phrase: string;
+    timestamp: number;
+  }>;
+}
+
+class DrinkNameCache {
+  private cache: Map<string, DrinkMatch>;
+  private readonly MAX_VARIATIONS = 5;
+  private readonly MAX_REFERENCES = 10;
+  private recentRemovals: Array<{
+    name: string;
+    timestamp: number;
+  }> = [];
+
+  constructor() {
+    this.cache = new Map();
+  }
+
+  addDrink(name: string) {
+    if (!this.cache.has(name)) {
+      this.cache.set(name, {
+        name,
+        variations: [],
+        matchCount: 0,
+        lastMatched: Date.now(),
+        recentReferences: []
+      });
+    }
+  }
+
+  addVariation(originalName: string, variation: string) {
+    const drink = this.cache.get(originalName);
+    if (drink) {
+      if (!drink.variations.includes(variation)) {
+        drink.variations = [variation, ...drink.variations]
+          .slice(0, this.MAX_VARIATIONS);
+      }
+      drink.matchCount++;
+      drink.lastMatched = Date.now();
+      drink.recentReferences.unshift({
+        phrase: variation,
+        timestamp: Date.now()
+      });
+      drink.recentReferences = drink.recentReferences.slice(0, this.MAX_REFERENCES);
+    }
+  }
+
+  findBestMatch(input: string, context?: OrderContext): { name: string; confidence: number } | null {
+    let bestMatch = null;
+    let highestConfidence = 0;
+
+    // First try exact matches including variations
+    for (const [name, drink] of this.cache.entries()) {
+      // Exact name match
+      if (input.toLowerCase() === name.toLowerCase()) {
+        return { name, confidence: 1.0 };
+      }
+
+      // Variation matches
+      for (const variation of drink.variations) {
+        if (input.toLowerCase() === variation.toLowerCase()) {
+          return { name, confidence: 0.95 };
+        }
+      }
+
+      // Check for reference phrases ("another one", "same thing", etc.)
+      const referenceMatch = this.matchReference(input, drink, context);
+      if (referenceMatch && referenceMatch.confidence > highestConfidence) {
+        bestMatch = { name, confidence: referenceMatch.confidence };
+        highestConfidence = referenceMatch.confidence;
+      }
+    }
+
+    if (bestMatch) {
+      return bestMatch;
+    }
+
+    // Then try fuzzy matching
+    const allDrinkNames = Array.from(this.cache.keys());
+    const fuzzyResults = fuzzysort.go(input, allDrinkNames, {
+      threshold: -10000,
+      limit: 1
+    });
+
+    if (fuzzyResults.length > 0) {
+      const topResult = fuzzyResults[0];
+      const normalizedScore = (topResult.score + 1000) / 1000; // Convert to 0-1 range
+      if (normalizedScore > 0.6) {
+        bestMatch = {
+          name: topResult.target,
+          confidence: normalizedScore
+        };
+      }
+    }
+
+    return bestMatch;
+  }
+
+  private matchReference(input: string, drink: DrinkMatch, context?: OrderContext): { confidence: number } | null {
+    const referencePatterns = [
+      { pattern: /another (one|drink|mule|beer|cocktail)/i, confidence: 0.9 },
+      { pattern: /same (thing|drink|one)/i, confidence: 0.85 },
+      { pattern: /one more/i, confidence: 0.8 },
+      { pattern: /(that|this) again/i, confidence: 0.8 }
+    ];
+
+    // Only consider references if this drink was recently matched
+    const recentTimeWindow = 5 * 60 * 1000; // 5 minutes
+    if (Date.now() - drink.lastMatched > recentTimeWindow) {
+      return null;
+    }
+
+    // Check if this was the last referenced drink
+    const wasLastReferenced = context?.referencedItems?.[0]?.item === drink.name;
+
+    for (const { pattern, confidence } of referencePatterns) {
+      if (pattern.test(input)) {
+        // Boost confidence if this was the last referenced drink
+        const contextBoost = wasLastReferenced ? 0.1 : 0;
+        return { confidence: confidence + contextBoost };
+      }
+    }
+
+    return null;
+  }
+
+  getPrioritizedDrinks(): string[] {
+    return Array.from(this.cache.values())
+      .sort((a, b) => {
+        // Prioritize by recency and frequency
+        const recencyScore = b.lastMatched - a.lastMatched;
+        const frequencyScore = b.matchCount - a.matchCount;
+        return recencyScore + frequencyScore * 1000;
+      })
+      .map(drink => drink.name);
+  }
+
+  trackRemoval(drinkName: string) {
+    this.recentRemovals.unshift({
+      name: drinkName,
+      timestamp: Date.now()
+    });
+    // Keep only last 5 removals
+    this.recentRemovals = this.recentRemovals.slice(0, 5);
+  }
+
+  wasRecentlyRemoved(drinkName: string): boolean {
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+    return this.recentRemovals.some(
+      removal => removal.name === drinkName && removal.timestamp > fiveMinutesAgo
+    );
+  }
+}
+
+const drinkNameCache = new DrinkNameCache();
+
+// Enhanced voice order processing
 export async function processVoiceOrder(text: string): Promise<VoiceOrderResult> {
   if (!text) {
     return {
@@ -583,220 +689,430 @@ export async function processVoiceOrder(text: string): Promise<VoiceOrderResult>
     currentContext: orderContext
   });
 
+  // Initialize drink cache if needed
+  if (orderContext.currentItems?.length) {
+    orderContext.currentItems.forEach(item => {
+      drinkNameCache.addDrink(item.name);
+    });
+  }
+
   try {
-    const { normalized: normalizedCommand, detectedIntent, confidence } = normalizeCommand(text);
+    const { normalized: normalizedCommand, detectedIntent, confidence, needsClarification, targetDrink } = normalizeCommand(text);
     const now = Date.now();
 
-    // Process the command through OpenAI for better understanding
-    const client = await getOpenAIClient();
-    const completion = await client.chat.completions.create({
-      model: "gpt-4-1106-preview",
-      messages: [
-        {
-          role: "system",
-          content: `Process voice commands for a bar POS system.
-            Available drinks: ${drinkNameCache.getPrioritizedDrinks().join(', ')}.
-            Return a JSON object with:
-            {
-              "items": [{
-                "name": string,
-                "quantity": number,
-                "modifiers": string[]
-              }],
-              "intent": string,
-              "action": string
-            }`
-        },
-        {
-          role: "user",
-          content: normalizedCommand
-        }
-      ],
-      response_format: { type: "json_object" }
-    });
+    // Handle drink removal
+    if (detectedIntent === 'remove_item' && targetDrink) {
+      const wasRemoved = drinkNameCache.wasRecentlyRemoved(targetDrink);
+      if (wasRemoved) {
+        return {
+          success: false,
+          error: `${targetDrink} was already removed recently`
+        };
+      }
 
-    const content = completion.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('No response content from OpenAI');
+      // Track the removal
+      drinkNameCache.trackRemoval(targetDrink);
+
+      // Update order context
+      orderContext = {
+        ...orderContext,
+        lastIntent: 'remove_item',
+        emotionalTone: 'neutral',
+        referencedItems: [
+          {
+            item: targetDrink,
+            timestamp: now,
+            action: 'remove_item'
+          },
+          ...(orderContext.referencedItems || []).slice(0, 4)
+        ]
+      };
+
+      return {
+        success: true,
+        order: {
+          items: [],
+          intent: 'remove_item',
+          context: orderContext,
+          naturalLanguageResponse: {
+            confidence,
+            needsClarification: false,
+            suggestedResponse: `Removing ${targetDrink} from your order.`
+          }
+        }
+      };
     }
 
-    const result = JSON.parse(content) as OrderDetails;
+    // Try to match drink names in the command with context
+    const words = normalizedCommand.split(' ');
+    for (let i = 0; i < words.length; i++) {
+      const phrase = words.slice(i).join(' ');
+      const match = drinkNameCache.findBestMatch(phrase, orderContext);
+      if (match) {
+        console.log('Found drink name match:', match);
+        // Add successful matches to variations and update context
+        drinkNameCache.addVariation(match.name, phrase);
 
-    // Update order context
+        // Update referenced items in context
+        orderContext.referencedItems = [
+          {
+            item: match.name,
+            timestamp: now,
+            action: detectedIntent
+          },
+          ...(orderContext.referencedItems || []).slice(0, 4)
+        ];
+        break;
+      }
+    }
+
+    if (normalizedCommand === lastProcessedCommand &&
+      now - lastProcessedTimestamp < COMMAND_DEBOUNCE_TIME) {
+      console.log('Duplicate command detected, skipping:', normalizedCommand);
+      return {
+        success: false,
+        error: 'Command debounced'
+      };
+    }
+
+    let finalIntent = detectedIntent;
+    let clarification: string | undefined;
+
+    // Handle ambiguous commands
+    if (needsClarification) {
+      console.log('Handling ambiguous command:', {
+        text,
+        confidence,
+        detectedIntent
+      });
+
+      const { resolvedIntent, clarification: resolvedClarification, suggestedResponse } = await handleAmbiguousCommand(
+        text,
+        confidence,
+        [detectedIntent],
+        orderContext
+      );
+
+      finalIntent = resolvedIntent;
+      clarification = resolvedClarification;
+
+      if (suggestedResponse) {
+        console.log('Using suggested response:', suggestedResponse);
+      }
+    }
+
+    // For system commands, return immediately
+    if (finalIntent === 'cancel_order' || finalIntent === 'help' || finalIntent === 'stop') {
+      console.log(`Executing system command: ${finalIntent}`);
+
+      const response = generateContextualResponse(
+        finalIntent,
+        confidence,
+        orderContext
+      );
+
+      responseHistory.unshift({
+        command: normalizedCommand,
+        intent: finalIntent,
+        confidence,
+        timestamp: now,
+        success: true
+      });
+
+      if (responseHistory.length > MAX_HISTORY_LENGTH) {
+        responseHistory.pop();
+      }
+
+      return {
+        success: true,
+        order: {
+          items: [],
+          intent: finalIntent,
+          context: {
+            ...orderContext,
+            lastIntent: finalIntent
+          },
+          naturalLanguageResponse: {
+            confidence,
+            needsClarification: false,
+            suggestedResponse: response
+          }
+        }
+      };
+    }
+
+    const emotionalTone = detectEmotionalTone(text);
+    console.log('Detected emotional tone:', emotionalTone);
+
+    // Process order details
+    const orderDetails = await processComplexOrder(text);
+    console.log('Processed order details:', orderDetails);
+
+    // Update context
     orderContext = {
       ...orderContext,
-      lastIntent: detectedIntent,
-      emotionalTone: detectEmotionalTone(text),
-      ...(result.items?.length && {
-        lastOrder: result.items[result.items.length - 1],
-        currentItems: result.items
+      lastIntent: finalIntent,
+      emotionalTone,
+      ...(orderDetails.items?.length && {
+        lastOrder: orderDetails.items[orderDetails.items.length - 1],
+        currentItems: orderDetails.items
       })
     };
+
+    // Track response history
+    responseHistory.unshift({
+      command: normalizedCommand,
+      intent: finalIntent,
+      confidence,
+      timestamp: now,
+      success: true,
+      context: {
+        previousItems: orderContext.previousCommands,
+        modifiedItem: orderDetails.modifications?.[0]?.item.name,
+        action: orderDetails.action
+      }
+    });
+
+    if (responseHistory.length > MAX_HISTORY_LENGTH) {
+      responseHistory.pop();
+    }
 
     return {
       success: true,
       order: {
-        ...result,
+        ...orderDetails,
+        intent: finalIntent,
         context: orderContext,
         naturalLanguageResponse: {
           confidence,
-          needsClarification: false,
-          suggestedResponse: `Processing your order: ${result.items.map(
-            item => `${item.quantity} ${item.name}`
-          ).join(', ')}`
+          needsClarification,
+          suggestedResponse: generateContextualResponse(
+            finalIntent,
+            confidence,
+            orderContext,
+            orderDetails.items
+          ),
+          alternativeIntents: needsClarification ? [detectedIntent] : undefined
         }
       }
     };
 
   } catch (error) {
     console.error('Error processing voice order:', error);
-    return {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to process voice order';
+
+    // Track failed commands
+    responseHistory.unshift({
+      command: text,
+      intent: 'error',
+      confidence: 0,
+      timestamp: Date.now(),
+      success: false
+    });
+
+    if (responseHistory.length > MAX_HISTORY_LENGTH) {
+      responseHistory.pop();
+    }
+
+        return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to process voice order'
+      error: errorMessage
     };
   }
 }
 
-//Helper function to check if intents are related for better context handling
-function isIntentRelated(current: CommandIntent, previous: CommandIntent): boolean {
-    const relatedIntents: Record<CommandIntent, CommandIntent[]> = {
-      'add_item': ['modify_item', 'quantity_change', 'undo_last'],
-      'modify_item': ['add_item', 'quantity_change', 'undo_last'],
-      'remove_item': ['undo_last', 'void_item', 'cancel_order'],
-      'void_item': ['cancel_order', 'remove_item', 'undo_last'],
-      'cancel_order': ['void_item', 'undo_last'],
-      'quantity_change': ['modify_item', 'add_item'],
-      'undo_last': ['modify_item', 'remove_item', 'add_item'],
-      'complete_order': ['split_order', 'apply_discount'],
-      'split_order': ['complete_order', 'apply_discount'],
-      'apply_discount': ['complete_order', 'split_order'],
-      'help': ['repeat_last', 'list_orders'],
-      'repeat_last': ['help', 'list_orders'],
-      'list_orders': ['help', 'repeat_last'],
-      'stop': []
-    };
-  
-    return relatedIntents[current]?.includes(previous) || false;
-  }
-  
-  // Enhanced response generation
-  function generateContextualResponse(
-    intent: CommandIntent,
-    confidence: number,
-    context: OrderContext,
-    items?: OrderItem[]
-  ): string {
-    const uncertaintyPrefix = confidence < 0.6 ?
-      "I'm not quite sure, but I think you want to " :
-      confidence < 0.8 ?
-        "If I understand correctly, you want to " :
-        "";
-  
-    const emotionalTone = context.emotionalTone || 'neutral';
-    const emotionalPrefix = {
-      'apologetic': "I'm sorry, but ",
-      'frustrated': "Let me help fix that. ",
-      'enthusiastic': "Great! ",
-      'neutral': ""
-    }[emotionalTone];
-  
-    const itemSummary = items?.length ?
-      `${items.map(i => `${i.quantity} ${i.name}`).join(", ")}` :
-      "";
-  
-    const contextAwareResponses: Record<CommandIntent, (items?: OrderItem[]) => string[]> = {
-      'cancel_order': () => [
-        "Canceling your entire order.",
-        "I'll cancel everything and we can start fresh.",
-        "Starting over with a clean slate."
-      ],
-      'add_item': (items) => [
-        `Adding ${itemSummary} to your order.`,
-        `I'll add ${itemSummary} for you.`,
-        `Got it, adding ${itemSummary} to your order.`
-      ],
-      'remove_item': (items) => [
-        `Removing ${itemSummary} from your order.`,
-        `I'll take ${itemSummary} off your order.`,
-        `OK, removing ${itemSummary}.`
-      ],
-      'modify_item': (items) => [
-        `Modifying your order: ${itemSummary}.`,
-        `Changing that to ${itemSummary}.`,
-        `Updating your order with ${itemSummary}.`
-      ],
-      'help': () => [
-        "I can help you order drinks, modify orders, or check status. What would you like to do?",
-        "Here's what I can do: take orders, make changes, apply discounts, or process payments.",
-        "I can assist with ordering, modifications, or checking your order status."
-      ],
-      'stop': () => [
-        "Okay, I'll stop listening.",
-        "Stopping voice recognition now.",
-        "Voice commands deactivated."
-      ],
-      'split_order': () => ["How would you like to split the order?"],
-      'apply_discount': () => ["What discount would you like to apply?"],
-      'complete_order': () => ["Order complete!"]
-    };
-  
-    const responses = contextAwareResponses[intent]?.(items) || ["I'll help you with that."];
-    const baseResponse = responses[Math.floor(Math.random() * responses.length)];
-  
-    return `${emotionalPrefix}${uncertaintyPrefix}${baseResponse}`;
-  }
-  
-  // Add natural language fallback
-  async function handleAmbiguousCommand(
-    text: string,
-    confidence: number,
-    alternativeIntents: CommandIntent[],
-    context: OrderContext
-  ): Promise<{
-    resolvedIntent: CommandIntent;
-    clarification?: string;
-    suggestedResponse?: string;
-  }> {
-    if (!openai) {
-      // Fallback to best guess if OpenAI not available
-      return {
-        resolvedIntent: alternativeIntents[0],
-        clarification: "I'm not entirely sure what you want to do. Could you please be more specific?",
-        suggestedResponse: generateContextualResponse(alternativeIntents[0], confidence, context)
-      };
-    }
-  
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4-1106-preview",
-      messages: [
-        {
-          role: "system",
-          content: `You are an AI assistant for a bar POS system. Analyze this ambiguous command and determine the most likely intent.
-            Available intents: ${Object.keys(intentPatterns).join(", ")}.
-            Consider the conversation context and previous orders.
-            Return a JSON object with:
-            {
-              "intent": string (one of the available intents),
-              "clarification": string (a question to ask the user for clarity),
-              "confidence": number (between 0 and 1),
-              "suggestedResponse": string (how to respond to the user)
-            }`
-        },
-        {
-          role: "user",
-          content: `Command: "${text}"
-            Confidence: ${confidence}
-            Possible intents: ${alternativeIntents.join(", ")}
-            Previous context: ${JSON.stringify(context)}`
-        }
-      ],
-      response_format: { type: "json_object" }
-    });
-  
-    const result = JSON.parse(completion.choices[0].message.content);
+// Enhanced complex order processing
+async function processComplexOrder(text: string): Promise<OrderDetails> {
+  if (!openai) throw new Error('Voice processing service is not configured');
+
+  const { normalized: normalizedCommand, detectedIntent, confidence, needsClarification, targetDrink } = normalizeCommand(text);
+  const now = Date.now();
+
+  if (normalizedCommand === lastProcessedCommand &&
+    now - lastProcessedTimestamp < COMMAND_DEBOUNCE_TIME) {
+    console.log('Duplicate complex order detected, skipping:', normalizedCommand);
     return {
-      resolvedIntent: result.intent as CommandIntent,
-      clarification: result.clarification,
-      suggestedResponse: result.suggestedResponse
+      items: [],
+      intent: detectedIntent,
+      context: orderContext
     };
   }
+
+  let finalIntent = detectedIntent;
+  let clarification: string | undefined;
+
+  // Handle ambiguous commands
+  if (needsClarification) {
+    console.log('Handling ambiguous command in complex order:', {
+      text,
+      confidence,
+      detectedIntent
+    });
+
+    const { resolvedIntent, clarification: resolvedClarification, suggestedResponse } = await handleAmbiguousCommand(
+      text,
+      confidence,
+      [detectedIntent],
+      orderContext
+    );
+
+    finalIntent = resolvedIntent;
+    clarification = resolvedClarification;
+    if (suggestedResponse) {
+      console.log("Using suggested response from OpenAI:", suggestedResponse);
+    }
+  }
+
+  const emotionalTone = detectEmotionalTone(text);
+  console.log('Processing complex order with tone:', emotionalTone);
+
+  const prioritizedDrinks = drinkNameCache.getPrioritizedDrinks();
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4-1106-preview",
+    messages: [
+      {
+        role: "system",
+        content: `Process bar POS voice commands.
+          Available drinks in order of popularity: ${prioritizedDrinks.join(', ')}.
+          Return a JSON object with:
+          {
+            "items": [{
+              "name": string,
+              "quantity": number,
+              "modifiers": string[]
+            }],
+            "intent": "${finalIntent}",
+            "action": string,
+            "context": {
+              "lastIntent": string,
+              "emotionalTone": string,
+              "modificationTarget": {
+                "itemIndex": number,
+                "originalQuantity": number
+              }
+            }
+          }`
+      },
+      {
+        role: "user",
+        content: `Previous context: ${JSON.stringify(orderContext)}
+          Current command: "${normalizedCommand}"
+          Detected intent: ${finalIntent}
+          Confidence: ${confidence}
+          Emotional tone: ${emotionalTone}`
+      }
+    ],
+    response_format: { type: "json_object" }
+  });
+
+  const parsed = JSON.parse(completion.choices[0].message.content);
+  lastProcessedCommand = normalizedCommand;
+  lastProcessedTimestamp = now;
+
+  // Update context
+  orderContext = {
+    ...orderContext,
+    ...parsed.context,
+    emotionalTone,
+    lastIntent: finalIntent,
+    conversationState: {
+      ...orderContext.conversationState,
+      needsClarification: needsClarification,
+      uncertaintyLevel: needsClarification ?
+        (orderContext.conversationState?.uncertaintyLevel || 0) + 1 :
+        0
+    },
+    previousCommands: [...orderContext.previousCommands, normalizedCommand]
+  };
+
+  const response = generateContextualResponse(
+    finalIntent,
+    confidence,
+    orderContext,
+    parsed.items
+  );
+
+  console.log('Generated response:', response);
+
+  return {
+    ...parsed,
+    intent: finalIntent,
+    context: orderContext,
+    naturalLanguageResponse: {
+      confidence,
+      needsClarification,
+      suggestedResponse: response,
+      alternativeIntents: needsClarification ? [detectedIntent] : undefined
+    }
+  };
+}
+
+// Detect emotional tone from text
+function detectEmotionalTone(text: string): OrderContext['emotionalTone'] {
+  const normalized = text.toLowerCase();
+
+  if (normalized.includes('wrong') ||
+    normalized.includes('no ') ||
+    normalized.includes('not ') ||
+    normalized.includes('incorrect')) {
+    return 'frustrated';
+  }
+
+  if (normalized.includes('great') ||
+    normalized.includes('perfect') ||
+    normalized.includes('awesome') ||
+    normalized.includes('yes')) {
+    return 'enthusiastic';
+  }
+
+  if (normalized.includes('sorry') ||
+    normalized.includes('oops') ||
+    normalized.includes('mistake')) {
+    return 'apologetic';
+  }
+
+  return 'neutral';
+}
+
+// Initialize OpenAI client with proper error handling
+let openai: OpenAI | null = null;
+
+try {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  if (!apiKey) {
+    console.warn('OpenAI API key not found - voice features will be limited');
+  } else {
+    openai = new OpenAI({
+      apiKey,
+      dangerouslyAllowBrowser: true
+    });
+  }
+} catch (error) {
+  console.error('Failed to initialize OpenAI client:', error);
+}
+
+interface OrderDetails {
+  items: OrderItem[];
+  specialInstructions?: string;
+  intent: CommandIntent;
+  action?: string;
+  context?: OrderContext;
+  modifications?: {
+    type: 'add' | 'remove' | 'modify' | 'void';
+    item: OrderItem;
+    previousQuantity?: number;
+  }[];
+  naturalLanguageResponse?: {
+    confidence: number;
+    alternativeIntents?: CommandIntent[];
+    needsClarification?: boolean;
+    suggestedResponse?: string;
+  };
+}
+
+interface VoiceOrderResult {
+  success: boolean;
+  order?: OrderDetails;
+  error?: string;
+}
