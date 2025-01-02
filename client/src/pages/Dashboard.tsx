@@ -130,13 +130,21 @@ const DEFAULT_REVENUE_METRIC: RevenueMetric = {
   growth: 0
 };
 
+// Add proper default for category performance
+const DEFAULT_CATEGORY_PERFORMANCE = {
+  category: '',
+  revenue: 0,
+  growth: 0,
+  profitMargin: 0
+};
+
 const DEFAULT_DASHBOARD_STATS: DashboardStats = {
   dailyRevenue: DEFAULT_REVENUE_METRIC,
   weeklyRevenue: DEFAULT_REVENUE_METRIC,
   monthlyRevenue: DEFAULT_REVENUE_METRIC,
   yearlyRevenue: DEFAULT_REVENUE_METRIC,
   topProducts: [],
-  categoryPerformance: [],
+  categoryPerformance: [DEFAULT_CATEGORY_PERFORMANCE],
   liveSales: [],
   averageOrderValue: 0,
   orderTrends: [],
@@ -153,7 +161,7 @@ export function Dashboard() {
   const [selectedTimeframe, setSelectedTimeframe] = useState<'day' | 'week' | 'month' | 'year'>('day');
   const [activeSection, setActiveSection] = useState<'revenue' | 'inventory' | 'events' | 'suppliers'>('revenue');
 
-  // Fetch dashboard data with error handling
+  // Fetch dashboard data with error handling and default values
   const { data: stats = DEFAULT_DASHBOARD_STATS, isLoading, error } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard/stats"],
   });
@@ -183,23 +191,31 @@ export function Dashboard() {
     );
   }
 
-  // Get current revenue metric based on selected timeframe
+  // Get current revenue metric based on selected timeframe with proper default handling
   const getCurrentRevenue = (): RevenueMetric => {
-    switch (selectedTimeframe) {
-      case 'day':
-        return stats.dailyRevenue;
-      case 'week':
-        return stats.weeklyRevenue;
-      case 'month':
-        return stats.monthlyRevenue;
-      case 'year':
-        return stats.yearlyRevenue;
-      default:
-        return DEFAULT_REVENUE_METRIC;
-    }
+    const revenue = (() => {
+      switch (selectedTimeframe) {
+        case 'day':
+          return stats?.dailyRevenue;
+        case 'week':
+          return stats?.weeklyRevenue;
+        case 'month':
+          return stats?.monthlyRevenue;
+        case 'year':
+          return stats?.yearlyRevenue;
+        default:
+          return DEFAULT_REVENUE_METRIC;
+      }
+    })();
+    return revenue || DEFAULT_REVENUE_METRIC;
   };
 
   const currentRevenue = getCurrentRevenue();
+
+  // Calculate average profit margin with defensive coding
+  const averageProfitMargin = stats?.categoryPerformance?.length 
+    ? stats.categoryPerformance.reduce((acc, cat) => acc + (cat?.profitMargin || 0), 0) / stats.categoryPerformance.length
+    : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -365,8 +381,7 @@ export function Dashboard() {
                         <div>
                           <p className="text-sm text-muted-foreground">Avg. Profit Margin</p>
                           <p className="text-2xl font-bold">
-                            {stats.categoryPerformance.reduce((acc, cat) => acc + cat.profitMargin, 0) /
-                             stats.categoryPerformance.length}%
+                            {averageProfitMargin.toFixed(1)}%
                           </p>
                         </div>
                       </div>
