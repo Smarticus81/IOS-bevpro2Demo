@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NavBar } from "@/components/NavBar";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from 'recharts';
-import { DollarSign, TrendingUp, Users, Package, Loader2, Calendar, BarChart3 } from "lucide-react";
+import { DollarSign, TrendingUp, Users, Package, Loader2, Calendar, BarChart3, Clock, AlertCircle, ShoppingCart, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import type { Drink, Order, OrderItem } from "@db/schema";
 import { motion } from "framer-motion";
 
@@ -16,6 +16,15 @@ interface DashboardStats {
   weeklyTrend: Array<{ date: string; sales: number }>;
   popularDrinks: Array<{ id: number; name: string; sales: number }>;
   totalOrders: number;
+  // Additional stats
+  monthlyGrowth: number;
+  weeklyGrowth: number;
+  averageOrderValue: number;
+  orderFulfillmentTime: number;
+  lowStockItems: number;
+  topSellingItems: Array<{ name: string; revenue: number; quantity: number }>;
+  inventoryValue: number;
+  systemUptime: number;
 }
 
 // Premium gradients for charts
@@ -69,8 +78,8 @@ export function Dashboard() {
           <p className="text-muted-foreground">Welcome to your beverage management dashboard</p>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+        {/* Revenue Overview Section */}
+        <div className="grid gap-4 md:grid-cols-4 mb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -79,17 +88,30 @@ export function Dashboard() {
             <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 
                           backdrop-blur-md border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
               <CardContent className="p-6">
-                <div className="flex items-center space-x-4">
-                  <div className="p-2 bg-blue-500/10 rounded-full">
-                    <DollarSign className="h-8 w-8 text-blue-500" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 bg-blue-500/10 rounded-full">
+                      <DollarSign className="h-8 w-8 text-blue-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Revenue</p>
+                      <p className="text-2xl font-bold">${stats ? (stats.totalSales / 100).toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      }) : '0.00'}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Revenue</p>
-                    <p className="text-2xl font-bold">${stats ? (stats.totalSales / 100).toLocaleString('en-US', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    }) : '0.00'}</p>
-                  </div>
+                  {stats?.monthlyGrowth && stats.monthlyGrowth > 0 ? (
+                    <div className="flex items-center text-emerald-500">
+                      <ArrowUpRight className="h-4 w-4" />
+                      <span className="text-sm font-medium">+{stats.monthlyGrowth}%</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center text-red-500">
+                      <ArrowDownRight className="h-4 w-4" />
+                      <span className="text-sm font-medium">{stats?.monthlyGrowth}%</span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -103,16 +125,21 @@ export function Dashboard() {
             <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 
                           backdrop-blur-md border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
               <CardContent className="p-6">
-                <div className="flex items-center space-x-4">
-                  <div className="p-2 bg-green-500/10 rounded-full">
-                    <TrendingUp className="h-8 w-8 text-green-500" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 bg-green-500/10 rounded-full">
+                      <ShoppingCart className="h-8 w-8 text-green-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Average Order</p>
+                      <p className="text-2xl font-bold">${stats ? (stats.averageOrderValue / 100).toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      }) : '0.00'}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Today's Sales</p>
-                    <p className="text-2xl font-bold">${stats ? (stats.todaySales / 100).toLocaleString('en-US', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    }) : '0.00'}</p>
+                  <div className="flex items-center text-emerald-500">
+                    <span className="text-sm font-medium">{stats?.totalOrders} orders</span>
                   </div>
                 </div>
               </CardContent>
@@ -127,13 +154,18 @@ export function Dashboard() {
             <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 
                           backdrop-blur-md border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
               <CardContent className="p-6">
-                <div className="flex items-center space-x-4">
-                  <div className="p-2 bg-purple-500/10 rounded-full">
-                    <Package className="h-8 w-8 text-purple-500" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 bg-purple-500/10 rounded-full">
+                      <Clock className="h-8 w-8 text-purple-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Avg. Fulfillment</p>
+                      <p className="text-2xl font-bold">{stats?.orderFulfillmentTime || 0}m</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Active Orders</p>
-                    <p className="text-2xl font-bold">{stats?.activeOrders || 0}</p>
+                  <div className="flex items-center">
+                    <span className="text-sm font-medium text-purple-500">Active: {stats?.activeOrders}</span>
                   </div>
                 </div>
               </CardContent>
@@ -148,21 +180,32 @@ export function Dashboard() {
             <Card className="bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20 
                           backdrop-blur-md border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
               <CardContent className="p-6">
-                <div className="flex items-center space-x-4">
-                  <div className="p-2 bg-pink-500/10 rounded-full">
-                    <Users className="h-8 w-8 text-pink-500" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 bg-pink-500/10 rounded-full">
+                      <Package className="h-8 w-8 text-pink-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Inventory Value</p>
+                      <p className="text-2xl font-bold">${stats ? (stats.inventoryValue / 100).toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      }) : '0.00'}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Customers</p>
-                    <p className="text-2xl font-bold">{stats?.totalCustomers || 0}</p>
-                  </div>
+                  {stats?.lowStockItems > 0 && (
+                    <div className="flex items-center text-amber-500">
+                      <AlertCircle className="h-4 w-4" />
+                      <span className="text-sm font-medium ml-1">{stats.lowStockItems} low</span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           </motion.div>
         </div>
 
-        {/* Revenue Trend Chart */}
+        {/* Revenue Trends & Category Performance */}
         <div className="grid gap-6 md:grid-cols-2 mb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -223,7 +266,6 @@ export function Dashboard() {
             </Card>
           </motion.div>
 
-          {/* Category Performance */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -286,6 +328,107 @@ export function Dashboard() {
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+
+        {/* Top Selling Items & Order Metrics */}
+        <div className="grid gap-6 md:grid-cols-2 mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+          >
+            <Card className="bg-white/95 backdrop-blur-md border-white/20 shadow-xl">
+              <CardHeader className="border-b border-gray-100/10">
+                <CardTitle className="flex items-center gap-2 text-lg font-medium">
+                  <TrendingUp className="h-5 w-5 text-amber-500" />
+                  Top Selling Items
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="space-y-4">
+                  {stats?.topSellingItems.map((item, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.5, delay: index * 0.1 }}
+                      className="flex items-center justify-between p-4 rounded-lg bg-gray-50/50"
+                    >
+                      <div>
+                        <p className="font-medium">{item.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.quantity} units sold
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">
+                          ${(item.revenue / 100).toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.7 }}
+          >
+            <Card className="bg-white/95 backdrop-blur-md border-white/20 shadow-xl">
+              <CardHeader className="border-b border-gray-100/10">
+                <CardTitle className="flex items-center gap-2 text-lg font-medium">
+                  <Clock className="h-5 w-5 text-violet-500" />
+                  System Performance
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="space-y-4">
+                  <div className="p-4 rounded-lg bg-gray-50/50">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium">System Uptime</p>
+                      <p className="text-sm font-medium">{stats?.systemUptime || 100}%</p>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${stats?.systemUptime || 100}%` }}
+                        transition={{ duration: 0.5, delay: 0.8 }}
+                        className="bg-violet-500 h-2 rounded-full"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-lg bg-gray-50/50">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium">Order Processing</p>
+                      <p className="text-sm font-medium">{stats?.orderFulfillmentTime || 0}m avg</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      <span>{stats?.activeOrders || 0} orders in queue</span>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-lg bg-gray-50/50">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium">Inventory Status</p>
+                      <p className="text-sm font-medium">{stats?.lowStockItems || 0} items low</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Package className="h-4 w-4" />
+                      <span>${(stats?.inventoryValue || 0).toLocaleString()} total value</span>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
