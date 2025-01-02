@@ -103,7 +103,6 @@ interface DashboardStats {
   activeOrders: number;
 }
 
-
 // Premium gradients for charts
 const GRADIENTS = {
   primary: {
@@ -124,17 +123,43 @@ const GRADIENTS = {
   }
 };
 
+// Default values for revenue metrics
+const DEFAULT_REVENUE_METRIC: RevenueMetric = {
+  period: '',
+  amount: 0,
+  growth: 0
+};
+
+const DEFAULT_DASHBOARD_STATS: DashboardStats = {
+  dailyRevenue: DEFAULT_REVENUE_METRIC,
+  weeklyRevenue: DEFAULT_REVENUE_METRIC,
+  monthlyRevenue: DEFAULT_REVENUE_METRIC,
+  yearlyRevenue: DEFAULT_REVENUE_METRIC,
+  topProducts: [],
+  categoryPerformance: [],
+  liveSales: [],
+  averageOrderValue: 0,
+  orderTrends: [],
+  totalInventoryValue: 0,
+  lowStockItems: [],
+  expiringItems: [],
+  stockDistribution: [],
+  systemUptime: 0,
+  orderFulfillmentTime: 0,
+  activeOrders: 0
+};
+
 export function Dashboard() {
   const [selectedTimeframe, setSelectedTimeframe] = useState<'day' | 'week' | 'month' | 'year'>('day');
   const [activeSection, setActiveSection] = useState<'revenue' | 'inventory' | 'events' | 'suppliers'>('revenue');
 
-  // Fetch dashboard data
-  const { data: stats, isLoading, error } = useQuery<DashboardStats>({
+  // Fetch dashboard data with error handling
+  const { data: stats = DEFAULT_DASHBOARD_STATS, isLoading, error } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard/stats"],
   });
 
-  // Fetch predictive insights
-  const { data: insights } = useQuery<PredictiveInsight[]>({
+  // Fetch predictive insights with error handling
+  const { data: insights = [] } = useQuery<PredictiveInsight[]>({
     queryKey: ["/api/dashboard/insights"],
   });
 
@@ -146,7 +171,7 @@ export function Dashboard() {
     );
   }
 
-  if (error || !stats) {
+  if (error) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="w-full max-w-md mx-4">
@@ -159,7 +184,7 @@ export function Dashboard() {
   }
 
   // Get current revenue metric based on selected timeframe
-  const getCurrentRevenue = () => {
+  const getCurrentRevenue = (): RevenueMetric => {
     switch (selectedTimeframe) {
       case 'day':
         return stats.dailyRevenue;
@@ -169,6 +194,8 @@ export function Dashboard() {
         return stats.monthlyRevenue;
       case 'year':
         return stats.yearlyRevenue;
+      default:
+        return DEFAULT_REVENUE_METRIC;
     }
   };
 
