@@ -914,7 +914,7 @@ export async function processVoiceOrder(text: string): Promise<VoiceOrderResult>
       responseHistory.pop();
     }
 
-        return {
+    return {
       success: false,
       error: errorMessage
     };
@@ -923,173 +923,153 @@ export async function processVoiceOrder(text: string): Promise<VoiceOrderResult>
 
 // Enhanced complex order processing
 async function processComplexOrder(text: string): Promise<OrderDetails> {
-  if (!openai) throw new Error('Voice processing service is not configured');
-
-  const { normalized: normalizedCommand, detectedIntent, confidence, needsClarification, targetDrink } = normalizeCommand(text);
-  const now = Date.now();
-
-  if (normalizedCommand === lastProcessedCommand &&
-    now - lastProcessedTimestamp < COMMAND_DEBOUNCE_TIME) {
-    console.log('Duplicate complex order detected, skipping:', normalizedCommand);
-    return {
-      items: [],
-      intent: detectedIntent,
-      context: orderContext
-    };
-  }
-
-  let finalIntent = detectedIntent;
-  let clarification: string | undefined;
-
-  // Handle ambiguous commands
-  if (needsClarification) {
-    console.log('Handling ambiguous command in complex order:', {
-      text,
-      confidence,
-      detectedIntent
+  try {
+    const client = await getOpenAIClient().catch(error => {
+      console.error('Failed to initialize OpenAI client:', error);
+      throw new Error('OpenAI client initialization failed');
     });
 
-    const { resolvedIntent, clarification: resolvedClarification, suggestedResponse } = await handleAmbiguousCommand(
-      text,
-      confidence,
-      [detectedIntent],
-      orderContext
-    );
-
-    finalIntent = resolvedIntent;
-    clarification = resolvedClarification;
-    if (suggestedResponse) {
-      console.log("Using suggested response from OpenAI:", suggestedResponse);
+    if (!text || text.trim().length === 0) {
+      throw new Error('Empty voice command received');
     }
-  }
 
-  const emotionalTone = detectEmotionalTone(text);
-  console.log('Processing complex order with tone:', emotionalTone);
+    const { normalized: normalizedCommand, detectedIntent, confidence, needsClarification, targetDrink } = normalizeCommand(text);
+    const now = Date.now();
 
-  const prioritizedDrinks = drinkNameCache.getPrioritizedDrinks();
+    if (normalizedCommand === lastProcessedCommand &&
+      now - lastProcessedTimestamp < COMMAND_DEBOUNCE_TIME) {
+      console.log('Duplicate complex order detected, skipping:', normalizedCommand);
+      return {
+        items: [],
+        intent: detectedIntent,
+        context: orderContext
+      };
+    }
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4-1106-preview",
-    messages: [
-      {
-        role: "system",
-        content: `Process bar POS voice commands.
-          Available drinks in order of popularity: ${prioritizedDrinks.join(', ')}.
-          Return a JSON object with:
-          {
-            "items": [{
-              "name": string,
-              "quantity": number,
-              "modifiers": string[]
-            }],
-            "intent": "${finalIntent}",
-            "action": string,
-            "context": {
-              "lastIntent": string,
-              "emotionalTone": string,
-              "modificationTarget": {
-                "itemIndex": number,
-                "originalQuantity": number
-              }
-            }
-          }`
-      },
-      {
-        role: "user",
-        content: `Previous context: ${JSON.stringify(orderContext)}
-          Current command: "${normalizedCommand}"
-          Detected intent: ${finalIntent}
-          Confidence: ${confidence}
-          Emotional tone: ${emotionalTone}`
+    let finalIntent = detectedIntent;
+    let clarification: string | undefined;
+
+    // Handle ambiguous commands
+    if (needsClarification) {
+      console.log('Handling ambiguous command in complex order:', {
+        text,
+        confidence,
+        detectedIntent
+      });
+
+      const { resolvedIntent, clarification: resolvedClarification, suggestedResponse } = await handleAmbiguousCommand(
+        text,
+        confidence,
+        [detectedIntent],
+        orderContext
+      );
+
+      finalIntent = resolvedIntent;
+      clarification = resolvedClarification;
+      if (suggestedResponse) {
+        console.log("Using suggested response from OpenAI:", suggestedResponse);
       }
-    ],
-    response_format: { type: "json_object" }
-  });
-
-  const parsed = JSON.parse(completion.choices[0].message.content);
-  lastProcessedCommand = normalizedCommand;
-  lastProcessedTimestamp = now;
-
-  // Update context
-  orderContext = {
-    ...orderContext,
-    ...parsed.context,
-    emotionalTone,
-    lastIntent: finalIntent,
-    conversationState: {
-      ...orderContext.conversationState,
-      needsClarification: needsClarification,
-      uncertaintyLevel: needsClarification ?
-        (orderContext.conversationState?.uncertaintyLevel || 0) + 1 :
-        0
-    },
-    previousCommands: [...orderContext.previousCommands, normalizedCommand]
-  };
-
-  const response = generateContextualResponse(
-    finalIntent,
-    confidence,
-    orderContext,
-    parsed.items
-  );
-
-  console.log('Generated response:', response);
-
-  return {
-    ...parsed,
-    intent: finalIntent,
-    context: orderContext,
-    naturalLanguageResponse: {
-      confidence,
-      needsClarification,
-      suggestedResponse: response,
-      alternativeIntents: needsClarification ? [detectedIntent] : undefined
     }
-  };
-}
 
-// Detect emotional tone from text
-function detectEmotionalTone(text: string): OrderContext['emotionalTone'] {
-  const normalized = text.toLowerCase();
+    const emotionalTone = detectEmotionalTone(text);
+    console.log('Processing complex order with tone:', emotionalTone);
 
-  if (normalized.includes('wrong') ||
-    normalized.includes('no ') ||
-    normalized.includes('not ') ||
-    normalized.includes('incorrect')) {
-    return 'frustrated';
+    const prioritizedDrinks = drinkNameCache.getPrioritizedDrinks();
+
+    try {
+      const completion = await client.chat.completions.create({
+        model: "gpt-4-1106-preview",
+        messages: [
+          {
+            role: "system",
+            content: `Process bar POS voice commands.
+              Available drinks in order of popularity: ${prioritizedDrinks.join(', ')}.
+              Return a JSON object with:
+              {
+                "items": [{
+                  "name": string,
+                  "quantity": number,
+                  "modifiers": string[]
+                }],
+                "intent": "${finalIntent}",
+                "action": string,
+                "context": {
+                  "lastIntent": string,
+                  "emotionalTone": string,
+                  "modificationTarget": {
+                    "itemIndex": number,
+                    "originalQuantity": number
+                  }
+                }
+              }`
+          },
+          {
+            role: "user",
+            content: `Previous context: ${JSON.stringify(orderContext)}
+              Current command: "${normalizedCommand}"`
+          }
+        ],
+        response_format: { type: "json_object" }
+      });
+
+      const content = completion.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error('No response content from OpenAI');
+      }
+
+      const parsed = JSON.parse(content);
+
+      // Validate response format
+      if (!parsed.items || !Array.isArray(parsed.items)) {
+        throw new Error('Invalid response format: missing or invalid items array');
+      }
+
+      // Update context with the processed order
+      orderContext = {
+        ...orderContext,
+        lastIntent: finalIntent,
+        emotionalTone,
+        lastOrder: parsed.items[parsed.items.length - 1],
+        currentItems: parsed.items,
+        conversationState: {
+          ...orderContext.conversationState,
+          currentTopic: 'ordering',
+          needsClarification: false,
+          uncertaintyLevel: 0
+        }
+      };
+
+      return {
+        items: parsed.items,
+        intent: finalIntent,
+        context: orderContext,
+        modifications: parsed.modifications,
+        action: parsed.action
+      };
+
+    } catch (error) {
+      console.error('OpenAI processing error:', error);
+      throw new Error(error instanceof Error ? error.message : 'Failed to process order with AI service');
+    }
+
+  } catch (error) {
+    console.error('Complex order processing error:', error);
+    throw error; // Re-throw to be handled by the caller
   }
-
-  if (normalized.includes('great') ||
-    normalized.includes('perfect') ||
-    normalized.includes('awesome') ||
-    normalized.includes('yes')) {
-    return 'enthusiastic';
-  }
-
-  if (normalized.includes('sorry') ||
-    normalized.includes('oops') ||
-    normalized.includes('mistake')) {
-    return 'apologetic';
-  }
-
-  return 'neutral';
 }
 
 // Initialize OpenAI client with proper error handling
 let openai: OpenAI | null = null;
 
-try {
+async function getOpenAIClient(): Promise<OpenAI> {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
   if (!apiKey) {
-    console.warn('OpenAI API key not found - voice features will be limited');
-  } else {
-    openai = new OpenAI({
-      apiKey,
-      dangerouslyAllowBrowser: true
-    });
+    throw new Error('OpenAI API key not found - voice features will be limited');
   }
-} catch (error) {
-  console.error('Failed to initialize OpenAI client:', error);
+  return new OpenAI({
+    apiKey,
+    dangerouslyAllowBrowser: true
+  });
 }
 
 interface OrderDetails {
