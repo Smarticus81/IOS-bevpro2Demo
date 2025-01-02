@@ -228,22 +228,22 @@ export function Dashboard() {
 
       <div className="container mx-auto p-4 lg:p-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard</h1>
-          <p className="text-muted-foreground">Real-time insights and analytics</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">Dashboard</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Real-time insights and analytics</p>
         </div>
 
-        {/* AI Insights Banner */}
+        {/* AI Insights Banner - Mobile Optimized */}
         {insights && insights.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
+            className="mb-8 overflow-x-auto"
           >
             <Card className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-none shadow-xl">
-              <CardContent className="p-6">
+              <CardContent className="p-4 md:p-6">
                 <div className="flex flex-col space-y-4">
-                  <h3 className="text-lg font-semibold text-primary">AI-Powered Insights</h3>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <h3 className="text-base md:text-lg font-semibold text-primary">AI-Powered Insights</h3>
+                  <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 min-w-[280px]">
                     {insights.map((insight, index) => (
                       <motion.div
                         key={index}
@@ -252,16 +252,16 @@ export function Dashboard() {
                         transition={{ delay: index * 0.1 }}
                         className="flex items-start gap-3 p-4 rounded-lg bg-white/50 dark:bg-gray-800/50"
                       >
-                        <div className={`p-2 rounded-full ${
+                        <div className={`p-2 rounded-full shrink-0 ${
                           insight.impact === 'positive' ? 'bg-green-500/10' :
                             insight.impact === 'negative' ? 'bg-red-500/10' : 'bg-blue-500/10'
                         }`}>
-                          {insight.type === 'trend' ? <TrendingUp className="h-5 w-5" /> :
-                            insight.type === 'alert' ? <AlertCircle className="h-5 w-5" /> :
-                            <Percent className="h-5 w-5" />}
+                          {insight.type === 'trend' ? <TrendingUp className="h-4 w-4 md:h-5 md:w-5" /> :
+                            insight.type === 'alert' ? <AlertCircle className="h-4 w-4 md:h-5 md:w-5" /> :
+                            <Percent className="h-4 w-4 md:h-5 md:w-5" />}
                         </div>
-                        <div>
-                          <p className="text-sm font-medium">{insight.message}</p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium line-clamp-2">{insight.message}</p>
                           <p className="text-xs text-muted-foreground mt-1">
                             Confidence: {insight.confidence}%
                           </p>
@@ -275,30 +275,30 @@ export function Dashboard() {
           </motion.div>
         )}
 
-        {/* Main Navigation Tabs */}
-        <Tabs defaultValue="revenue" className="mb-8" onValueChange={(value) => setActiveSection(value as any)}>
-          <TabsList className="grid grid-cols-2 lg:grid-cols-4 gap-4 bg-transparent">
-            <TabsTrigger value="revenue" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <DollarSign className="h-4 w-4 mr-2" />
-              Revenue
+        {/* Main Navigation Tabs - Mobile Optimized */}
+        <Tabs defaultValue="revenue" className="mb-8 space-y-4" onValueChange={(value) => setActiveSection(value as any)}>
+          <TabsList className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 bg-transparent w-full overflow-x-auto">
+            <TabsTrigger value="revenue" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 md:px-4">
+              <DollarSign className="h-4 w-4 mr-1 md:mr-2 shrink-0" />
+              <span className="truncate">Revenue</span>
             </TabsTrigger>
-            <TabsTrigger value="inventory" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Package className="h-4 w-4 mr-2" />
-              Inventory
+            <TabsTrigger value="inventory" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 md:px-4">
+              <Package className="h-4 w-4 mr-1 md:mr-2 shrink-0" />
+              <span className="truncate">Inventory</span>
             </TabsTrigger>
-            <TabsTrigger value="events" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <CalendarIcon className="h-4 w-4 mr-2" />
-              Events
+            <TabsTrigger value="events" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 md:px-4">
+              <CalendarIcon className="h-4 w-4 mr-1 md:mr-2 shrink-0" />
+              <span className="truncate">Events</span>
             </TabsTrigger>
-            <TabsTrigger value="suppliers" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Truck className="h-4 w-4 mr-2" />
-              Suppliers
+            <TabsTrigger value="suppliers" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 md:px-4">
+              <Truck className="h-4 w-4 mr-1 md:mr-2 shrink-0" />
+              <span className="truncate">Suppliers</span>
             </TabsTrigger>
           </TabsList>
 
-          {/* Revenue Tab Content */}
+          {/* Revenue Tab Content - Mobile Optimized */}
           <TabsContent value="revenue">
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
               {/* Revenue Card */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -429,67 +429,66 @@ export function Dashboard() {
               </motion.div>
             </div>
 
-            {/* Charts Section */}
-            <div className="grid gap-6 md:grid-cols-2 mt-6">
+            {/* Charts Section - Mobile Optimized */}
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 mt-6">
               {/* Revenue Trend Chart */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.4 }}
+                className="w-full min-h-[300px] md:min-h-[400px]"
               >
-                <Card className="bg-white/95 backdrop-blur-md border-white/20 shadow-xl">
+                <Card className="bg-white/95 backdrop-blur-md border-white/20 shadow-xl h-full">
                   <CardHeader className="border-b border-gray-100/10">
-                    <CardTitle className="flex items-center gap-2 text-lg font-medium">
-                      <TrendingUp className="h-5 w-5 text-blue-500" />
+                    <CardTitle className="flex items-center gap-2 text-base md:text-lg font-medium">
+                      <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-blue-500" />
                       Revenue Trend
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-6">
-                    <div className="h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart
-                          data={getSafeChartData(stats?.liveSales)}
-                          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                        >
-                          <defs>
-                            <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor={GRADIENTS.primary.start} stopOpacity={0.2}/>
-                              <stop offset="95%" stopColor={GRADIENTS.primary.end} stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200/30" />
-                          <XAxis
-                            dataKey="timestamp"
-                            tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
-                            tickLine={false}
-                            axisLine={{ stroke: 'hsl(var(--border))' }}
-                          />
-                          <YAxis
-                            tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
-                            tickLine={false}
-                            axisLine={{ stroke: 'hsl(var(--border))' }}
-                            tickFormatter={(value) => `$${(value / 100).toFixed(0)}`}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: 'hsl(var(--background))',
-                              border: '1px solid hsl(var(--border))',
-                              borderRadius: '0.75rem',
-                              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
-                            }}
-                            formatter={(value: number) => [`$${(value / 100).toFixed(2)}`, 'Revenue']}
-                          />
-                          <Area
-                            type="monotone"
-                            dataKey="amount"
-                            stroke={GRADIENTS.primary.start}
-                            strokeWidth={2}
-                            fillOpacity={1}
-                            fill="url(#colorRevenue)"
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
+                  <CardContent className="pt-4 md:pt-6 h-[300px] md:h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={getSafeChartData(stats?.liveSales)}
+                        margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                      >
+                        <defs>
+                          <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={GRADIENTS.primary.start} stopOpacity={0.2}/>
+                            <stop offset="95%" stopColor={GRADIENTS.primary.end} stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200/30" />
+                        <XAxis
+                          dataKey="timestamp"
+                          tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
+                          tickLine={false}
+                          axisLine={{ stroke: 'hsl(var(--border))' }}
+                        />
+                        <YAxis
+                          tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
+                          tickLine={false}
+                          axisLine={{ stroke: 'hsl(var(--border))' }}
+                          tickFormatter={(value) => `$${(value / 100).toFixed(0)}`}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--background))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '0.75rem',
+                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+                          }}
+                          formatter={(value: number) => [`$${(value / 100).toFixed(2)}`, 'Revenue']}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="amount"
+                          stroke={GRADIENTS.primary.start}
+                          strokeWidth={2}
+                          fillOpacity={1}
+                          fill="url(#colorRevenue)"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -499,61 +498,60 @@ export function Dashboard() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.5 }}
+                className="w-full min-h-[300px] md:min-h-[400px]"
               >
-                <Card className="bg-white/95 backdrop-blur-md border-white/20 shadow-xl">
+                <Card className="bg-white/95 backdrop-blur-md border-white/20 shadow-xl h-full">
                   <CardHeader className="border-b border-gray-100/10">
-                    <CardTitle className="flex items-center gap-2 text-lg font-medium">
-                      <BarChart3 className="h-5 w-5 text-emerald-500" />
+                    <CardTitle className="flex items-center gap-2 text-base md:text-lg font-medium">
+                      <BarChart3 className="h-4 w-4 md:h-5 md:w-5 text-emerald-500" />
                       Category Performance
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-6">
-                    <div className="h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={getSafeChartData(stats?.categoryPerformance)}
-                          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                        >
-                          <defs>
-                            <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor={GRADIENTS.secondary.start} stopOpacity={0.8}/>
-                              <stop offset="95%" stopColor={GRADIENTS.secondary.end} stopOpacity={1}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200/30" />
-                          <XAxis
-                            dataKey="category"
-                            tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
-                            tickLine={false}
-                            axisLine={{ stroke: 'hsl(var(--border))' }}
-                          />
-                          <YAxis
-                            tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
-                            tickLine={false}
-                            axisLine={{ stroke: 'hsl(var(--border))' }}
-                            tickFormatter={(value) => `$${(value / 100).toFixed(0)}`}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: 'hsl(var(--background))',
-                              border: '1px solid hsl(var(--border))',
-                              borderRadius: '0.75rem',
-                              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
-                            }}
-                            formatter={(value: number, name: string) => {
-                              if (name === 'revenue') return [`$${(value / 100).toFixed(2)}`, 'Revenue'];
-                              if (name === 'profitMargin') return [`${value}%`, 'Profit Margin'];
-                              return [value, name];
-                            }}
-                          />
-                          <Bar
-                            dataKey="revenue"
-                            fill="url(#barGradient)"
-                            radius={[6, 6, 0, 0]}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
+                  <CardContent className="pt-4 md:pt-6 h-[300px] md:h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={getSafeChartData(stats?.categoryPerformance)}
+                        margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                      >
+                        <defs>
+                          <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={GRADIENTS.secondary.start} stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor={GRADIENTS.secondary.end} stopOpacity={1}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200/30" />
+                        <XAxis
+                          dataKey="category"
+                          tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
+                          tickLine={false}
+                          axisLine={{ stroke: 'hsl(var(--border))' }}
+                        />
+                        <YAxis
+                          tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
+                          tickLine={false}
+                          axisLine={{ stroke: 'hsl(var(--border))' }}
+                          tickFormatter={(value) => `$${(value / 100).toFixed(0)}`}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--background))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '0.75rem',
+                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+                          }}
+                          formatter={(value: number, name: string) => {
+                            if (name === 'revenue') return [`$${(value / 100).toFixed(2)}`, 'Revenue'];
+                            if (name === 'profitMargin') return [`${value}%`, 'Profit Margin'];
+                            return [value, name];
+                          }}
+                        />
+                        <Bar
+                          dataKey="revenue"
+                          fill="url(#barGradient)"
+                          radius={[6, 6, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -670,8 +668,8 @@ export function Dashboard() {
             </div>
           </TabsContent>
         </Tabs>
-        {/* Top Products & Inventory Alerts */}
-        <div className="grid gap-6 md:grid-cols-2 mb-8">
+        {/* Top Products & Inventory Alerts - Mobile Optimized */}
+        <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 mb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -679,12 +677,12 @@ export function Dashboard() {
           >
             <Card className="bg-white/95 backdrop-blur-md border-white/20 shadow-xl">
               <CardHeader className="border-b border-gray-100/10">
-                <CardTitle className="flex items-center gap-2 text-lg font-medium">
-                  <TrendingUp className="h-5 w-5 text-amber-500" />
+                <CardTitle className="flex items-center gap-2 text-base md:text-lg font-medium">
+                  <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-amber-500" />
                   Top Selling Products
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-6">
+              <CardContent className="pt-4 md:pt-6">
                 <div className="space-y-4">
                   {stats?.topProducts?.map((product, index) => (
                     <motion.div
@@ -725,12 +723,12 @@ export function Dashboard() {
           >
             <Card className="bg-white/95 backdrop-blur-md border-white/20 shadow-xl">
               <CardHeader className="border-b border-gray-100/10">
-                <CardTitle className="flex items-center gap-2 text-lg font-medium">
-                  <AlertOctagon className="h-5 w-5 text-amber-500" />
+                <CardTitle className="flex items-center gap-2 text-base md:text-lg font-medium">
+                  <AlertOctagon className="h-4 w-4 md:h-5 md:w-5 text-amber-500" />
                   Inventory Alerts
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-6">
+              <CardContent className="pt-4 md:pt-6">
                 <div className="space-y-4">
                   {stats?.lowStockItems?.map((item, index) => (
                     <motion.div
