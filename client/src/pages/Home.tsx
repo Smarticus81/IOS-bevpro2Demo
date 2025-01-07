@@ -11,14 +11,26 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { Drink } from "@db/schema";
 import { useCart } from "@/contexts/CartContext";
 
+interface DrinksResponse {
+  drinks: Drink[];
+  pagination: {
+    currentPage: number;
+    limit: number;
+    totalPages: number;
+    totalItems: number;
+  };
+}
+
 export function Home() {
   const { cart, addToCart, removeItem: removeFromCart, placeOrder, isProcessing } = useCart();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isOrderSummaryCollapsed, setIsOrderSummaryCollapsed] = useState(false);
 
-  const { data: drinks = [] } = useQuery<Drink[]>({
+  const { data } = useQuery<DrinksResponse>({
     queryKey: ["/api/drinks"],
   });
+
+  const drinks = data?.drinks || [];
 
   const categories = useMemo(() => 
     Array.from(new Set(drinks.map(drink => drink.category))).sort(),
