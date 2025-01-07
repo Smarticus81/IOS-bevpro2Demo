@@ -13,25 +13,40 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { InventoryAnalytics } from "@/components/InventoryAnalytics";
 
+interface ApiResponse<T> {
+  data: T[];
+  pagination: {
+    currentPage: number;
+    limit: number;
+    totalPages: number;
+    totalItems: number;
+  };
+}
+
 export function Inventory() {
   const [search, setSearch] = useState("");
   const { toast } = useToast();
 
-  const { data: drinks = [] } = useQuery<Drink[]>({
+  const { data: drinksResponse } = useQuery<ApiResponse<Drink>>({
     queryKey: ["/api/drinks"]
   });
 
-  const { data: pourInventory = [] } = useQuery<PourInventory[]>({
+  const { data: pourInventoryResponse } = useQuery<ApiResponse<PourInventory>>({
     queryKey: ["/api/pour-inventory"]
   });
 
-  const { data: taxCategories = [] } = useQuery<TaxCategory[]>({
+  const { data: taxCategoriesResponse } = useQuery<ApiResponse<TaxCategory>>({
     queryKey: ["/api/tax-categories"]
   });
 
-  const { data: pourTransactions = [] } = useQuery<PourTransaction[]>({
+  const { data: pourTransactionsResponse } = useQuery<ApiResponse<PourTransaction>>({
     queryKey: ["/api/pour-transactions"]
   });
+
+  const drinks = drinksResponse?.data || [];
+  const pourInventory = pourInventoryResponse?.data || [];
+  const taxCategories = taxCategoriesResponse?.data || [];
+  const pourTransactions = pourTransactionsResponse?.data || [];
 
   const getBeverageIcon = (category: string) => {
     switch (category.toLowerCase()) {
@@ -61,21 +76,26 @@ export function Inventory() {
   };
 
   const getLowStockBottles = () => 
-    pourInventory.filter(item => 
-      (item.remaining_volume_ml / item.initial_volume_ml) < 0.2 && item.is_active
-    );
+    pourInventory.filter(item => {
+      const remainingRatio = item.remaining_volume_ml && item.initial_volume_ml
+        ? Number(item.remaining_volume_ml) / Number(item.initial_volume_ml)
+        : 1;
+      return remainingRatio < 0.2 && item.is_active;
+    });
 
   const getLowStockPackages = () =>
     drinks.filter(drink => 
-      !needsPourTracking(drink.category) && drink.inventory < 10
+      !needsPourTracking(drink.category) && 
+      typeof drink.inventory === 'number' && 
+      drink.inventory < 10
     );
 
   const getTotalTaxOwed = () => {
     return pourTransactions.reduce((total, transaction) => {
-      if (typeof transaction.tax_amount === 'number') {
-        return total + transaction.tax_amount;
-      }
-      return total;
+      const taxAmount = transaction.tax_amount 
+        ? Number(transaction.tax_amount) 
+        : 0;
+      return total + taxAmount;
     }, 0);
   };
 
@@ -214,7 +234,9 @@ export function Inventory() {
                         {filteredInventory.pourTracked.map((item) => {
                           const drink = drinks.find(d => d.id === item.drink_id);
                           const taxCategory = taxCategories.find(t => t.id === item.tax_category_id);
-                          const remainingPercentage = (item.remaining_volume_ml / item.initial_volume_ml) * 100;
+                          const remainingPercentage = item.remaining_volume_ml && item.initial_volume_ml
+                            ? (Number(item.remaining_volume_ml) / Number(item.initial_volume_ml)) * 100
+                            : 0;
 
                           return (
                             <motion.div
