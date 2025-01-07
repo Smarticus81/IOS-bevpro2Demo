@@ -113,37 +113,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get drinks with caching and pagination
-  app.get("/api/drinks", async (req, res) => {
+  // Get drinks with caching
+  app.get("/api/drinks", async (_req, res) => {
     try {
       // Add cache control headers for medium-term caching
       res.set('Cache-Control', `public, max-age=${CACHE_DURATION.MEDIUM}`);
 
-      // Get pagination parameters
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
-      const offset = (page - 1) * limit;
-
-      // Get total count for pagination
-      const [totalCount] = await db.select({
-        count: count().mapWith(Number)
-      })
-      .from(drinks);
-
-      // Get paginated drinks
+      // Get all drinks without pagination
       const allDrinks = await db.select()
         .from(drinks)
-        .limit(limit)
-        .offset(offset);
+        .orderBy(drinks.category);
 
       res.json({
-        drinks: allDrinks,
-        pagination: {
-          currentPage: page,
-          limit,
-          totalPages: Math.ceil((totalCount?.count || 0) / limit),
-          totalItems: totalCount?.count || 0
-        }
+        drinks: allDrinks
       });
     } catch (error) {
       console.error("Error fetching drinks:", error);
