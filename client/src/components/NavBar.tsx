@@ -1,4 +1,4 @@
-import { Home, Settings, Calendar, Package, BarChart3, Sun, Moon, Menu, Mic } from "lucide-react";
+import { Home, Package } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,10 +23,6 @@ export function NavBar({ drinks }: NavBarProps) {
   const navItems = [
     { href: "/", icon: Home, label: "Home" },
     { href: "/inventory", icon: Package, label: "Inventory" },
-    { href: "/events", icon: Calendar, label: "Events" },
-    { href: "/voice-tutorial", icon: Mic, label: "Voice Tutorial" },
-    { href: "/settings", icon: Settings, label: "Settings" },
-    { href: "/dashboard", icon: BarChart3, label: "Dashboard" },
   ];
 
   return (
@@ -80,20 +76,6 @@ export function NavBar({ drinks }: NavBarProps) {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <motion.button
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.95 }}
-              className="text-gray-600 hover:text-black dark:text-gray-400 dark:hover:text-white
-                       p-2 rounded-xl transition-all duration-200
-                       bg-white/50 dark:bg-gray-800/50 backdrop-blur-lg
-                       border border-gray-200/20 dark:border-gray-700/20
-                       shadow-lg"
-              onClick={() => document.documentElement.classList.toggle('dark')}
-            >
-              <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            </motion.button>
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <motion.button
@@ -111,8 +93,8 @@ export function NavBar({ drinks }: NavBarProps) {
               <DropdownMenuContent 
                 align="end" 
                 className="w-56 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl
-                         border border-gray-200/50 dark:border-gray-700/50
-                         shadow-xl rounded-xl"
+                          border border-gray-200/50 dark:border-gray-700/50
+                          shadow-xl rounded-xl"
               >
                 <DropdownMenuGroup>
                   {navItems.map((item) => (

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Mic, MicOff, Power, Settings } from "lucide-react";
+import { Mic, MicOff, Power } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useVoiceCommands } from "@/hooks/use-voice-commands";
 import { useToast } from "@/hooks/use-toast";
@@ -11,13 +11,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { DrinkItem } from "@/types/speech";
 import { useCart } from "@/contexts/CartContext";
 import { logger } from "@/lib/logger";
 import { voiceRecognition } from "@/lib/voice";
 import { SoundWaveVisualizer } from "./SoundWaveVisualizer";
-import { VoiceTutorial } from "./VoiceTutorial";
 import {
   Tooltip,
   TooltipContent,
@@ -35,17 +34,13 @@ interface DrinksResponse {
   };
 }
 
-const TUTORIAL_SHOWN_KEY = 'voice_tutorial_completed';
-
 export function VoiceControlButton() {
   const { toast } = useToast();
   const [showDialog, setShowDialog] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(false);
   const { cart, addToCart, removeItem, placeOrder, isProcessing } = useCart();
   const [mode, setMode] = useState<'wake_word' | 'command' | 'shutdown'>('wake_word');
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Fetch drinks data with optimized caching and proper typing
   const { data: drinksResponse } = useQuery<DrinksResponse>({
     queryKey: ["/api/drinks"],
     retry: 1,
@@ -54,37 +49,18 @@ export function VoiceControlButton() {
 
   const drinks = drinksResponse?.drinks || [];
 
-  // Check if tutorial has been shown before
-  useEffect(() => {
-    const tutorialShown = localStorage.getItem(TUTORIAL_SHOWN_KEY);
-    if (!tutorialShown) {
-      setShowTutorial(true);
-    }
-  }, []);
-
-  // Initialize voice commands with proper cart state
   const { isListening, startListening, stopListening, isSupported, metrics } =
     useVoiceCommands({
       drinks,
       cart,
-      onAddToCart: addToCart,
+      onAddToCart: async (action) => {
+        await addToCart(action);
+      },
       onRemoveItem: removeItem,
       onPlaceOrder: placeOrder,
       isProcessing,
     });
 
-  // Handle tutorial completion
-  const handleTutorialComplete = () => {
-    localStorage.setItem(TUTORIAL_SHOWN_KEY, 'true');
-    setShowTutorial(false);
-    toast({
-      title: "Tutorial Complete",
-      description: "You can now use voice commands! Click the microphone button to start.",
-      duration: 5000,
-    });
-  };
-
-  // Initialize voice control with error handling
   const initializeVoiceControl = async () => {
     if (!isSupported) {
       setShowDialog(true);
@@ -102,7 +78,6 @@ export function VoiceControlButton() {
 
     try {
       if (!isInitialized) {
-        // Set up event listeners
         const handleModeChange = (data: { mode: string; isActive: boolean }) => {
           setMode(data.mode as 'wake_word' | 'command' | 'shutdown');
           toast({
@@ -127,7 +102,6 @@ export function VoiceControlButton() {
         voiceRecognition.on('modeChange', handleModeChange);
         voiceRecognition.on('shutdown', handleShutdown);
 
-        // Start listening with validation
         if (drinks.length > 0) {
           await startListening();
           setIsInitialized(true);
@@ -149,7 +123,6 @@ export function VoiceControlButton() {
     }
   };
 
-  // Handle shutdown with proper cleanup
   const handleShutdown = async () => {
     try {
       if (!isSupported) {
@@ -209,7 +182,6 @@ export function VoiceControlButton() {
     }
   };
 
-  // Format success rate for display
   const formatSuccessRate = (rate: number) => {
     return `${Math.round(rate)}%`;
   };
@@ -270,11 +242,6 @@ export function VoiceControlButton() {
           </DialogHeader>
         </DialogContent>
       </Dialog>
-
-      <VoiceTutorial
-        isOpen={showTutorial}
-        onComplete={handleTutorialComplete}
-      />
     </>
   );
 }

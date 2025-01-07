@@ -1,11 +1,7 @@
 import { Switch, Route, useRoute, useLocation } from "wouter";
 import { Home } from "@/pages/Home";
 import { Inventory } from "@/pages/Inventory";
-import { Events } from "@/pages/Events";
-import { Settings } from "@/pages/Settings";
-import { Dashboard } from "@/pages/Dashboard";
 import { PaymentConfirmation } from "@/pages/PaymentConfirmation";
-import VoiceTutorialPage from "@/pages/VoiceTutorialPage";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -35,12 +31,8 @@ function App() {
     <CartProvider>
       <Switch>
         <Route path="/" component={Home} />
-        <Route path="/dashboard" component={Dashboard} />
         <Route path="/inventory" component={Inventory} />
-        <Route path="/events" component={Events} />
-        <Route path="/settings" component={Settings} />
         <Route path="/payment-confirmation" component={PaymentConfirmation} />
-        <Route path="/voice-tutorial" component={VoiceTutorialPage} />
         <Route component={NotFound} />
       </Switch>
       <OrderSummaryDrawer />
