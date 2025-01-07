@@ -35,8 +35,8 @@ function App() {
         <Route path="/payment-confirmation" component={PaymentConfirmation} />
         <Route component={NotFound} />
       </Switch>
-      <OrderSummaryDrawer />
       <VoiceControlButton />
+      <OrderSummaryDrawer />
     </CartProvider>
   );
 }

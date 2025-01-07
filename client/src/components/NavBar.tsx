@@ -1,4 +1,4 @@
-import { Home, Package } from "lucide-react";
+import { Home, Package, Menu } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -100,9 +100,9 @@ export function NavBar({ drinks }: NavBarProps) {
                   {navItems.map((item) => (
                     <Link key={item.href} href={item.href}>
                       <DropdownMenuItem className="flex items-center gap-2 focus:bg-gray-100/80
-                                               dark:focus:bg-gray-800/50 cursor-pointer
-                                               transition-all duration-200
-                                               rounded-lg m-1">
+                                                dark:focus:bg-gray-800/50 cursor-pointer
+                                                transition-all duration-200
+                                                rounded-lg m-1">
                         <item.icon className="h-4 w-4" />
                         <span className="font-medium">{item.label}</span>
                       </DropdownMenuItem>
