@@ -24,9 +24,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { VoiceCustomization } from './VoiceCustomization';
-import type { VoiceSettings } from '@/types/voice';
 
+interface DrinksResponse {
+  drinks: DrinkItem[];
+  pagination: {
+    currentPage: number;
+    limit: number;
+    totalPages: number;
+    totalItems: number;
+  };
+}
 
 const TUTORIAL_SHOWN_KEY = 'voice_tutorial_completed';
 
@@ -37,50 +44,15 @@ export function VoiceControlButton() {
   const { cart, addToCart, removeItem, placeOrder, isProcessing } = useCart();
   const [mode, setMode] = useState<'wake_word' | 'command' | 'shutdown'>('wake_word');
   const [isInitialized, setIsInitialized] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>({
-    wakeWord: 'Hey Bar',
-    volume: 50,
-    commandPreferences: [
-      {
-        command: 'Complete Order',
-        action: 'system',
-        aliases: ['process order', 'finish order', 'checkout'],
-        enabled: true
-      },
-      {
-        command: 'Cancel Order',
-        action: 'system',
-        aliases: ['clear cart', 'start over'],
-        enabled: true
-      },
-      {
-        command: 'Help',
-        action: 'system',
-        aliases: ['what can I say', 'show commands'],
-        enabled: true
-      }
-    ]
-  });
 
-  const handleSaveSettings = (newSettings: VoiceSettings) => {
-    setVoiceSettings(newSettings);
-    // Update voice recognition with new settings
-    // This will be implemented in the next step
-    toast({
-      title: 'Settings Saved',
-      description: 'Voice command preferences have been updated.',
-      duration: 3000,
-    });
-  };
-
-
-  // Fetch drinks data with optimized caching
-  const { data: drinks = [] } = useQuery<DrinkItem[]>({
+  // Fetch drinks data with optimized caching and proper typing
+  const { data: drinksResponse } = useQuery<DrinksResponse>({
     queryKey: ["/api/drinks"],
     retry: 1,
     staleTime: 30000,
   });
+
+  const drinks = drinksResponse?.drinks || [];
 
   // Check if tutorial has been shown before
   useEffect(() => {
@@ -112,10 +84,19 @@ export function VoiceControlButton() {
     });
   };
 
-  // Initialize voice control
+  // Initialize voice control with error handling
   const initializeVoiceControl = async () => {
     if (!isSupported) {
       setShowDialog(true);
+      return;
+    }
+
+    if (!drinks.length) {
+      toast({
+        title: "Error",
+        description: "Cannot initialize voice control: No drinks data available",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -146,15 +127,17 @@ export function VoiceControlButton() {
         voiceRecognition.on('modeChange', handleModeChange);
         voiceRecognition.on('shutdown', handleShutdown);
 
-        // Start listening
-        await startListening();
-        setIsInitialized(true);
+        // Start listening with validation
+        if (drinks.length > 0) {
+          await startListening();
+          setIsInitialized(true);
 
-        toast({
-          title: "Voice Control",
-          description: "System ready. Say 'Hey Bar' or 'Hey Bev' to start",
-          duration: 3000,
-        });
+          toast({
+            title: "Voice Control",
+            description: "System ready. Say 'Hey Bar' or 'Hey Bev' to start",
+            duration: 3000,
+          });
+        }
       }
     } catch (error) {
       logger.error('Failed to initialize voice control:', error);
@@ -166,7 +149,7 @@ export function VoiceControlButton() {
     }
   };
 
-  // Handle shutdown
+  // Handle shutdown with proper cleanup
   const handleShutdown = async () => {
     try {
       if (!isSupported) {
@@ -240,16 +223,6 @@ export function VoiceControlButton() {
         className="fixed bottom-6 right-6 z-50"
       >
         <div className="relative flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setShowSettings(true)}
-            className="rounded-full shadow-lg"
-            disabled={!isSupported}
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -301,13 +274,6 @@ export function VoiceControlButton() {
       <VoiceTutorial
         isOpen={showTutorial}
         onComplete={handleTutorialComplete}
-      />
-
-      <VoiceCustomization
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-        settings={voiceSettings}
-        onSave={handleSaveSettings}
       />
     </>
   );

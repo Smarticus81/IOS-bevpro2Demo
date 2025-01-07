@@ -33,7 +33,7 @@ export function useVoiceCommands({
   const COMMAND_DEBOUNCE_MS = 500;
 
   const validateDependencies = useCallback((): boolean => {
-    if (!drinks?.length) {
+    if (!Array.isArray(drinks) || drinks.length === 0) {
       logger.error('No drinks available for voice commands');
       return false;
     }
@@ -92,7 +92,7 @@ export function useVoiceCommands({
     lastCommandRef.current = { text: command, timestamp: now };
 
     try {
-      const parsedCommand = parseVoiceCommand(command, drinks);
+      const parsedCommand = await parseVoiceCommand(command, drinks);
 
       if (!parsedCommand) {
         logger.info('Command not recognized:', command);
@@ -118,7 +118,6 @@ export function useVoiceCommands({
                 command: text,
                 error: 'Empty cart'
               });
-              await soundEffects.playError();
               showFeedback('Empty Cart', 'Your cart is empty', 'destructive');
               return;
             }
@@ -131,7 +130,6 @@ export function useVoiceCommands({
               return;
             }
             voiceAnalytics.trackCommand('order_completion', true, { command: text });
-            await soundEffects.playSuccess();
             showFeedback('Processing Order', 'Placing your order...');
             await onPlaceOrder();
             // Reset voice state after successful order completion
@@ -140,7 +138,6 @@ export function useVoiceCommands({
 
           case 'help':
             voiceAnalytics.trackCommand('system_command', true, { command: text });
-            await soundEffects.playSuccess();
             showFeedback(
               'Voice Commands',
               'Try commands like "Add a Moscow Mule", "Complete my order", or "Cancel order".'
@@ -161,7 +158,6 @@ export function useVoiceCommands({
               await onRemoveItem(item.drink.id);
             }
             voiceAnalytics.trackCommand('system_command', true, { command: text });
-            await soundEffects.playSuccess();
             showFeedback('Order Cancelled', 'Your order has been cancelled');
             return;
         }
@@ -185,7 +181,6 @@ export function useVoiceCommands({
             voiceAnalytics.trackCommand('drink_order', true, {
               command: `${item.quantity} ${matchedDrink.name}`
             });
-            await soundEffects.playSuccess();
             showFeedback(
               'Added to Cart',
               `Added ${item.quantity} ${matchedDrink.name}(s) to your cart.`
@@ -195,6 +190,11 @@ export function useVoiceCommands({
               command: text,
               error: 'Drink not found'
             });
+            showFeedback(
+              'Error',
+              `Sorry, I couldn't find "${item.name}" in our menu.`,
+              'destructive'
+            );
           }
         }
       }
@@ -204,7 +204,6 @@ export function useVoiceCommands({
         command: text,
         error: error instanceof Error ? error.message : 'Unknown error'
       });
-      await soundEffects.playError();
       showFeedback(
         'Error',
         error instanceof Error ? error.message : 'Failed to process command',
@@ -255,11 +254,6 @@ export function useVoiceCommands({
       throw error;
     }
   }, [showFeedback, validateDependencies]);
-
-  useEffect(() => {
-    const customEvent = new CustomEvent(TUTORIAL_EVENT, { detail: { command: lastCommandRef.current.text } });
-    window.dispatchEvent(customEvent);
-  }, [lastCommandRef.current.text]);
 
   return {
     isListening,
