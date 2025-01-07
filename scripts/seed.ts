@@ -1,14 +1,17 @@
-import { db } from "../db";
-import { drinks } from "../db/schema";
+import { getDb } from "@db";
+import { drinks } from "@db/schema";
 import drinksData from "../drinks.json";
 
 async function seed() {
   try {
     console.log("Starting to seed drinks...");
-    
+
+    // Get database instance
+    const db = await getDb();
+
     // Clear existing drinks
     await db.delete(drinks);
-    
+
     // Insert drinks in smaller batches
     const batchSize = 20;
     for (let i = 0; i < drinksData.length; i += batchSize) {
@@ -24,7 +27,7 @@ async function seed() {
       })));
       console.log(`Inserted batch ${Math.floor(i/batchSize) + 1}`);
     }
-    
+
     console.log("Successfully seeded drinks!");
     process.exit(0);
   } catch (error) {

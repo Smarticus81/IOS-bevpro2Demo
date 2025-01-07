@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { db } from "@db";
+import { getDb } from "@db";
 import compression from 'compression';
 import { 
   drinks, 
@@ -22,7 +22,7 @@ const CACHE_DURATION = {
   LONG: 3600, // 1 hour
 };
 
-export function registerRoutes(app: Express): Server {
+export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   console.log('Setting up routes and realtime proxy...');
 
@@ -31,6 +31,9 @@ export function registerRoutes(app: Express): Server {
 
   // Setup realtime connection
   setupRealtimeProxy(httpServer);
+
+  // Get database instance
+  const db = await getDb();
 
   // Dashboard Statistics with pagination and caching
   app.get("/api/dashboard/stats", async (req, res) => {
@@ -91,7 +94,6 @@ export function registerRoutes(app: Express): Server {
       .orderBy(sql`sum(${orderItems.quantity}) DESC`)
       .limit(limit);
 
-      // Return paginated and optimized response
       res.json({
         totalSales: salesStats?.totalSales || 0,
         todaySales: todayStats?.todaySales || 0,

@@ -47,8 +47,8 @@ app.use((req, res, next) => {
 
 (async () => {
   try {
-    // Register API routes
-    const server = registerRoutes(app);
+    // Register API routes and get the server instance
+    const server = await registerRoutes(app);
 
     // Error handling middleware
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -66,11 +66,12 @@ app.use((req, res, next) => {
     }
 
     // Start server on port 5000
-    server.listen(5000, "0.0.0.0", () => {
-      log(`Server running on port 5000`);
+    const PORT = 5000;
+    server.listen(PORT, "0.0.0.0", () => {
+      log(`Server running on port ${PORT}`);
     }).on('error', (err: any) => {
       if (err.code === 'EADDRINUSE') {
-        log(`Port 5000 is in use, shutting down`);
+        log(`Port ${PORT} is in use, shutting down`);
         process.exit(1);
       } else {
         throw err;
