@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
+import compression from 'compression';
 import { 
   drinks, 
   orders, 
@@ -14,16 +15,36 @@ import {
 import { eq, sql, count, sum } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
 
+// Cache duration constants
+const CACHE_DURATION = {
+  SHORT: 60, // 1 minute
+  MEDIUM: 300, // 5 minutes
+  LONG: 3600, // 1 hour
+};
+
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
   console.log('Setting up routes and realtime proxy...');
+
+  // Enable compression for all routes
+  app.use(compression());
+
+  // Setup realtime connection
   setupRealtimeProxy(httpServer);
 
-  // Dashboard Statistics
-  app.get("/api/dashboard/stats", async (_req, res) => {
+  // Dashboard Statistics with pagination and caching
+  app.get("/api/dashboard/stats", async (req, res) => {
     try {
+      // Add cache control headers for short-term caching
+      res.set('Cache-Control', `public, max-age=${CACHE_DURATION.SHORT}`);
+
+      // Get pagination parameters
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const offset = (page - 1) * limit;
+
       // Get total sales and today's sales
-      const salesStats = await db.select({
+      const [salesStats] = await db.select({
         totalSales: sum(transactions.amount).mapWith(Number),
         totalOrders: count(orders.id).mapWith(Number)
       })
@@ -34,52 +55,31 @@ export function registerRoutes(app: Express): Server {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
 
-      const todayStats = await db.select({
+      const [todayStats] = await db.select({
         todaySales: sum(transactions.amount).mapWith(Number)
       })
       .from(transactions)
       .where(sql`${transactions.created_at}::date = ${todayStart.toISOString().split('T')[0]} AND ${transactions.status} = 'completed'`);
 
-      // Get active orders count
+      // Get active orders with pagination
       const activeOrders = await db.select({
         count: count().mapWith(Number)
       })
       .from(orders)
       .where(eq(orders.status, 'pending'));
 
-      // Get total customers (unique tabs)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      const customerStats = await db.select({
-        totalCustomers: count().mapWith(Number)
-      })
-      .from(tabs)
-      .where(sql`${tabs.created_at}::date >= ${thirtyDaysAgo.toISOString().split('T')[0]}`);
-
-      // Get category sales distribution
+      // Get category sales with pagination
       const categorySales = await db.select({
         category: drinks.category,
         totalSales: sum(orderItems.quantity).mapWith(Number)
       })
       .from(orderItems)
       .leftJoin(drinks, eq(orderItems.drink_id, drinks.id))
-      .groupBy(drinks.category);
+      .groupBy(drinks.category)
+      .limit(limit)
+      .offset(offset);
 
-      // Get weekly sales trend
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-      const weeklyTrend = await db.select({
-        date: sql<string>`to_char(${transactions.created_at}, 'YYYY-MM-DD')`,
-        sales: sum(transactions.amount).mapWith(Number)
-      })
-      .from(transactions)
-      .where(sql`${transactions.created_at}::date >= ${sevenDaysAgo.toISOString().split('T')[0]}`)
-      .groupBy(sql`to_char(${transactions.created_at}, 'YYYY-MM-DD')`)
-      .orderBy(sql`to_char(${transactions.created_at}, 'YYYY-MM-DD')`);
-
-      // Get popular drinks
+      // Get popular drinks with pagination
       const popularDrinks = await db.select({
         id: drinks.id,
         name: drinks.name,
@@ -89,17 +89,21 @@ export function registerRoutes(app: Express): Server {
       .leftJoin(drinks, eq(orderItems.drink_id, drinks.id))
       .groupBy(drinks.id, drinks.name)
       .orderBy(sql`sum(${orderItems.quantity}) DESC`)
-      .limit(5);
+      .limit(limit);
 
+      // Return paginated and optimized response
       res.json({
-        totalSales: salesStats[0]?.totalSales || 0,
-        todaySales: todayStats[0]?.todaySales || 0,
+        totalSales: salesStats?.totalSales || 0,
+        todaySales: todayStats?.todaySales || 0,
         activeOrders: activeOrders[0]?.count || 0,
-        totalCustomers: customerStats[0]?.totalCustomers || 0,
         categorySales,
-        weeklyTrend,
         popularDrinks,
-        totalOrders: salesStats[0]?.totalOrders || 0
+        totalOrders: salesStats?.totalOrders || 0,
+        pagination: {
+          currentPage: page,
+          limit,
+          hasMore: categorySales.length === limit
+        }
       });
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
@@ -107,17 +111,44 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get all drinks
-  app.get("/api/drinks", async (_req, res) => {
+  // Get drinks with caching and pagination
+  app.get("/api/drinks", async (req, res) => {
     try {
-      const allDrinks = await db.select().from(drinks);
-      res.json(allDrinks);
+      // Add cache control headers for medium-term caching
+      res.set('Cache-Control', `public, max-age=${CACHE_DURATION.MEDIUM}`);
+
+      // Get pagination parameters
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const offset = (page - 1) * limit;
+
+      // Get total count for pagination
+      const [totalCount] = await db.select({
+        count: count().mapWith(Number)
+      })
+      .from(drinks);
+
+      // Get paginated drinks
+      const allDrinks = await db.select()
+        .from(drinks)
+        .limit(limit)
+        .offset(offset);
+
+      res.json({
+        drinks: allDrinks,
+        pagination: {
+          currentPage: page,
+          limit,
+          totalPages: Math.ceil((totalCount?.count || 0) / limit),
+          totalItems: totalCount?.count || 0
+        }
+      });
     } catch (error) {
       console.error("Error fetching drinks:", error);
       res.status(500).json({ error: "Failed to fetch drinks" });
     }
   });
-  
+
   // Create new order with improved validation and error handling
   app.post("/api/orders", async (req, res) => {
     try {
