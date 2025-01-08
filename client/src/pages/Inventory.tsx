@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { NavBar } from "@/components/NavBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { InventoryAnalytics } from "@/components/InventoryAnalytics";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useVoiceCommands } from '@/hooks/use-voice-commands';
+import { VoiceControlButton } from '@/components/VoiceControlButton';
 
 interface ApiResponse<T> {
   data: T[];
@@ -130,6 +132,34 @@ export function Inventory() {
     </div>
   );
 
+  const handleInventorySearch = useCallback((searchTerm: string) => {
+    setSearch(searchTerm);
+  }, []);
+
+  const handleCategoryFilter = useCallback((category: string) => {
+    setSearch(category);
+  }, []);
+
+  const handleLowStockFilter = useCallback(() => {
+    toast({
+      title: "Stock Filter",
+      description: "Showing low stock items",
+      duration: 2000,
+    });
+  }, [toast]);
+
+  const { isListening, startListening, stopListening } = useVoiceCommands({
+    drinks: allDrinks,
+    cart: [], 
+    onAddToCart: async () => {}, 
+    onRemoveItem: async () => {}, 
+    onPlaceOrder: async () => {}, 
+    isProcessing: false,
+    onInventorySearch: handleInventorySearch,
+    onCategoryFilter: handleCategoryFilter,
+    onLowStockFilter: handleLowStockFilter,
+  });
+
   return (
     <div className="min-h-screen bg-background">
       <NavBar />
@@ -221,6 +251,7 @@ export function Inventory() {
                     className="w-[200px]"
                   />
                 </div>
+                <VoiceControlButton />
                 <Button variant="outline" size="sm" className="gap-2">
                   <Plus className="h-4 w-4" />
                   Add Item

@@ -34,10 +34,30 @@ export interface RecognitionError {
   message: string;
 }
 
-// New interfaces for voice command customization
+// Expanded intent types to include inventory management
+export type InventoryQueryType = 'stock_level' | 'low_stock' | 'category' | 'search';
+
+export interface InventoryQuery {
+  type: 'inventory_query';
+  queryType: InventoryQueryType;
+  searchTerm?: string;
+  category?: string;
+  conversational_response: string;
+}
+
+export interface InventoryAction {
+  type: 'inventory_action';
+  action: 'update_stock' | 'mark_low' | 'add_item' | 'remove_item';
+  itemId?: number;
+  itemName?: string;
+  quantity?: number;
+  conversational_response: string;
+}
+
+// Voice command customization
 export interface VoiceCommandPreference {
   command: string;
-  action: 'order' | 'inquiry' | 'modify' | 'cancel' | 'system';
+  action: 'order' | 'inquiry' | 'modify' | 'cancel' | 'system' | 'inventory';
   aliases: string[];
   enabled: boolean;
   priority?: number;
@@ -99,3 +119,16 @@ export interface VoiceMetrics {
     improvedAccuracy: number;
   };
 }
+
+// Update Intent type to include inventory intents
+export type Intent = (
+  | OrderIntent 
+  | IncompleteOrderIntent 
+  | QueryIntent 
+  | GreetingIntent 
+  | CompleteTransactionIntent 
+  | ShutdownIntent 
+  | CancelIntent 
+  | InventoryQuery 
+  | InventoryAction
+) & BaseIntent;
