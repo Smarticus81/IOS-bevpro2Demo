@@ -10,9 +10,13 @@ import {
   transactions,
   tabs,
   splitPayments,
-  eventPackages 
+  eventPackages,
+  pourInventory,
+  pourTransactions,
+  pourSizes,
+  taxCategories,
 } from "@db/schema";
-import { eq, sql, count, sum } from "drizzle-orm";
+import { eq, sql, count, sum, desc, and, isNotNull } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
 
 // Cache duration constants
@@ -570,6 +574,153 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating event package:", error);
       res.status(500).json({ error: "Failed to create event package" });
+    }
+  });
+
+  // Add new endpoints for pour tracking
+  app.get("/api/pour-inventory", async (_req, res) => {
+    try {
+      res.set('Cache-Control', `public, max-age=${CACHE_DURATION.SHORT}`);
+
+      const inventory = await db.select({
+        id: pourInventory.id,
+        drink_id: pourInventory.drink_id,
+        bottle_id: pourInventory.bottle_id,
+        initial_volume_ml: pourInventory.initial_volume_ml,
+        remaining_volume_ml: pourInventory.remaining_volume_ml,
+        is_active: pourInventory.is_active,
+        tax_category_id: pourInventory.tax_category_id,
+        last_pour_at: pourInventory.last_pour_at,
+        drink_name: drinks.name,
+        drink_category: drinks.category,
+        tax_category_name: taxCategories.name
+      })
+      .from(pourInventory)
+      .leftJoin(drinks, eq(pourInventory.drink_id, drinks.id))
+      .leftJoin(taxCategories, eq(pourInventory.tax_category_id, taxCategories.id))
+      .where(eq(pourInventory.is_active, true))
+      .orderBy(desc(pourInventory.last_pour_at));
+
+      res.json({
+        data: inventory,
+        pagination: {
+          currentPage: 1,
+          limit: inventory.length,
+          totalItems: inventory.length
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching pour inventory:", error);
+      res.status(500).json({ error: "Failed to fetch pour inventory" });
+    }
+  });
+
+  app.get("/api/pour-transactions", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+
+      const transactions = await db.select({
+        id: pourTransactions.id,
+        pour_inventory_id: pourTransactions.pour_inventory_id,
+        pour_size_id: pourTransactions.pour_size_id,
+        volume_ml: pourTransactions.volume_ml,
+        staff_id: pourTransactions.staff_id,
+        transaction_time: pourTransactions.transaction_time,
+        tax_amount: pourTransactions.tax_amount,
+        drink_name: drinks.name,
+        drink_category: drinks.category,
+      })
+      .from(pourTransactions)
+      .leftJoin(pourInventory, eq(pourTransactions.pour_inventory_id, pourInventory.id))
+      .leftJoin(drinks, eq(pourInventory.drink_id, drinks.id))
+      .orderBy(desc(pourTransactions.transaction_time))
+      .limit(limit);
+
+      res.json({
+        data: transactions,
+        pagination: {
+          currentPage: 1,
+          limit,
+          totalItems: transactions.length
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching pour transactions:", error);
+      res.status(500).json({ error: "Failed to fetch pour transactions" });
+    }
+  });
+
+  app.get("/api/tax-categories", async (_req, res) => {
+    try {
+      const categories = await db.select().from(taxCategories);
+      res.json({
+        data: categories,
+        pagination: {
+          currentPage: 1,
+          limit: categories.length,
+          totalItems: categories.length
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching tax categories:", error);
+      res.status(500).json({ error: "Failed to fetch tax categories" });
+    }
+  });
+
+  // Add pour tracking endpoint
+  app.post("/api/pour-transactions/track", async (req, res) => {
+    try {
+      const { pourInventoryId, pourSizeId, staffId } = req.body;
+
+      // Get pour size details
+      const [pourSize] = await db.select()
+        .from(pourSizes)
+        .where(eq(pourSizes.id, pourSizeId))
+        .limit(1);
+
+      if (!pourSize) {
+        return res.status(400).json({ error: "Invalid pour size" });
+      }
+
+      // Get current inventory
+      const [inventory] = await db.select()
+        .from(pourInventory)
+        .where(eq(pourInventory.id, pourInventoryId))
+        .limit(1);
+
+      if (!inventory) {
+        return res.status(400).json({ error: "Invalid inventory item" });
+      }
+
+      // Check if enough volume remains
+      if (inventory.remaining_volume_ml < pourSize.volume_ml) {
+        return res.status(400).json({ error: "Insufficient remaining volume" });
+      }
+
+      // Create transaction record
+      const [transaction] = await db.insert(pourTransactions)
+        .values({
+          pour_inventory_id: pourInventoryId,
+          pour_size_id: pourSizeId,
+          volume_ml: pourSize.volume_ml,
+          staff_id: staffId,
+          transaction_time: new Date(),
+          tax_amount: pourSize.tax_amount
+        })
+        .returning();
+
+      // Update inventory
+      await db.update(pourInventory)
+        .set({
+          remaining_volume_ml: sql`${pourInventory.remaining_volume_ml} - ${pourSize.volume_ml}`,
+          last_pour_at: new Date()
+        })
+        .where(eq(pourInventory.id, pourInventoryId));
+
+      res.json(transaction);
+    } catch (error) {
+      console.error("Error tracking pour:", error);
+      res.status(500).json({ error: "Failed to track pour" });
     }
   });
 
