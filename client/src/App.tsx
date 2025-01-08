@@ -6,8 +6,22 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { CartProvider } from "@/contexts/CartContext";
 import { OrderSummaryDrawer } from "@/components/OrderSummaryDrawer";
+import { useEffect } from "react";
 
 function App() {
+  useEffect(() => {
+    // Add ElevenLabs Convai script
+    const script = document.createElement('script');
+    script.src = "https://elevenlabs.io/convai-widget/index.js";
+    script.async = true;
+    script.type = "text/javascript";
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
   return (
     <CartProvider>
       <Switch>
@@ -17,10 +31,13 @@ function App() {
         <Route component={NotFound} />
       </Switch>
       <OrderSummaryDrawer />
+      {/* ElevenLabs Convai Widget */}
+      <elevenlabs-convai agent-id="psprvqUn0aOguwsIoBIr"></elevenlabs-convai>
     </CartProvider>
   );
 }
 
+// fallback 404 not found page
 function NotFound() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
