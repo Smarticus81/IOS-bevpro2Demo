@@ -6,33 +6,22 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { CartProvider } from "@/contexts/CartContext";
 import { OrderSummaryDrawer } from "@/components/OrderSummaryDrawer";
-import { useEffect } from "react";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 function App() {
-  useEffect(() => {
-    // Add ElevenLabs Convai script
-    const script = document.createElement('script');
-    script.src = "https://elevenlabs.io/convai-widget/index.js";
-    script.async = true;
-    script.type = "text/javascript";
-    document.body.appendChild(script);
-
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
+  // Initialize WebSocket connection for real-time updates
+  useWebSocket();
 
   return (
     <CartProvider>
       <Switch>
+        {/* Core POS and Inventory routes only */}
         <Route path="/" component={Home} />
         <Route path="/inventory" component={Inventory} />
         <Route path="/payment-confirmation" component={PaymentConfirmation} />
         <Route component={NotFound} />
       </Switch>
       <OrderSummaryDrawer />
-      {/* ElevenLabs Convai Widget */}
-      <elevenlabs-convai agent-id="psprvqUn0aOguwsIoBIr"></elevenlabs-convai>
     </CartProvider>
   );
 }
