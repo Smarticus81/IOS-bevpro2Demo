@@ -822,11 +822,9 @@ export function registerRoutes(app: Express): Server {
           .values({
             name,
             category,
-            subcategory: subcategory || null,
+            subcategory: subcategory || undefined,  // Use undefined instead of null
             price: parseFloat(price),
-            inventory: parseInt(inventory) || 0,
-            created_at: new Date(),
-            updated_at: new Date()
+            inventory: parseInt(inventory) || 0
           })
           .returning();
 

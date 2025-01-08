@@ -6,10 +6,10 @@ export const drinks = pgTable("drinks", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   category: text("category").notNull(),
-  subcategory: text("subcategory").notNull(),
+  subcategory: text("subcategory"),  
   price: integer("price").notNull(),
-  inventory: integer("inventory").notNull(),
-  image: text("image").notNull(),
+  inventory: integer("inventory").notNull().default(0),
+  image: text("image"),
   sales: integer("sales").default(0),
 });
 

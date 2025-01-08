@@ -33,7 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 const addItemSchema = z.object({
   name: z.string().min(1, "Name is required"),
   category: z.string().min(1, "Category is required"),
-  subcategory: z.string().optional(),
+  subcategory: z.string().optional().nullable(),  
   price: z.string().min(1, "Price is required").refine(
     (val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0,
     "Price must be a valid number greater than 0"
