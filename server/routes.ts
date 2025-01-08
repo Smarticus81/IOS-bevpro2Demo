@@ -16,7 +16,7 @@ import {
   pourSizes,
   taxCategories,
 } from "@db/schema";
-import { eq, sql, count, sum, desc } from "drizzle-orm";
+import { eq, sql, count, sum, desc, and } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
 
 // Cache duration constants
@@ -789,6 +789,83 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error fetching tax categories:", error);
       res.status(500).json({ error: "Failed to fetch tax categories" });
+    }
+  });
+
+  // Add new drink/inventory item
+  app.post("/api/drinks", async (req, res) => {
+    try {
+      const {
+        name,
+        category,
+        subcategory,
+        price,
+        initial_volume_ml,
+        bottle_id,
+        tax_category_id,
+        inventory
+      } = req.body;
+
+      // Validate required fields
+      if (!name || !category || typeof price !== 'number') {
+        return res.status(400).json({
+          error: "Missing required fields: name, category, and price are required"
+        });
+      }
+
+      // First insert the drink
+      const [newDrink] = await db.insert(drinks)
+        .values({
+          name,
+          category,
+          subcategory: subcategory || null,
+          price,
+          inventory: inventory || 0,
+          created_at: new Date(),
+          updated_at: new Date()
+        })
+        .returning();
+
+      // If this is a pour-tracked item (spirits, classics, signature drinks)
+      if (initial_volume_ml && bottle_id && tax_category_id) {
+        // Create pour inventory record
+        const [pourInventoryItem] = await db.insert(pourInventory)
+          .values({
+            drink_id: newDrink.id,
+            bottle_id,
+            initial_volume_ml,
+            remaining_volume_ml: initial_volume_ml,
+            is_active: true,
+            tax_category_id,
+            last_pour_at: new Date()
+          })
+          .returning();
+
+        // Broadcast inventory update
+        broadcastInventoryUpdate('INVENTORY_UPDATE', {
+          type: 'new_item',
+          item: {
+            ...newDrink,
+            pour_inventory: pourInventoryItem
+          }
+        });
+
+        return res.json({
+          ...newDrink,
+          pour_inventory: pourInventoryItem
+        });
+      }
+
+      // Broadcast inventory update for non-pour items
+      broadcastInventoryUpdate('INVENTORY_UPDATE', {
+        type: 'new_item',
+        item: newDrink
+      });
+
+      res.json(newDrink);
+    } catch (error) {
+      console.error("Error adding new drink:", error);
+      res.status(500).json({ error: "Failed to add new drink" });
     }
   });
 

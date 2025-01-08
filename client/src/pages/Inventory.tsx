@@ -14,6 +14,7 @@ import { motion } from "framer-motion";
 import { InventoryAnalytics } from "@/components/InventoryAnalytics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { AddInventoryItem } from "@/components/AddInventoryItem";
 
 interface ApiResponse<T> {
   data: T[];
@@ -223,10 +224,14 @@ export function Inventory() {
                     className="w-[200px]"
                   />
                 </div>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Item
-                </Button>
+                <AddInventoryItem
+                  trigger={
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add Item
+                    </Button>
+                  }
+                />
               </div>
             </CardHeader>
 
