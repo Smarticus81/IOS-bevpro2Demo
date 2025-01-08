@@ -792,7 +792,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Add new drink/inventory item
   app.post("/api/drinks", async (req, res) => {
     try {
       const {
@@ -822,7 +821,7 @@ export function registerRoutes(app: Express): Server {
           .values({
             name,
             category,
-            subcategory: subcategory || undefined,  // Use undefined instead of null
+            subcategory: subcategory || null,
             price: parseFloat(price),
             inventory: parseInt(inventory) || 0
           })
@@ -837,10 +836,10 @@ export function registerRoutes(app: Express): Server {
             .values({
               drink_id: newDrink.id,
               bottle_id,
-              initial_volume_ml: parseInt(initial_volume_ml),
-              remaining_volume_ml: parseInt(initial_volume_ml),
-              is_active: true,
+              initial_volume_ml: parseFloat(initial_volume_ml),
+              remaining_volume_ml: parseFloat(initial_volume_ml),
               tax_category_id: parseInt(tax_category_id),
+              is_active: true,
               last_pour_at: new Date()
             })
             .returning();
@@ -869,9 +868,12 @@ export function registerRoutes(app: Express): Server {
         });
 
         res.json(newDrink);
-      } catch (dbError) {
+      } catch (dbError: any) {
         console.error("Database error:", dbError);
-        throw new Error(`Database error: ${dbError.message}`);
+        return res.status(500).json({
+          error: "Failed to add drink to database",
+          details: dbError.message
+        });
       }
     } catch (error) {
       console.error("Error adding new drink:", error);

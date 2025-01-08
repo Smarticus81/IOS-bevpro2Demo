@@ -33,7 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 const addItemSchema = z.object({
   name: z.string().min(1, "Name is required"),
   category: z.string().min(1, "Category is required"),
-  subcategory: z.string().optional().nullable(),  
+  subcategory: z.string().optional().nullable(),
   price: z.string().min(1, "Price is required").refine(
     (val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0,
     "Price must be a valid number greater than 0"
@@ -63,11 +63,11 @@ const taxCategories = [
   { id: "5", name: "Non-Alcoholic" }
 ];
 
-interface AddInventoryItemProps {
+interface AddItemFormProps {
   trigger?: React.ReactNode;
 }
 
-export function AddInventoryItem({ trigger }: AddInventoryItemProps) {
+export function AddInventoryItem({ trigger }: AddItemFormProps) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -90,6 +90,17 @@ export function AddInventoryItem({ trigger }: AddInventoryItemProps) {
     mutationFn: async (values: AddItemFormValues) => {
       console.log("Submitting form with values:", values);
 
+      const priceValue = parseFloat(values.price);
+      const inventoryValue = parseInt(values.inventory || "0");
+
+      if (isNaN(priceValue) || priceValue <= 0) {
+        throw new Error("Invalid price value");
+      }
+
+      if (isNaN(inventoryValue) || inventoryValue < 0) {
+        throw new Error("Invalid inventory value");
+      }
+
       const response = await fetch("/api/drinks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -97,11 +108,11 @@ export function AddInventoryItem({ trigger }: AddInventoryItemProps) {
           name: values.name,
           category: values.category,
           subcategory: values.subcategory || null,
-          price: values.price,
-          initial_volume_ml: values.initialVolume || null,
+          price: priceValue,
+          initial_volume_ml: values.initialVolume ? parseFloat(values.initialVolume) : null,
           bottle_id: values.bottleId || null,
-          tax_category_id: values.taxCategoryId || null,
-          inventory: values.inventory || "0",
+          tax_category_id: values.taxCategoryId ? parseInt(values.taxCategoryId) : null,
+          inventory: inventoryValue,
         }),
       });
 
