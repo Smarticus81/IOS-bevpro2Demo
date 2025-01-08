@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 
+// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 let openai: OpenAI | null = null;
 
 export async function getOpenAIClient(): Promise<OpenAI> {
@@ -7,7 +8,7 @@ export async function getOpenAIClient(): Promise<OpenAI> {
     try {
       console.log('Initializing OpenAI client...');
       const response = await fetch('/api/config');
-
+      
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Config API error:', response.status, errorText);
@@ -25,11 +26,18 @@ export async function getOpenAIClient(): Promise<OpenAI> {
         dangerouslyAllowBrowser: true
       });
 
-      console.log('OpenAI client initialized successfully');
+      // Test the client with a simple request
+      const testResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "system", content: "Test connection" }],
+        max_tokens: 5
+      });
+
+      console.log('OpenAI client initialized and tested successfully');
       return openai;
     } catch (error: any) {
       console.error('OpenAI client initialization failed:', error);
-      openai = null;
+      openai = null; // Reset the client on failure
       throw new Error(error.message || 'Failed to initialize OpenAI client');
     }
   }
@@ -81,147 +89,172 @@ interface CancelIntent {
   conversational_response: string;
 }
 
-interface InventoryQueryIntent {
-  type: "inventory_query";
-  queryType: "stock_level" | "low_stock" | "category" | "search";
-  searchTerm?: string;
-  category?: string;
-  conversational_response: string;
-}
-
-interface InventoryActionIntent {
-  type: "inventory_action";
-  action: "update_stock" | "mark_low" | "add_item" | "remove_item";
-  itemId?: number;
-  itemName?: string;
-  quantity?: number;
-  conversational_response: string;
-}
-
-
 export interface BaseIntent {
   sentiment: 'positive' | 'negative' | 'neutral';
   conversational_response: string;
 }
 
-export type Intent = (OrderIntent | IncompleteOrderIntent | QueryIntent | GreetingIntent | CompleteTransactionIntent | ShutdownIntent | CancelIntent | InventoryQueryIntent | InventoryActionIntent) & BaseIntent;
+export type Intent = (OrderIntent | IncompleteOrderIntent | QueryIntent | GreetingIntent | CompleteTransactionIntent | ShutdownIntent | CancelIntent) & BaseIntent;
 
 import { conversationState } from "./conversation-state";
 
-const MAX_HISTORY_LENGTH = 6;
+// Store conversation history with improved context management
+const MAX_HISTORY_LENGTH = 6; // Keep last 3 exchanges
 let conversationHistory: Array<{ role: string, content: string }> = [];
 
 export async function processVoiceCommand(text: string): Promise<Intent> {
   try {
-    const client = await getOpenAIClient();
-    console.log('Processing voice command:', text);
+    // Get OpenAI client
+    const client = await getOpenAIClient().catch(error => {
+      console.error('Failed to initialize OpenAI client:', error);
+      throw new Error('OpenAI client initialization failed');
+    });
 
-    if (!text?.trim()) {
+    console.log('Processing voice command:', text);
+    
+    // Validate input
+    if (!text || text.trim().length === 0) {
       throw new Error('Empty voice command received');
     }
 
+    // Maintain conversation history with context
     if (conversationHistory.length > MAX_HISTORY_LENGTH) {
       conversationHistory = conversationHistory.slice(-MAX_HISTORY_LENGTH);
     }
 
+    // Get relevant context from conversation state
     const relevantContext = conversationState.getRelevantContext();
-
+    
+    // Add context and user's message to history
     if (relevantContext) {
       conversationHistory.push({ 
         role: "system", 
         content: `Previous context: ${relevantContext}`
       });
     }
-
+    
     conversationHistory.push({ role: "user", content: text });
+    
+    console.log('Processing command with context:', {
+      text,
+      relevantContext,
+      historyLength: conversationHistory.length
+    });
 
     const response = await client.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: `You are an AI assistant for a beverage POS system with inventory management capabilities.
-          Parse both intent and emotional sentiment in each interaction.
-
-          Additional inventory management capabilities:
-          1. Search inventory by name, category, or stock level
-          2. Check low stock items
-          3. Get detailed item information
-          4. Update inventory quantities
-
+          content: `You are a knowledgeable and helpful AI bartender with emotional intelligence.
+          Analyze both intent and emotional sentiment in each interaction.
+          You are a knowledgeable and helpful AI bartender. Your tasks:
+          1. Remember context from previous exchanges
+          2. Parse drink orders and queries accurately with exact quantities
+          3. Answer questions about drinks and menu items
+          4. Maintain conversation flow
+          5. Format responses as JSON
+          
+          Important: Always parse exact quantities from user input. Default to 1 only when no quantity is specified.
+          
+          Handle follow-up questions naturally while maintaining context.
+          For example:
+          User: "What beers do you have?"
+          Assistant: { "type": "query", "category": "Beer", "conversational_response": "We have several beers including Bud Light, Coors Light, and craft options." }
+          User: "How much are they?"
+          Assistant: { "type": "query", "category": "Beer", "attribute": "price", "conversational_response": "Our domestic beers like Bud Light and Coors Light are $5, while craft beers are $6." }
+          
+          Response types remain consistent:
+          1. Parse drink orders and queries
+          2. Extract details
+          3. Give brief responses
+          4. Format as JSON
+          
           Response types:
-          1. "order": Complete drink orders
-          2. "incomplete_order": Missing order information
-          3. "query": General drink questions
-          4. "greeting": Quick greetings
-          5. "complete_transaction": Finish order processing
-          6. "shutdown": Turn off voice commands
-          7. "cancel": Cancel current operation
-          8. "inventory_query": Search or check inventory
-          9. "inventory_action": Update inventory
-
-          Inventory commands:
-          - "check stock of [item]"
-          - "search inventory for [term]"
-          - "show low stock items"
-          - "show [category] inventory"
-          - "update stock of [item]"
-
-          Format responses as JSON with types:
-
-          For inventory queries:
-          {
-            "type": "inventory_query",
-            "queryType": "stock_level" | "low_stock" | "category" | "search",
-            "searchTerm": "search term",
-            "category": "optional category",
-            "conversational_response": "response text"
-          }
-
-          For inventory actions:
-          {
-            "type": "inventory_action",
-            "action": "update_stock" | "mark_low" | "add_item" | "remove_item",
-            "itemId": number,
-            "itemName": "item name",
-            "quantity": number,
-            "conversational_response": "response text"
-          }
-
+          - "order": Complete orders
+          - "incomplete_order": Missing info
+          - "query": Drink questions
+          - "greeting": Quick greetings
+          - "complete_transaction": Finish and process the order
+          - "shutdown": Completely turn off voice commands
+          - "cancel": Cancel current order or operation
+          
+          Order flow:
+          1. Stay in order mode until transaction is complete or cancelled
+          2. Process "complete_transaction" intent when user says things like:
+             - "that's all"
+             - "complete my order"
+             - "finish order"
+             - "process payment"
+             - "check out"
+             - "place order"
+             - "submit order"
+             - "complete purchase"
+             - "pay for order"
+             - "finalize order"
+          3. Handle "shutdown" intent for commands like:
+             - "shut down"
+             - "turn off"
+             - "power off"
+             - "exit system"
+          
+          Keep responses short and clear.
+          
           Examples:
-          User: "check stock of Moscow Mule"
+          User: "two beers"
           Response: {
-            "type": "inventory_query",
-            "queryType": "stock_level",
-            "searchTerm": "Moscow Mule",
-            "conversational_response": "Let me check the stock level for Moscow Mule."
+            "type": "order",
+            "items": [{"name": "beer", "quantity": 2}],
+            "conversational_response": "Adding two beers to your order."
           }
 
-          User: "show all low stock items"
+          User: "one corona"
           Response: {
-            "type": "inventory_query",
-            "queryType": "low_stock",
-            "conversational_response": "I'll show you all items that are running low on stock."
+            "type": "order",
+            "items": [{"name": "corona", "quantity": 1}],
+            "conversational_response": "Adding one Corona to your order."
           }
-
-          User: "search inventory for vodka"
+          
+          User: "add three"
           Response: {
-            "type": "inventory_query",
-            "queryType": "search",
-            "searchTerm": "vodka",
-            "conversational_response": "Searching inventory for vodka products."
+            "type": "incomplete_order",
+            "missing": "drink_type",
+            "quantity": 3,
+            "conversational_response": "Which drink?"
+          }
+          
+          User: "some beers"
+          Response: {
+            "type": "incomplete_order",
+            "missing": "quantity",
+            "drink_type": "beer",
+            "conversational_response": "How many?"
+          }
+          
+          User: "What wines?"
+          Response: {
+            "type": "query",
+            "category": "Wine",
+            "conversational_response": "We have reds, whites, and sparkling."
+          }
+          
+          User: "hey"
+          Response: {
+            "type": "greeting",
+            "conversational_response": "What would you like?"
           }`
         },
-        ...conversationHistory,
         {
           role: "user",
           content: text
         }
       ],
-      temperature: 0.3,
+      temperature: 0.3, // Lower temperature for more consistent responses
       max_tokens: 150,
       response_format: { type: "json_object" }
     });
+
+    console.log('OpenAI response:', response.choices[0]?.message?.content);
 
     const content = response.choices[0]?.message?.content;
     if (!content) {
@@ -229,25 +262,35 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
     }
 
     const parsed = JSON.parse(content);
-
+    
+    // Validate response format
     if (!parsed.type || !parsed.conversational_response) {
       console.error('Invalid response format:', parsed);
       throw new Error("Invalid response format from OpenAI");
     }
 
+    if (parsed.type === 'order' && (!Array.isArray(parsed.items) || parsed.items.length === 0)) {
+      console.error('Invalid order format:', parsed);
+      throw new Error("Invalid order format from OpenAI");
+    }
+
+    // Update conversation state and history
     conversationState.updateContext(parsed, text);
     conversationHistory.push({ 
       role: "assistant", 
       content: JSON.stringify(parsed)
     });
-
+    
     return parsed;
   } catch (error: any) {
     console.error("Failed to process voice command:", error);
-
+    console.log("Current conversation history:", conversationHistory);
+    
+    // Provide more specific error messages
     if (error.message.includes('fetch')) {
       throw new Error("Could not connect to the AI service. Please try again.");
     } else if (error.message.includes('JSON')) {
+      console.error('Raw response:', error.response?.data);
       throw new Error("The AI service returned an invalid response. Please try again.");
     } else if (error.message.includes('format')) {
       throw new Error("Sorry, I couldn't understand that. Could you rephrase?");
