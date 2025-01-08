@@ -57,12 +57,7 @@ export function useVoiceCommands({
 
   const showFeedback = useCallback(
     (title: string, message: string, type: 'default' | 'destructive' = 'default') => {
-      toast({ 
-        title, 
-        description: message, 
-        variant: type,
-        duration: type === 'destructive' ? 5000 : 3000 
-      });
+      toast({ title, description: message, variant: type });
       logger.info(`${title}: ${message}`);
     },
     [toast]
@@ -97,12 +92,12 @@ export function useVoiceCommands({
         });
         showFeedback(
           'Not Understood',
-          'Command not recognized. Try "check stock of [drink name]" or "show low stock items".'
+          'Command not recognized. Say "help" for a list of commands.'
         );
         return;
       }
 
-      // Handle inventory queries with enhanced feedback
+      // Handle inventory queries
       if (parsedCommand.type === 'inventory_query') {
         logger.info('Processing inventory query:', parsedCommand);
 
@@ -111,22 +106,7 @@ export function useVoiceCommands({
             if (onInventorySearch && parsedCommand.searchTerm) {
               onInventorySearch(parsedCommand.searchTerm);
               voiceAnalytics.trackCommand('inventory_search', true, { command: text });
-
-              // Enhanced feedback using detailed response
-              if (parsedCommand.detailed_response) {
-                const { itemCount, stockStatus, recommendations } = parsedCommand.detailed_response;
-                const feedback = `Found ${itemCount} items. ${parsedCommand.conversational_response}`;
-                showFeedback('Inventory Search', feedback);
-
-                // Show recommendations if available
-                if (recommendations?.length) {
-                  setTimeout(() => {
-                    showFeedback('Recommendation', recommendations[0]);
-                  }, 2000);
-                }
-              } else {
-                showFeedback('Inventory Search', parsedCommand.conversational_response);
-              }
+              showFeedback('Inventory Search', `Searching for "${parsedCommand.searchTerm}"`);
             }
             break;
 
@@ -134,7 +114,7 @@ export function useVoiceCommands({
             if (onCategoryFilter && parsedCommand.category) {
               onCategoryFilter(parsedCommand.category);
               voiceAnalytics.trackCommand('inventory_filter', true, { command: text });
-              showFeedback('Category Filter', parsedCommand.conversational_response);
+              showFeedback('Category Filter', `Showing ${parsedCommand.category} items`);
             }
             break;
 
@@ -142,19 +122,7 @@ export function useVoiceCommands({
             if (onLowStockFilter) {
               onLowStockFilter();
               voiceAnalytics.trackCommand('inventory_filter', true, { command: text });
-
-              // Enhanced feedback for low stock items
-              if (parsedCommand.detailed_response?.urgentActions?.length) {
-                showFeedback('Low Stock Alert', parsedCommand.conversational_response);
-                // Show urgent actions as separate notifications
-                parsedCommand.detailed_response.urgentActions.forEach((action, index) => {
-                  setTimeout(() => {
-                    showFeedback('Action Required', action, 'destructive');
-                  }, 2000 + (index * 2000));
-                });
-              } else {
-                showFeedback('Stock Filter', parsedCommand.conversational_response);
-              }
+              showFeedback('Stock Filter', 'Showing low stock items');
             }
             break;
 
@@ -165,25 +133,7 @@ export function useVoiceCommands({
               );
               if (drink) {
                 voiceAnalytics.trackCommand('inventory_check', true, { command: text });
-
-                // Enhanced stock level feedback
-                if (parsedCommand.detailed_response) {
-                  const { stockStatus, recommendations } = parsedCommand.detailed_response;
-                  showFeedback(
-                    'Stock Check', 
-                    parsedCommand.conversational_response,
-                    stockStatus === 'attention needed' ? 'destructive' : 'default'
-                  );
-
-                  // Show recommendations if available
-                  if (recommendations?.length) {
-                    setTimeout(() => {
-                      showFeedback('Recommendation', recommendations[0]);
-                    }, 2000);
-                  }
-                } else {
-                  showFeedback('Stock Check', parsedCommand.conversational_response);
-                }
+                showFeedback('Stock Check', `${drink.name} - Stock level: ${drink.inventory} units`);
               } else {
                 voiceAnalytics.trackCommand('inventory_check', false, {
                   command: text,
@@ -197,16 +147,17 @@ export function useVoiceCommands({
         return;
       }
 
+      // Handle inventory actions
+      if (parsedCommand.type === 'inventory_action') {
+        logger.info('Processing inventory action:', parsedCommand);
+        // Implement inventory actions here when needed
+        return;
+      }
+
       // Handle existing command types...
       if (parsedCommand.type === 'system') {
+        // ... existing system command handling
         switch (parsedCommand.action) {
-          case 'help':
-            voiceAnalytics.trackCommand('system_command', true, { command: text });
-            showFeedback(
-              'Voice Commands',
-              'Try commands like "check stock of [drink]", "show low stock items", or "search inventory for [term]".'
-            );
-            return;
           case 'complete_order':
             if (!cart.length) {
               voiceAnalytics.trackCommand('order_completion', false, {
@@ -230,6 +181,15 @@ export function useVoiceCommands({
             // Reset voice state after successful order completion
             // await resetVoiceState(); //Commented out as resetVoiceState is not defined.
             return;
+
+          case 'help':
+            voiceAnalytics.trackCommand('system_command', true, { command: text });
+            showFeedback(
+              'Voice Commands',
+              'Try commands like "Add a Moscow Mule", "Complete my order", or "Cancel order".'
+            );
+            return;
+
           case 'cancel':
             if (cart.length === 0) {
               voiceAnalytics.trackCommand('system_command', false, {
@@ -333,7 +293,7 @@ export function useVoiceCommands({
       await voiceRecognition.start();
       setIsListening(true);
       await soundEffects.playListeningStart();
-      showFeedback('Voice Control', 'Listening... Try "help" for available commands');
+      showFeedback('Voice Control', 'Listening... Say "help" for commands');
     } catch (error) {
       logger.error('Failed to start listening:', error);
       setIsListening(false);

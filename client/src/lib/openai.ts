@@ -87,12 +87,6 @@ interface InventoryQueryIntent {
   searchTerm?: string;
   category?: string;
   conversational_response: string;
-  detailed_response?: {
-    itemCount?: number;
-    stockStatus?: string;
-    recommendations?: string[];
-    urgentActions?: string[];
-  };
 }
 
 interface InventoryActionIntent {
@@ -102,8 +96,8 @@ interface InventoryActionIntent {
   itemName?: string;
   quantity?: number;
   conversational_response: string;
-  confirmation_required?: boolean;
 }
+
 
 export interface BaseIntent {
   sentiment: 'positive' | 'negative' | 'neutral';
@@ -149,20 +143,29 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
           content: `You are an AI assistant for a beverage POS system with inventory management capabilities.
           Parse both intent and emotional sentiment in each interaction.
 
-          Inventory Voice Commands:
-          1. "Check stock of [item]" - Get detailed stock information
-          2. "Show low stock items" - List items running low
-          3. "Search inventory for [term]" - Search items
-          4. "Show [category] inventory" - Filter by category
-          5. "How many [item] do we have?" - Quick stock check
-          6. "What's running low?" - Check low stock
-          7. "Update stock of [item]" - Modify inventory
+          Additional inventory management capabilities:
+          1. Search inventory by name, category, or stock level
+          2. Check low stock items
+          3. Get detailed item information
+          4. Update inventory quantities
 
-          For inventory queries, provide detailed responses with:
-          - Current stock levels
-          - Comparative analysis
-          - Recommendations
-          - Urgency indicators
+          Response types:
+          1. "order": Complete drink orders
+          2. "incomplete_order": Missing order information
+          3. "query": General drink questions
+          4. "greeting": Quick greetings
+          5. "complete_transaction": Finish order processing
+          6. "shutdown": Turn off voice commands
+          7. "cancel": Cancel current operation
+          8. "inventory_query": Search or check inventory
+          9. "inventory_action": Update inventory
+
+          Inventory commands:
+          - "check stock of [item]"
+          - "search inventory for [term]"
+          - "show low stock items"
+          - "show [category] inventory"
+          - "update stock of [item]"
 
           Format responses as JSON with types:
 
@@ -172,13 +175,17 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
             "queryType": "stock_level" | "low_stock" | "category" | "search",
             "searchTerm": "search term",
             "category": "optional category",
-            "conversational_response": "Natural response for speech",
-            "detailed_response": {
-              "itemCount": number,
-              "stockStatus": "status description",
-              "recommendations": ["action items"],
-              "urgentActions": ["urgent tasks"]
-            }
+            "conversational_response": "response text"
+          }
+
+          For inventory actions:
+          {
+            "type": "inventory_action",
+            "action": "update_stock" | "mark_low" | "add_item" | "remove_item",
+            "itemId": number,
+            "itemName": "item name",
+            "quantity": number,
+            "conversational_response": "response text"
           }
 
           Examples:
@@ -187,24 +194,14 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
             "type": "inventory_query",
             "queryType": "stock_level",
             "searchTerm": "Moscow Mule",
-            "conversational_response": "Moscow Mule is well-stocked with 12 bottles remaining.",
-            "detailed_response": {
-              "itemCount": 12,
-              "stockStatus": "healthy",
-              "recommendations": ["Consider ordering more within 2 weeks"]
-            }
+            "conversational_response": "Let me check the stock level for Moscow Mule."
           }
 
-          User: "what's running low?"
+          User: "show all low stock items"
           Response: {
             "type": "inventory_query",
             "queryType": "low_stock",
-            "conversational_response": "We have 3 items running low: Tito's Vodka, Crown Royal, and Bud Light.",
-            "detailed_response": {
-              "itemCount": 3,
-              "stockStatus": "attention needed",
-              "urgentActions": ["Order Tito's Vodka immediately", "Review Crown Royal stock level"]
-            }
+            "conversational_response": "I'll show you all items that are running low on stock."
           }
 
           User: "search inventory for vodka"
@@ -212,12 +209,7 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
             "type": "inventory_query",
             "queryType": "search",
             "searchTerm": "vodka",
-            "conversational_response": "Found 4 vodka products. Tito's Vodka is running low, but Grey Goose and Smirnoff are well-stocked.",
-            "detailed_response": {
-              "itemCount": 4,
-              "stockStatus": "mixed",
-              "recommendations": ["Focus on restocking Tito's Vodka"]
-            }
+            "conversational_response": "Searching inventory for vodka products."
           }`
         },
         ...conversationHistory,
@@ -227,7 +219,7 @@ export async function processVoiceCommand(text: string): Promise<Intent> {
         }
       ],
       temperature: 0.3,
-      max_tokens: 200,
+      max_tokens: 150,
       response_format: { type: "json_object" }
     });
 

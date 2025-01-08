@@ -1,15 +1,28 @@
-import { useCallback, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Mic, MicOff, Power } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useVoiceCommands } from '@/hooks/use-voice-commands';
-import { useToast } from '@/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import type { DrinkItem } from '@/types/speech';
-import { SoundWaveVisualizer } from './SoundWaveVisualizer';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { logger } from '@/lib/logger';
+import { motion } from "framer-motion";
+import { Mic, MicOff, Power } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useVoiceCommands } from "@/hooks/use-voice-commands";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { useState } from "react";
+import type { DrinkItem } from "@/types/speech";
+import { useCart } from "@/contexts/CartContext";
+import { logger } from "@/lib/logger";
+import { voiceRecognition } from "@/lib/voice";
+import { SoundWaveVisualizer } from "./SoundWaveVisualizer";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface DrinksResponse {
   drinks: DrinkItem[];
@@ -21,15 +34,10 @@ interface DrinksResponse {
   };
 }
 
-interface Props {
-  onInventorySearch?: (searchTerm: string) => void;
-  onCategoryFilter?: (category: string) => void;
-  onLowStockFilter?: () => void;
-}
-
-export function VoiceControlButton({ onInventorySearch, onCategoryFilter, onLowStockFilter }: Props) {
+export function VoiceControlButton() {
   const { toast } = useToast();
   const [showDialog, setShowDialog] = useState(false);
+  const { cart, addToCart, removeItem, placeOrder, isProcessing } = useCart();
   const [mode, setMode] = useState<'wake_word' | 'command' | 'shutdown'>('wake_word');
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -41,17 +49,17 @@ export function VoiceControlButton({ onInventorySearch, onCategoryFilter, onLowS
 
   const drinks = drinksResponse?.drinks || [];
 
-  const { isListening, startListening, stopListening, isSupported } = useVoiceCommands({
-    drinks,
-    cart: [], // Empty cart for inventory mode
-    onAddToCart: async () => {}, // No-op for inventory mode
-    onRemoveItem: async () => {}, // No-op for inventory mode
-    onPlaceOrder: async () => {}, // No-op for inventory mode
-    isProcessing: false,
-    onInventorySearch,
-    onCategoryFilter,
-    onLowStockFilter,
-  });
+  const { isListening, startListening, stopListening, isSupported, metrics } =
+    useVoiceCommands({
+      drinks,
+      cart,
+      onAddToCart: async (action) => {
+        await addToCart(action);
+      },
+      onRemoveItem: removeItem,
+      onPlaceOrder: placeOrder,
+      isProcessing,
+    });
 
   const initializeVoiceControl = async () => {
     if (!isSupported) {
@@ -69,15 +77,42 @@ export function VoiceControlButton({ onInventorySearch, onCategoryFilter, onLowS
     }
 
     try {
-      await startListening();
-      setIsInitialized(true);
-      setMode('wake_word');
+      if (!isInitialized) {
+        const handleModeChange = (data: { mode: string; isActive: boolean }) => {
+          setMode(data.mode as 'wake_word' | 'command' | 'shutdown');
+          toast({
+            title: "Voice Control",
+            description: data.mode === 'wake_word'
+              ? "Listening for wake word (Hey Bar/Hey Bev)"
+              : "Command mode active. Say 'stop listening' to exit",
+            duration: 3000,
+          });
+        };
 
-      toast({
-        title: "Voice Control",
-        description: "System ready. Try commands like 'check stock of [drink]' or 'show low stock items'",
-        duration: 3000,
-      });
+        const handleShutdown = () => {
+          setMode('shutdown');
+          setIsInitialized(false);
+          toast({
+            title: "Voice Control",
+            description: "System shutting down",
+            duration: 3000,
+          });
+        };
+
+        voiceRecognition.on('modeChange', handleModeChange);
+        voiceRecognition.on('shutdown', handleShutdown);
+
+        if (drinks.length > 0) {
+          await startListening();
+          setIsInitialized(true);
+
+          toast({
+            title: "Voice Control",
+            description: "System ready. Say 'Hey Bar' or 'Hey Bev' to start",
+            duration: 3000,
+          });
+        }
+      }
     } catch (error) {
       logger.error('Failed to initialize voice control:', error);
       toast({
@@ -90,6 +125,11 @@ export function VoiceControlButton({ onInventorySearch, onCategoryFilter, onLowS
 
   const handleShutdown = async () => {
     try {
+      if (!isSupported) {
+        setShowDialog(true);
+        return;
+      }
+
       await stopListening();
       setMode('shutdown');
       setIsInitialized(false);
@@ -108,7 +148,7 @@ export function VoiceControlButton({ onInventorySearch, onCategoryFilter, onLowS
     }
   };
 
-  const getButtonStyle = useCallback(() => {
+  const getButtonStyle = () => {
     if (!isInitialized) {
       return "bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black";
     }
@@ -123,9 +163,9 @@ export function VoiceControlButton({ onInventorySearch, onCategoryFilter, onLowS
       default:
         return "bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black";
     }
-  }, [isInitialized, mode]);
+  };
 
-  const getButtonIcon = useCallback(() => {
+  const getButtonIcon = () => {
     if (!isInitialized) {
       return <Mic className="h-6 w-6" />;
     }
@@ -140,7 +180,11 @@ export function VoiceControlButton({ onInventorySearch, onCategoryFilter, onLowS
       default:
         return <MicOff className="h-6 w-6" />;
     }
-  }, [isInitialized, mode]);
+  };
+
+  const formatSuccessRate = (rate: number) => {
+    return `${Math.round(rate)}%`;
+  };
 
   return (
     <>
@@ -148,31 +192,43 @@ export function VoiceControlButton({ onInventorySearch, onCategoryFilter, onLowS
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="relative"
+        className="fixed bottom-6 right-6 z-50"
       >
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={isInitialized ? handleShutdown : initializeVoiceControl}
-                size="icon"
-                className={`rounded-full p-4 shadow-lg transition-all duration-300 ${getButtonStyle()}`}
-                disabled={!isSupported}
-                aria-label={isInitialized ? "Stop voice control" : "Start voice control"}
-              >
-                {getButtonIcon()}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left">
-              {isInitialized ? "Stop voice control" : "Start voice control"}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <div className="relative flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={isInitialized ? handleShutdown : initializeVoiceControl}
+                  size="lg"
+                  className={`rounded-full p-6 shadow-lg transition-all duration-300
+                    ${getButtonStyle()}
+                    ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
+                  disabled={!isSupported || isProcessing}
+                  aria-label={!isInitialized ? "Initialize voice control" : mode === 'command' ? "Listening for commands" : "Listening for wake word"}
+                >
+                  {getButtonIcon()}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left" align="center">
+                <div className="text-sm">
+                  <p className="font-semibold mb-1">Voice Command Success Rate</p>
+                  <p>Overall: {formatSuccessRate(metrics.overall)}</p>
+                  <div className="mt-1 space-y-0.5">
+                    <p>Orders: {formatSuccessRate(metrics.categories.drink_order.successRate)}</p>
+                    <p>System: {formatSuccessRate(metrics.categories.system_command.successRate)}</p>
+                    <p>Completion: {formatSuccessRate(metrics.categories.order_completion.successRate)}</p>
+                  </div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
-        <SoundWaveVisualizer
-          isListening={isListening && isInitialized}
-          mode={mode}
-        />
+          <SoundWaveVisualizer
+            isListening={isListening && isInitialized}
+            mode={mode}
+          />
+        </div>
       </motion.div>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
