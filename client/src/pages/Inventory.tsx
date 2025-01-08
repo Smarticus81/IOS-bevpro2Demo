@@ -18,7 +18,6 @@ interface ApiResponse<T> {
   pagination: {
     currentPage: number;
     limit: number;
-    totalPages: number;
     totalItems: number;
   };
 }
@@ -27,11 +26,15 @@ export function Inventory() {
   const [search, setSearch] = useState("");
   const { toast } = useToast();
 
-  const { data: drinksResponse } = useQuery<ApiResponse<Drink>>({
+  const { data: drinks } = useQuery<{ drinks: Drink[] }>({
     queryKey: ["/api/drinks"]
   });
 
-  const { data: pourInventoryResponse } = useQuery<ApiResponse<PourInventory>>({
+  const { data: pourInventoryResponse } = useQuery<ApiResponse<PourInventory & { 
+    drink_name: string;
+    drink_category: string;
+    tax_category_name: string;
+  }>>({
     queryKey: ["/api/pour-inventory"]
   });
 
@@ -39,11 +42,14 @@ export function Inventory() {
     queryKey: ["/api/tax-categories"]
   });
 
-  const { data: pourTransactionsResponse } = useQuery<ApiResponse<PourTransaction>>({
+  const { data: pourTransactionsResponse } = useQuery<ApiResponse<PourTransaction & {
+    drink_name: string;
+    drink_category: string;
+  }>>({
     queryKey: ["/api/pour-transactions"]
   });
 
-  const drinks = drinksResponse?.data || [];
+  const allDrinks = drinks?.drinks || [];
   const pourInventory = pourInventoryResponse?.data || [];
   const taxCategories = taxCategoriesResponse?.data || [];
   const pourTransactions = pourTransactionsResponse?.data || [];
@@ -62,13 +68,11 @@ export function Inventory() {
   };
 
   const filteredInventory = {
-    pourTracked: pourInventory.filter(item => {
-      const drink = drinks.find(d => d.id === item.drink_id);
-      return drink && needsPourTracking(drink.category) &&
-             (drink.name.toLowerCase().includes(search.toLowerCase()) ||
-              drink.category.toLowerCase().includes(search.toLowerCase()));
-    }),
-    packageTracked: drinks.filter(drink => 
+    pourTracked: pourInventory.filter(item => 
+      item.drink_name?.toLowerCase().includes(search.toLowerCase()) ||
+      item.drink_category?.toLowerCase().includes(search.toLowerCase())
+    ),
+    packageTracked: allDrinks.filter(drink => 
       !needsPourTracking(drink.category) &&
       (drink.name.toLowerCase().includes(search.toLowerCase()) ||
        drink.category.toLowerCase().includes(search.toLowerCase()))
@@ -84,7 +88,7 @@ export function Inventory() {
     });
 
   const getLowStockPackages = () =>
-    drinks.filter(drink => 
+    allDrinks.filter(drink => 
       !needsPourTracking(drink.category) && 
       typeof drink.inventory === 'number' && 
       drink.inventory < 10
@@ -104,9 +108,8 @@ export function Inventory() {
       <NavBar />
 
       <div className="container mx-auto p-4 lg:p-8">
-        {/* Analytics Dashboard Section */}
         <InventoryAnalytics 
-          drinks={drinks}
+          drinks={allDrinks}
           inventoryHistory={pourTransactions}
         />
 
@@ -126,7 +129,7 @@ export function Inventory() {
                     <p className="text-sm text-gray-600">Active Inventory</p>
                     <p className="text-2xl font-bold text-gray-900">
                       {pourInventory.filter(i => i.is_active).length + 
-                       drinks.filter(d => !needsPourTracking(d.category)).length}
+                       allDrinks.filter(d => !needsPourTracking(d.category)).length}
                     </p>
                   </div>
                 </div>
@@ -212,9 +215,6 @@ export function Inventory() {
                   <TabsTrigger value="transactions" className="rounded-none border-b-2 data-[state=active]:border-primary">
                     Transaction History
                   </TabsTrigger>
-                  <TabsTrigger value="insights" className="rounded-none border-b-2 data-[state=active]:border-primary">
-                    Insights
-                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="pour" className="mt-0">
@@ -232,8 +232,6 @@ export function Inventory() {
 
                       <div className="divide-y">
                         {filteredInventory.pourTracked.map((item) => {
-                          const drink = drinks.find(d => d.id === item.drink_id);
-                          const taxCategory = taxCategories.find(t => t.id === item.tax_category_id);
                           const remainingPercentage = item.remaining_volume_ml && item.initial_volume_ml
                             ? (Number(item.remaining_volume_ml) / Number(item.initial_volume_ml)) * 100
                             : 0;
@@ -246,14 +244,14 @@ export function Inventory() {
                               className="grid grid-cols-8 gap-4 p-4 items-center hover:bg-gray-50/50"
                             >
                               <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
-                                {getBeverageIcon(drink?.category || '')}
+                                {getBeverageIcon(item.drink_category || '')}
                                 <div>
-                                  {drink?.name}
-                                  <div className="text-xs text-gray-500">{drink?.category}</div>
+                                  {item.drink_name}
+                                  <div className="text-xs text-gray-500">{item.drink_category}</div>
                                 </div>
                               </div>
                               <div className="font-mono text-sm">{item.bottle_id}</div>
-                              <div>{taxCategory?.name || 'N/A'}</div>
+                              <div>{item.tax_category_name || 'N/A'}</div>
                               <div>{item.initial_volume_ml}ml</div>
                               <div>
                                 <div className="flex items-center gap-2">
@@ -345,51 +343,41 @@ export function Inventory() {
                       </div>
 
                       <div className="divide-y">
-                        {pourTransactions.map((transaction) => {
-                          const inventory = pourInventory.find(i => i.id === transaction.pour_inventory_id);
-                          const drink = drinks.find(d => d.id === inventory?.drink_id);
-
-                          return (
-                            <motion.div
-                              key={transaction.id}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              className="grid grid-cols-7 gap-4 p-4 items-center hover:bg-gray-50/50"
-                            >
-                              <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
-                                {getBeverageIcon(drink?.category || '')}
-                                <div>
-                                  {drink?.name}
-                                  <div className="text-xs text-gray-500">{drink?.category}</div>
-                                </div>
-                              </div>
-                              <div>{transaction.pour_size_id ? 'Pour' : 'Package'}</div>
+                        {pourTransactions.map((transaction) => (
+                          <motion.div
+                            key={transaction.id}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="grid grid-cols-7 gap-4 p-4 items-center hover:bg-gray-50/50"
+                          >
+                            <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
+                              {getBeverageIcon(transaction.drink_category || '')}
                               <div>
-                                {transaction.volume_ml 
-                                  ? `${transaction.volume_ml}ml`
-                                  : '1 unit'
-                                }
+                                {transaction.drink_name}
+                                <div className="text-xs text-gray-500">{transaction.drink_category}</div>
                               </div>
-                              <div>${transaction.tax_amount?.toFixed(2) || '0.00'}</div>
-                              <div className="text-sm text-gray-500">
-                                {transaction.transaction_time
-                                  ? new Date(transaction.transaction_time).toLocaleTimeString()
-                                  : 'N/A'
-                                }
-                              </div>
-                              <div className="text-sm">Staff #{transaction.staff_id}</div>
-                            </motion.div>
-                          );
-                        })}
+                            </div>
+                            <div>{transaction.pour_size_id ? 'Pour' : 'Package'}</div>
+                            <div>
+                              {transaction.volume_ml 
+                                ? `${transaction.volume_ml}ml`
+                                : '1 unit'
+                              }
+                            </div>
+                            <div>${Number(transaction.tax_amount || 0).toFixed(2)}</div>
+                            <div className="text-sm text-gray-500">
+                              {transaction.transaction_time
+                                ? new Date(transaction.transaction_time).toLocaleTimeString()
+                                : 'N/A'
+                              }
+                            </div>
+                            <div className="text-sm">Staff #{transaction.staff_id}</div>
+                          </motion.div>
+                        ))}
                       </div>
                     </div>
                   </ScrollArea>
                 </TabsContent>
-
-                <TabsContent value="insights" className="mt-0 p-4">
-                  {/*InventoryVisualizations component is removed here*/}
-                </TabsContent>
-
               </Tabs>
             </CardContent>
           </Card>
