@@ -35,10 +35,10 @@ const addItemSchema = z.object({
   category: z.string().min(1, "Category is required"),
   subcategory: z.string().optional(),
   price: z.string().min(1, "Price is required"),
-  initialVolume: z.string().min(1, "Initial volume is required").optional(),
+  initialVolume: z.string().optional(),
   bottleId: z.string().optional(),
   taxCategoryId: z.string().optional(),
-  inventory: z.string().min(1, "Inventory count is required").optional(),
+  inventory: z.string().optional(),
 });
 
 type AddItemFormValues = z.infer<typeof addItemSchema>;
@@ -101,13 +101,15 @@ export function AddInventoryItem({ trigger }: AddInventoryItemProps) {
       });
 
       if (!response.ok) {
-        throw new Error(await response.text());
+        const errorText = await response.text();
+        throw new Error(errorText);
       }
 
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/drinks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/pour-inventory"] });
       toast({
         title: "Success",
         description: "Item added successfully",
@@ -128,6 +130,38 @@ export function AddInventoryItem({ trigger }: AddInventoryItemProps) {
     return ["spirits", "classics", "signature"].includes(category.toLowerCase());
   };
 
+  const onSubmit = (values: AddItemFormValues) => {
+    try {
+      if (!values.price || isNaN(parseFloat(values.price))) {
+        toast({
+          title: "Error",
+          description: "Please enter a valid price",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (needsPourTracking(values.category)) {
+        if (!values.initialVolume || !values.bottleId || !values.taxCategoryId) {
+          toast({
+            title: "Error",
+            description: "Pour tracking items require volume, bottle ID, and tax category",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      addItemMutation.mutate(values);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to add item",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -141,7 +175,7 @@ export function AddInventoryItem({ trigger }: AddInventoryItemProps) {
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((values) => addItemMutation.mutate(values))} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
