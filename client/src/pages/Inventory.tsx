@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { NavBar } from "@/components/NavBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Package, AlertTriangle, Search, Plus, History, Beer, Wine, Coffee } from "lucide-react";
+import { Package, AlertTriangle, Search, Plus, History, Beer, Wine, Coffee, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,6 +12,7 @@ import type { Drink, PourInventory, TaxCategory, PourTransaction } from "@db/sch
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { InventoryAnalytics } from "@/components/InventoryAnalytics";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ApiResponse<T> {
   data: T[];
@@ -26,11 +27,14 @@ export function Inventory() {
   const [search, setSearch] = useState("");
   const { toast } = useToast();
 
-  const { data: drinks } = useQuery<{ drinks: Drink[] }>({
+  const { data: drinks, isLoading: isDrinksLoading } = useQuery<{ drinks: Drink[] }>({
     queryKey: ["/api/drinks"]
   });
 
-  const { data: pourInventoryResponse } = useQuery<ApiResponse<PourInventory & { 
+  const { 
+    data: pourInventoryResponse, 
+    isLoading: isPourInventoryLoading 
+  } = useQuery<ApiResponse<PourInventory & { 
     drink_name: string;
     drink_category: string;
     tax_category_name: string;
@@ -42,12 +46,27 @@ export function Inventory() {
     queryKey: ["/api/tax-categories"]
   });
 
-  const { data: pourTransactionsResponse } = useQuery<ApiResponse<PourTransaction & {
+  const { 
+    data: pourTransactionsResponse, 
+    isLoading: isTransactionsLoading 
+  } = useQuery<ApiResponse<PourTransaction & {
     drink_name: string;
     drink_category: string;
   }>>({
     queryKey: ["/api/pour-transactions"]
   });
+
+  useEffect(() => {
+    const isRefetching = isDrinksLoading || isPourInventoryLoading || isTransactionsLoading;
+
+    if (isRefetching) {
+      toast({
+        title: "Syncing Inventory",
+        description: "Updating inventory data in real-time...",
+        duration: 2000,
+      });
+    }
+  }, [isDrinksLoading, isPourInventoryLoading, isTransactionsLoading, toast]);
 
   const allDrinks = drinks?.drinks || [];
   const pourInventory = pourInventoryResponse?.data || [];
@@ -103,6 +122,14 @@ export function Inventory() {
     }, 0);
   };
 
+  const LoadingRow = () => (
+    <div className="grid grid-cols-8 gap-4 p-4 items-center">
+      {Array(8).fill(0).map((_, i) => (
+        <Skeleton key={i} className={`h-8 ${i === 0 ? 'col-span-2' : ''}`} />
+      ))}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <NavBar />
@@ -119,7 +146,6 @@ export function Inventory() {
         </div>
 
         <div className="grid gap-6">
-          {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
               <CardContent className="p-4">
@@ -182,7 +208,6 @@ export function Inventory() {
             </Card>
           </div>
 
-          {/* Main Content */}
           <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
             <CardHeader className="p-4 flex flex-row items-center justify-between">
               <CardTitle>Inventory Management</CardTitle>
@@ -231,56 +256,64 @@ export function Inventory() {
                       </div>
 
                       <div className="divide-y">
-                        {filteredInventory.pourTracked.map((item) => {
-                          const remainingPercentage = item.remaining_volume_ml && item.initial_volume_ml
-                            ? (Number(item.remaining_volume_ml) / Number(item.initial_volume_ml)) * 100
-                            : 0;
+                        {isPourInventoryLoading ? (
+                          <>
+                            {Array(5).fill(0).map((_, i) => (
+                              <LoadingRow key={i} />
+                            ))}
+                          </>
+                        ) : (
+                          filteredInventory.pourTracked.map((item) => {
+                            const remainingPercentage = item.remaining_volume_ml && item.initial_volume_ml
+                              ? (Number(item.remaining_volume_ml) / Number(item.initial_volume_ml)) * 100
+                              : 0;
 
-                          return (
-                            <motion.div
-                              key={item.id}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              className="grid grid-cols-8 gap-4 p-4 items-center hover:bg-gray-50/50"
-                            >
-                              <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
-                                {getBeverageIcon(item.drink_category || '')}
-                                <div>
-                                  {item.drink_name}
-                                  <div className="text-xs text-gray-500">{item.drink_category}</div>
-                                </div>
-                              </div>
-                              <div className="font-mono text-sm">{item.bottle_id}</div>
-                              <div>{item.tax_category_name || 'N/A'}</div>
-                              <div>{item.initial_volume_ml}ml</div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-16 bg-gray-200 rounded-full h-2">
-                                    <div
-                                      className="bg-primary rounded-full h-2"
-                                      style={{ width: `${remainingPercentage}%` }}
-                                    />
+                            return (
+                              <motion.div
+                                key={item.id}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="grid grid-cols-8 gap-4 p-4 items-center hover:bg-gray-50/50"
+                              >
+                                <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
+                                  {getBeverageIcon(item.drink_category || '')}
+                                  <div>
+                                    {item.drink_name}
+                                    <div className="text-xs text-gray-500">{item.drink_category}</div>
                                   </div>
-                                  <span className="text-sm">{Math.round(remainingPercentage)}%</span>
                                 </div>
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {item.last_pour_at 
-                                  ? new Date(item.last_pour_at).toLocaleDateString()
-                                  : 'Never'
-                                }
-                              </div>
-                              <div>
-                                <Badge
-                                  variant={remainingPercentage < 20 ? "destructive" : "default"}
-                                  className="bg-gradient-to-b from-zinc-800 to-black text-white shadow-sm"
-                                >
-                                  {remainingPercentage < 20 ? "Low" : "OK"}
-                                </Badge>
-                              </div>
-                            </motion.div>
-                          );
-                        })}
+                                <div className="font-mono text-sm">{item.bottle_id}</div>
+                                <div>{item.tax_category_name || 'N/A'}</div>
+                                <div>{item.initial_volume_ml}ml</div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-16 bg-gray-200 rounded-full h-2">
+                                      <div
+                                        className="bg-primary rounded-full h-2"
+                                        style={{ width: `${remainingPercentage}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-sm">{Math.round(remainingPercentage)}%</span>
+                                  </div>
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {item.last_pour_at 
+                                    ? new Date(item.last_pour_at).toLocaleDateString()
+                                    : 'Never'
+                                  }
+                                </div>
+                                <div>
+                                  <Badge
+                                    variant={remainingPercentage < 20 ? "destructive" : "default"}
+                                    className="bg-gradient-to-b from-zinc-800 to-black text-white shadow-sm"
+                                  >
+                                    {remainingPercentage < 20 ? "Low" : "OK"}
+                                  </Badge>
+                                </div>
+                              </motion.div>
+                            );
+                          })
+                        )}
                       </div>
                     </div>
                   </ScrollArea>
@@ -298,33 +331,41 @@ export function Inventory() {
                       </div>
 
                       <div className="divide-y">
-                        {filteredInventory.packageTracked.map((drink) => (
-                          <motion.div
-                            key={drink.id}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="grid grid-cols-6 gap-4 p-4 items-center hover:bg-gray-50/50"
-                          >
-                            <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
-                              {getBeverageIcon(drink.category)}
-                              <div>
-                                {drink.name}
-                                <div className="text-xs text-gray-500">{drink.subcategory}</div>
+                        {isDrinksLoading ? (
+                          <>
+                            {Array(5).fill(0).map((_, i) => (
+                              <LoadingRow key={i} />
+                            ))}
+                          </>
+                        ) : (
+                          filteredInventory.packageTracked.map((drink) => (
+                            <motion.div
+                              key={drink.id}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className="grid grid-cols-6 gap-4 p-4 items-center hover:bg-gray-50/50"
+                            >
+                              <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
+                                {getBeverageIcon(drink.category)}
+                                <div>
+                                  {drink.name}
+                                  <div className="text-xs text-gray-500">{drink.subcategory}</div>
+                                </div>
                               </div>
-                            </div>
-                            <div>{drink.category}</div>
-                            <div>${drink.price}</div>
-                            <div>{drink.inventory} units</div>
-                            <div>
-                              <Badge
-                                variant={drink.inventory < 10 ? "destructive" : "default"}
-                                className="bg-gradient-to-b from-zinc-800 to-black text-white shadow-sm"
-                              >
-                                {drink.inventory < 10 ? "Low" : "OK"}
-                              </Badge>
-                            </div>
-                          </motion.div>
-                        ))}
+                              <div>{drink.category}</div>
+                              <div>${drink.price}</div>
+                              <div>{drink.inventory} units</div>
+                              <div>
+                                <Badge
+                                  variant={drink.inventory < 10 ? "destructive" : "default"}
+                                  className="bg-gradient-to-b from-zinc-800 to-black text-white shadow-sm"
+                                >
+                                  {drink.inventory < 10 ? "Low" : "OK"}
+                                </Badge>
+                              </div>
+                            </motion.div>
+                          ))
+                        )}
                       </div>
                     </div>
                   </ScrollArea>
@@ -343,37 +384,45 @@ export function Inventory() {
                       </div>
 
                       <div className="divide-y">
-                        {pourTransactions.map((transaction) => (
-                          <motion.div
-                            key={transaction.id}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="grid grid-cols-7 gap-4 p-4 items-center hover:bg-gray-50/50"
-                          >
-                            <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
-                              {getBeverageIcon(transaction.drink_category || '')}
-                              <div>
-                                {transaction.drink_name}
-                                <div className="text-xs text-gray-500">{transaction.drink_category}</div>
+                        {isTransactionsLoading ? (
+                          <>
+                            {Array(5).fill(0).map((_, i) => (
+                              <LoadingRow key={i} />
+                            ))}
+                          </>
+                        ) : (
+                          pourTransactions.map((transaction) => (
+                            <motion.div
+                              key={transaction.id}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className="grid grid-cols-7 gap-4 p-4 items-center hover:bg-gray-50/50"
+                            >
+                              <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
+                                {getBeverageIcon(transaction.drink_category || '')}
+                                <div>
+                                  {transaction.drink_name}
+                                  <div className="text-xs text-gray-500">{transaction.drink_category}</div>
+                                </div>
                               </div>
-                            </div>
-                            <div>{transaction.pour_size_id ? 'Pour' : 'Package'}</div>
-                            <div>
-                              {transaction.volume_ml 
-                                ? `${transaction.volume_ml}ml`
-                                : '1 unit'
-                              }
-                            </div>
-                            <div>${Number(transaction.tax_amount || 0).toFixed(2)}</div>
-                            <div className="text-sm text-gray-500">
-                              {transaction.transaction_time
-                                ? new Date(transaction.transaction_time).toLocaleTimeString()
-                                : 'N/A'
-                              }
-                            </div>
-                            <div className="text-sm">Staff #{transaction.staff_id}</div>
-                          </motion.div>
-                        ))}
+                              <div>{transaction.pour_size_id ? 'Pour' : 'Package'}</div>
+                              <div>
+                                {transaction.volume_ml 
+                                  ? `${transaction.volume_ml}ml`
+                                  : '1 unit'
+                                }
+                              </div>
+                              <div>${Number(transaction.tax_amount || 0).toFixed(2)}</div>
+                              <div className="text-sm text-gray-500">
+                                {transaction.transaction_time
+                                  ? new Date(transaction.transaction_time).toLocaleTimeString()
+                                  : 'N/A'
+                                }
+                              </div>
+                              <div className="text-sm">Staff #{transaction.staff_id}</div>
+                            </motion.div>
+                          ))
+                        )}
                       </div>
                     </div>
                   </ScrollArea>
