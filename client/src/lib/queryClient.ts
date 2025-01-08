@@ -1,4 +1,4 @@
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, type Query } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,18 +19,19 @@ export const queryClient = new QueryClient({
         return res.json();
       },
       // Enable real-time updates for inventory-related queries
-      refetchInterval: (query) => {
+      refetchInterval: (query: Query) => {
+        const queryKey = query.queryKey[0] as string;
         // Refetch inventory data every 5 seconds
-        if (query.queryKey[0].includes('/api/pour-inventory') || 
-            query.queryKey[0].includes('/api/pour-transactions') ||
-            query.queryKey[0].includes('/api/drinks')) {
+        if (queryKey.includes('/api/pour-inventory') || 
+            queryKey.includes('/api/pour-transactions') ||
+            queryKey.includes('/api/drinks')) {
           return 5000;
         }
         return false;
       },
       refetchOnWindowFocus: true,
       staleTime: 0, // Consider data stale immediately for real-time updates
-      cacheTime: 1000 * 60 * 5, // Cache for 5 minutes
+      gcTime: 1000 * 60 * 5, // Cache for 5 minutes before garbage collection
       retry: false,
     },
     mutations: {

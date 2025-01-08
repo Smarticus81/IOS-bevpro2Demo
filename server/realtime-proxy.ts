@@ -9,112 +9,56 @@ export function setupRealtimeProxy(server: Server) {
   });
 
   // Handle upgrade manually to properly handle protocols
-  server.on('upgrade', (request, socket, head) => {
+  server.on('upgrade', (request: IncomingMessage, socket, head) => {
     const wsProtocol = request.headers['sec-websocket-protocol'];
-    
+
     // Skip vite HMR connections
     if (wsProtocol?.includes('vite-hmr')) {
       return;
     }
 
-    // Only handle /api/realtime path
-    if (request.url?.startsWith('/api/realtime')) {
-      wss.handleUpgrade(request, socket, head, (ws) => {
-        wss.emit('connection', ws, request);
-      });
-    }
+    // Handle WebSocket connection
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request);
+    });
   });
 
-  wss.on('connection', async (ws, req) => {
+  wss.on('connection', (ws: WebSocket) => {
     console.log('Client connected to realtime proxy');
-    
-    try {
-      if (!process.env.OPENAI_API_KEY) {
-        throw new Error('OpenAI API key not configured');
-      }
 
-      // Connect to OpenAI's realtime API
-      const openaiWs = new WebSocket(
-        "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17",
-        [
-          "realtime",
-          // Auth
-          `openai-api-key.${process.env.OPENAI_API_KEY}`,
-          // Beta protocol, required
-          "openai-beta.realtime-v1"
-        ]
-      );
+    // Send initial connection status
+    ws.send(JSON.stringify({
+      type: 'status',
+      status: 'connected',
+      timestamp: new Date().toISOString()
+    }));
 
-      // Set up error handlers first
-      openaiWs.on('error', (error) => {
-        console.error('OpenAI WebSocket error:', error);
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ 
-            type: 'error',
-            error: 'Connection to OpenAI failed'
-          }));
-        }
-      });
+    // Handle incoming messages
+    ws.on('message', (data) => {
+      try {
+        const message = JSON.parse(data.toString());
+        console.log('Received message:', message);
 
-      openaiWs.on('close', (code, reason) => {
-        console.log('OpenAI WebSocket closed:', code, reason.toString());
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.close();
-        }
-      });
-
-      // Wait for connection before sending ready status
-      await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('OpenAI WebSocket connection timeout'));
-        }, 10000);
-
-        openaiWs.on('open', () => {
-          clearTimeout(timeout);
-          console.log('Connected to OpenAI Realtime API');
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'status', status: 'connected' }));
+        // Echo back the message to all connected clients
+        wss.clients.forEach(client => {
+          if (client !== ws && client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(message));
           }
-          resolve(undefined);
         });
-      });
-
-      // Handle messages from OpenAI
-      openaiWs.on('message', (data) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(data);
-        }
-      });
-
-      // Handle messages from client
-      ws.on('message', (data) => {
-        if (openaiWs.readyState === WebSocket.OPEN) {
-          try {
-            const message = JSON.parse(data.toString());
-            console.log('Client message:', message);
-            openaiWs.send(JSON.stringify(message));
-          } catch (error) {
-            console.error('Failed to parse client message:', error);
-          }
-        }
-      });
-
-      ws.on('close', () => {
-        console.log('Client disconnected from realtime proxy');
-        if (openaiWs.readyState === WebSocket.OPEN) {
-          openaiWs.close();
-        }
-      });
-    } catch (error) {
-      console.error('Failed to setup WebSocket connection:', error);
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          type: 'error',
-          error: 'Failed to initialize connection'
-        }));
-        ws.close();
+      } catch (error) {
+        console.error('Failed to process message:', error);
       }
-    }
+    });
+
+    // Handle client disconnection
+    ws.on('close', () => {
+      console.log('Client disconnected from realtime proxy');
+    });
+
+    // Handle connection errors
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
+    });
   });
 
   return wss;
