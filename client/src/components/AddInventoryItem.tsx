@@ -34,7 +34,10 @@ const addItemSchema = z.object({
   name: z.string().min(1, "Name is required"),
   category: z.string().min(1, "Category is required"),
   subcategory: z.string().optional(),
-  price: z.string().min(1, "Price is required"),
+  price: z.string().min(1, "Price is required").refine(
+    (val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0,
+    "Price must be a valid number greater than 0"
+  ),
   initialVolume: z.string().optional(),
   bottleId: z.string().optional(),
   taxCategoryId: z.string().optional(),
@@ -79,12 +82,14 @@ export function AddInventoryItem({ trigger }: AddInventoryItemProps) {
       initialVolume: "",
       bottleId: "",
       taxCategoryId: "",
-      inventory: "",
+      inventory: "0",
     },
   });
 
   const addItemMutation = useMutation({
     mutationFn: async (values: AddItemFormValues) => {
+      console.log("Submitting form with values:", values);
+
       const response = await fetch("/api/drinks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -92,17 +97,17 @@ export function AddInventoryItem({ trigger }: AddInventoryItemProps) {
           name: values.name,
           category: values.category,
           subcategory: values.subcategory || null,
-          price: parseFloat(values.price),
-          initial_volume_ml: values.initialVolume ? parseInt(values.initialVolume) : null,
+          price: values.price,
+          initial_volume_ml: values.initialVolume || null,
           bottle_id: values.bottleId || null,
-          tax_category_id: values.taxCategoryId ? parseInt(values.taxCategoryId) : null,
-          inventory: values.inventory ? parseInt(values.inventory) : 0,
+          tax_category_id: values.taxCategoryId || null,
+          inventory: values.inventory || "0",
         }),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText);
+        const errorData = await response.json().catch(() => ({ error: "Unknown error occurred" }));
+        throw new Error(errorData.error || "Failed to add item");
       }
 
       return response.json();
@@ -118,9 +123,10 @@ export function AddInventoryItem({ trigger }: AddInventoryItemProps) {
       form.reset();
     },
     onError: (error: Error) => {
+      console.error("Error adding item:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to add item",
         variant: "destructive",
       });
     },
@@ -130,7 +136,7 @@ export function AddInventoryItem({ trigger }: AddInventoryItemProps) {
     return ["spirits", "classics", "signature"].includes(category.toLowerCase());
   };
 
-  const onSubmit = (values: AddItemFormValues) => {
+  const onSubmit = async (values: AddItemFormValues) => {
     try {
       if (!values.price || isNaN(parseFloat(values.price))) {
         toast({
@@ -150,10 +156,29 @@ export function AddInventoryItem({ trigger }: AddInventoryItemProps) {
           });
           return;
         }
+
+        if (isNaN(parseInt(values.initialVolume))) {
+          toast({
+            title: "Error",
+            description: "Please enter a valid volume",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
-      addItemMutation.mutate(values);
+      if (values.inventory && isNaN(parseInt(values.inventory))) {
+        toast({
+          title: "Error",
+          description: "Please enter a valid inventory count",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await addItemMutation.mutateAsync(values);
     } catch (error) {
+      console.error("Form submission error:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to add item",
@@ -237,7 +262,7 @@ export function AddInventoryItem({ trigger }: AddInventoryItemProps) {
               name="price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Price</FormLabel>
+                  <FormLabel>Price ($)</FormLabel>
                   <FormControl>
                     <Input
                       type="number"

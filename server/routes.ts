@@ -2,9 +2,9 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
 import compression from 'compression';
-import { 
-  drinks, 
-  orders, 
+import {
+  drinks,
+  orders,
   orderItems,
   paymentMethods,
   transactions,
@@ -97,11 +97,11 @@ export function registerRoutes(app: Express): Server {
         drink_category: drinks.category,
         tax_category_name: taxCategories.name
       })
-      .from(pourInventory)
-      .leftJoin(drinks, eq(pourInventory.drink_id, drinks.id))
-      .leftJoin(taxCategories, eq(pourInventory.tax_category_id, taxCategories.id))
-      .where(eq(pourInventory.is_active, true))
-      .orderBy(desc(pourInventory.last_pour_at));
+        .from(pourInventory)
+        .leftJoin(drinks, eq(pourInventory.drink_id, drinks.id))
+        .leftJoin(taxCategories, eq(pourInventory.tax_category_id, taxCategories.id))
+        .where(eq(pourInventory.is_active, true))
+        .orderBy(desc(pourInventory.last_pour_at));
 
       // Broadcast pour inventory update
       broadcastInventoryUpdate('POUR_UPDATE', {
@@ -134,9 +134,9 @@ export function registerRoutes(app: Express): Server {
         volume_ml: pourSizes.volume_ml,
         tax_amount: sql<number>`COALESCE(${pourSizes.tax_amount}::numeric, 0)`,
       })
-      .from(pourSizes)
-      .where(eq(pourSizes.id, pourSizeId))
-      .limit(1);
+        .from(pourSizes)
+        .where(eq(pourSizes.id, pourSizeId))
+        .limit(1);
 
       if (!pourSize) {
         return res.status(400).json({ error: "Invalid pour size" });
@@ -198,16 +198,16 @@ export function registerRoutes(app: Express): Server {
 
       if (!items?.length || typeof total !== 'number' || total <= 0) {
         console.error("Invalid order data:", { items, total });
-        return res.status(400).json({ 
-          error: "Invalid order data. Must include items array and valid total." 
+        return res.status(400).json({
+          error: "Invalid order data. Must include items array and valid total."
         });
       }
 
       // Validate all items have required fields
       const invalidItems = items.filter((item: any) => {
-        const isValid = item.drink?.id && 
-                       typeof item.quantity === 'number' && 
-                       item.quantity > 0;
+        const isValid = item.drink?.id &&
+          typeof item.quantity === 'number' &&
+          item.quantity > 0;
         if (!isValid) {
           console.error("Invalid item in order:", item);
         }
@@ -240,9 +240,9 @@ export function registerRoutes(app: Express): Server {
       // Create order and update inventory atomically
       const [order] = await db
         .insert(orders)
-        .values({ 
-          total, 
-          items, 
+        .values({
+          total,
+          items,
           status: 'pending',
           payment_status: 'pending',
           created_at: new Date()
@@ -266,7 +266,7 @@ export function registerRoutes(app: Express): Server {
       for (const item of items) {
         const [updatedDrink] = await db
           .update(drinks)
-          .set({ 
+          .set({
             inventory: sql`${drinks.inventory} - ${item.quantity}`,
             sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
           })
@@ -290,7 +290,7 @@ export function registerRoutes(app: Express): Server {
       res.json(order);
     } catch (error) {
       console.error("Error creating order:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to create order",
         details: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -314,9 +314,9 @@ export function registerRoutes(app: Express): Server {
         totalSales: sum(transactions.amount).mapWith(Number),
         totalOrders: count(orders.id).mapWith(Number)
       })
-      .from(transactions)
-      .leftJoin(orders, eq(transactions.order_id, orders.id))
-      .where(eq(transactions.status, 'completed'));
+        .from(transactions)
+        .leftJoin(orders, eq(transactions.order_id, orders.id))
+        .where(eq(transactions.status, 'completed'));
 
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
@@ -324,26 +324,26 @@ export function registerRoutes(app: Express): Server {
       const [todayStats] = await db.select({
         todaySales: sum(transactions.amount).mapWith(Number)
       })
-      .from(transactions)
-      .where(sql`${transactions.created_at}::date = ${todayStart.toISOString().split('T')[0]} AND ${transactions.status} = 'completed'`);
+        .from(transactions)
+        .where(sql`${transactions.created_at}::date = ${todayStart.toISOString().split('T')[0]} AND ${transactions.status} = 'completed'`);
 
       // Get active orders with pagination
       const activeOrders = await db.select({
         count: count().mapWith(Number)
       })
-      .from(orders)
-      .where(eq(orders.status, 'pending'));
+        .from(orders)
+        .where(eq(orders.status, 'pending'));
 
       // Get category sales with pagination
       const categorySales = await db.select({
         category: drinks.category,
         totalSales: sum(orderItems.quantity).mapWith(Number)
       })
-      .from(orderItems)
-      .leftJoin(drinks, eq(orderItems.drink_id, drinks.id))
-      .groupBy(drinks.category)
-      .limit(limit)
-      .offset(offset);
+        .from(orderItems)
+        .leftJoin(drinks, eq(orderItems.drink_id, drinks.id))
+        .groupBy(drinks.category)
+        .limit(limit)
+        .offset(offset);
 
       // Get popular drinks with pagination
       const popularDrinks = await db.select({
@@ -351,11 +351,11 @@ export function registerRoutes(app: Express): Server {
         name: drinks.name,
         sales: sum(orderItems.quantity).mapWith(Number)
       })
-      .from(orderItems)
-      .leftJoin(drinks, eq(orderItems.drink_id, drinks.id))
-      .groupBy(drinks.id, drinks.name)
-      .orderBy(sql`sum(${orderItems.quantity}) DESC`)
-      .limit(limit);
+        .from(orderItems)
+        .leftJoin(drinks, eq(orderItems.drink_id, drinks.id))
+        .groupBy(drinks.id, drinks.name)
+        .orderBy(sql`sum(${orderItems.quantity}) DESC`)
+        .limit(limit);
 
       res.json({
         totalSales: salesStats?.totalSales || 0,
@@ -377,7 +377,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Get drinks with caching
-  app.get("/api/drinks2", async (_req, res) => { 
+  app.get("/api/drinks2", async (_req, res) => {
     try {
       // Add cache control headers for medium-term caching
       res.set('Cache-Control', `public, max-age=${CACHE_DURATION.MEDIUM}`);
@@ -402,7 +402,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const drinkId = parseInt(req.params.id);
       const [drink] = await db
-        .select({ 
+        .select({
           id: drinks.id,
           name: drinks.name,
           inventory: drinks.inventory,
@@ -435,7 +435,7 @@ export function registerRoutes(app: Express): Server {
       const inventoryChecks = await Promise.all(
         items.map(async (item: any) => {
           const [drink] = await db
-            .select({ 
+            .select({
               id: drinks.id,
               name: drinks.name,
               inventory: drinks.inventory
@@ -498,15 +498,15 @@ export function registerRoutes(app: Express): Server {
 
       if (typeof amount !== 'number' || amount <= 0) {
         console.error("Invalid payment amount:", amount);
-        return res.status(400).json({ 
-          error: "Invalid payment amount" 
+        return res.status(400).json({
+          error: "Invalid payment amount"
         });
       }
 
       if (!orderId || typeof orderId !== 'number') {
         console.error("Invalid order ID:", orderId);
-        return res.status(400).json({ 
-          error: "Invalid order ID" 
+        return res.status(400).json({
+          error: "Invalid order ID"
         });
       }
 
@@ -540,7 +540,7 @@ export function registerRoutes(app: Express): Server {
       // Update order status
       await db
         .update(orders)
-        .set({ 
+        .set({
           status: 'completed',
           payment_status: 'completed',
           completed_at: new Date()
@@ -553,7 +553,7 @@ export function registerRoutes(app: Express): Server {
         amount: (amount / 100).toFixed(2)
       });
 
-      res.json({ 
+      res.json({
         success: true,
         message: `Payment of $${(amount / 100).toFixed(2)} processed successfully`,
         orderId,
@@ -574,7 +574,7 @@ export function registerRoutes(app: Express): Server {
           .where(eq(transactions.id, transactionId));
       }
 
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Internal server error during payment processing",
         transactionId
       });
@@ -674,7 +674,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const [tab] = await db
         .update(tabs)
-        .set({ 
+        .set({
           status: 'closed',
           closed_at: new Date(),
         })
@@ -755,11 +755,11 @@ export function registerRoutes(app: Express): Server {
         drink_name: drinks.name,
         drink_category: drinks.category,
       })
-      .from(pourTransactions)
-      .leftJoin(pourInventory, eq(pourTransactions.pour_inventory_id, pourInventory.id))
-      .leftJoin(drinks, eq(pourInventory.drink_id, drinks.id))
-      .orderBy(desc(pourTransactions.transaction_time))
-      .limit(limit);
+        .from(pourTransactions)
+        .leftJoin(pourInventory, eq(pourTransactions.pour_inventory_id, pourInventory.id))
+        .leftJoin(drinks, eq(pourInventory.drink_id, drinks.id))
+        .orderBy(desc(pourTransactions.transaction_time))
+        .limit(limit);
 
       res.json({
         data: transactions,
@@ -806,66 +806,81 @@ export function registerRoutes(app: Express): Server {
         inventory
       } = req.body;
 
+      console.log("Received new drink request:", req.body);
+
       // Validate required fields
-      if (!name || !category || typeof price !== 'number') {
+      if (!name || !category || typeof parseFloat(price) !== 'number') {
+        console.error("Validation failed:", { name, category, price });
         return res.status(400).json({
           error: "Missing required fields: name, category, and price are required"
         });
       }
 
       // First insert the drink
-      const [newDrink] = await db.insert(drinks)
-        .values({
-          name,
-          category,
-          subcategory: subcategory || null,
-          price,
-          inventory: inventory || 0,
-          created_at: new Date(),
-          updated_at: new Date()
-        })
-        .returning();
-
-      // If this is a pour-tracked item (spirits, classics, signature drinks)
-      if (initial_volume_ml && bottle_id && tax_category_id) {
-        // Create pour inventory record
-        const [pourInventoryItem] = await db.insert(pourInventory)
+      try {
+        const [newDrink] = await db.insert(drinks)
           .values({
-            drink_id: newDrink.id,
-            bottle_id,
-            initial_volume_ml,
-            remaining_volume_ml: initial_volume_ml,
-            is_active: true,
-            tax_category_id,
-            last_pour_at: new Date()
+            name,
+            category,
+            subcategory: subcategory || null,
+            price: parseFloat(price),
+            inventory: parseInt(inventory) || 0,
+            created_at: new Date(),
+            updated_at: new Date()
           })
           .returning();
 
-        // Broadcast inventory update
-        broadcastInventoryUpdate('INVENTORY_UPDATE', {
-          type: 'new_item',
-          item: {
+        console.log("Created new drink:", newDrink);
+
+        // If this is a pour-tracked item (spirits, classics, signature drinks)
+        if (initial_volume_ml && bottle_id && tax_category_id) {
+          // Create pour inventory record
+          const [pourInventoryItem] = await db.insert(pourInventory)
+            .values({
+              drink_id: newDrink.id,
+              bottle_id,
+              initial_volume_ml: parseInt(initial_volume_ml),
+              remaining_volume_ml: parseInt(initial_volume_ml),
+              is_active: true,
+              tax_category_id: parseInt(tax_category_id),
+              last_pour_at: new Date()
+            })
+            .returning();
+
+          console.log("Created pour inventory item:", pourInventoryItem);
+
+          // Broadcast inventory update
+          broadcastInventoryUpdate('INVENTORY_UPDATE', {
+            type: 'new_item',
+            item: {
+              ...newDrink,
+              pour_inventory: pourInventoryItem
+            }
+          });
+
+          return res.json({
             ...newDrink,
             pour_inventory: pourInventoryItem
-          }
+          });
+        }
+
+        // Broadcast inventory update for non-pour items
+        broadcastInventoryUpdate('INVENTORY_UPDATE', {
+          type: 'new_item',
+          item: newDrink
         });
 
-        return res.json({
-          ...newDrink,
-          pour_inventory: pourInventoryItem
-        });
+        res.json(newDrink);
+      } catch (dbError) {
+        console.error("Database error:", dbError);
+        throw new Error(`Database error: ${dbError.message}`);
       }
-
-      // Broadcast inventory update for non-pour items
-      broadcastInventoryUpdate('INVENTORY_UPDATE', {
-        type: 'new_item',
-        item: newDrink
-      });
-
-      res.json(newDrink);
     } catch (error) {
       console.error("Error adding new drink:", error);
-      res.status(500).json({ error: "Failed to add new drink" });
+      res.status(500).json({
+        error: "Failed to add new drink",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
