@@ -1,6 +1,7 @@
 import { Switch, Route } from "wouter";
 import { Home } from "@/pages/Home";
 import { Inventory } from "@/pages/Inventory";
+import { Transactions } from "@/pages/Transactions";
 import { PaymentConfirmation } from "@/pages/PaymentConfirmation";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
@@ -15,9 +16,10 @@ function App() {
   return (
     <CartProvider>
       <Switch>
-        {/* Core POS and Inventory routes only */}
+        {/* Core POS and Inventory routes */}
         <Route path="/" component={Home} />
         <Route path="/inventory" component={Inventory} />
+        <Route path="/transactions" component={Transactions} />
         <Route path="/payment-confirmation" component={PaymentConfirmation} />
         <Route component={NotFound} />
       </Switch>

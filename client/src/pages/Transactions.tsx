@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function Transactions() {
   const [search, setSearch] = useState("");
-  
+
   const { data: transactions, isLoading } = useQuery<Transaction[]>({
     queryKey: ["/api/transactions"],
   });
@@ -42,7 +42,7 @@ export function Transactions() {
   return (
     <div className="min-h-screen bg-white">
       <NavBar />
-      
+
       <div className="container mx-auto px-4 py-6">
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-gray-900">Transaction History</h1>
@@ -108,13 +108,13 @@ export function Transactions() {
                           </Badge>
                         </div>
                         <div className="text-sm text-gray-500">
-                          {new Date(transaction.created_at).toLocaleDateString('en-US', {
+                          {transaction.created_at ? new Date(transaction.created_at).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',
                             hour: '2-digit',
                             minute: '2-digit'
-                          })}
+                          }) : '-'}
                         </div>
                       </motion.div>
                     ))
