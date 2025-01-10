@@ -20,9 +20,9 @@ interface DrinksResponse {
 }
 
 export function Home() {
-  const { cart, addToCart, removeItem: removeFromCart, placeOrder, isProcessing } = useCart();
+  const { cart, addToCart, removeFromCart, placeOrder, isProcessing } = useCart();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedTier, setSelectedTier] = useState<string | null>("All products");
+  const [selectedTier, setSelectedTier] = useState<string | null>("All");
 
   const { data } = useQuery<DrinksResponse>({
     queryKey: ["/api/drinks"],
@@ -37,7 +37,7 @@ export function Home() {
     { name: 'Diamond' },
     { name: 'Cashbar' },
     { name: 'Tips' },
-    { name: 'All products' }
+    { name: 'All' }
   ];
 
   const categories = useMemo(() => 
