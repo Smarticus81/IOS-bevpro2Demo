@@ -3,8 +3,6 @@ import { DrinkCard } from "@/components/DrinkCard";
 import { useQuery } from "@tanstack/react-query";
 import { VoiceControlButton } from "@/components/VoiceControlButton";
 import { OrderSummary } from "@/components/OrderSummary";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Drink } from "@db/schema";
 import { useCart } from "@/contexts/CartContext";
@@ -92,7 +90,7 @@ export function Home() {
 
             {/* Categories Grid - Fixed to Bottom */}
             {!selectedCategory && (
-              <div className="fixed bottom-0 left-0 right-0 md:right-[360px] bg-white">
+              <div className="fixed bottom-0 left-0 right-0 md:right-[360px]">
                 <motion.div
                   layout
                   className="grid grid-cols-3 gap-0"
@@ -128,8 +126,6 @@ export function Home() {
               </div>
             )}
           </div>
-
-
         </div>
 
         {/* Right Panel - Order Summary (Landscape) */}
