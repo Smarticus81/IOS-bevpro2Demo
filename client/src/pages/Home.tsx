@@ -53,9 +53,7 @@ export function Home() {
   return (
     <div className="h-screen flex flex-col">
       <NavBar />
-      <div className="fixed top-4 right-4 z-50">
-        <VoiceControlButton />
-      </div>
+      <VoiceControlButton />
 
       <div className="flex-1 flex h-[calc(100vh-4rem)] overflow-hidden">
         {/* Left Side - Menu */}

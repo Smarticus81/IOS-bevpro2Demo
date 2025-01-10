@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import { Mic, MicOff, Power } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useVoiceCommands } from "@/hooks/use-voice-commands";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -17,12 +16,6 @@ import { useCart } from "@/contexts/CartContext";
 import { logger } from "@/lib/logger";
 import { voiceRecognition } from "@/lib/voice";
 import { SoundWaveVisualizer } from "./SoundWaveVisualizer";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface DrinksResponse {
   drinks: DrinkItem[];
@@ -150,86 +143,66 @@ export function VoiceControlButton() {
 
   const getButtonStyle = () => {
     if (!isInitialized) {
-      return "bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black";
+      return "bg-gray-900 text-white";
     }
 
     switch (mode) {
       case 'command':
-        return "bg-red-500 hover:bg-red-600 animate-pulse";
+        return "bg-blue-500 text-white";
       case 'wake_word':
-        return "bg-gradient-to-b from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600";
+        return "bg-gray-900 text-white";
       case 'shutdown':
-        return "bg-gray-400 hover:bg-gray-500";
+        return "bg-gray-400 text-white";
       default:
-        return "bg-gradient-to-b from-zinc-800 to-black hover:from-zinc-700 hover:to-black";
+        return "bg-gray-900 text-white";
     }
   };
 
   const getButtonIcon = () => {
     if (!isInitialized) {
-      return <Mic className="h-6 w-6" />;
+      return <Mic className="h-5 w-5" />;
     }
 
     switch (mode) {
       case 'command':
-        return <Mic className="h-6 w-6" />;
+        return <Mic className="h-5 w-5" />;
       case 'wake_word':
-        return <Mic className="h-6 w-6 opacity-70" />;
+        return <Mic className="h-5 w-5 opacity-70" />;
       case 'shutdown':
-        return <Power className="h-6 w-6" />;
+        return <Power className="h-5 w-5" />;
       default:
-        return <MicOff className="h-6 w-6" />;
+        return <MicOff className="h-5 w-5" />;
     }
-  };
-
-  const formatSuccessRate = (rate: number) => {
-    return `${Math.round(rate)}%`;
   };
 
   return (
     <>
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        className="fixed bottom-6 right-6 z-50"
-      >
-        <div className="relative flex items-center gap-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={isInitialized ? handleShutdown : initializeVoiceControl}
-                  size="lg"
-                  className={`rounded-full p-6 shadow-lg transition-all duration-300
-                    ${getButtonStyle()}
-                    ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
-                  disabled={!isSupported || isProcessing}
-                  aria-label={!isInitialized ? "Initialize voice control" : mode === 'command' ? "Listening for commands" : "Listening for wake word"}
-                >
-                  {getButtonIcon()}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left" align="center">
-                <div className="text-sm">
-                  <p className="font-semibold mb-1">Voice Command Success Rate</p>
-                  <p>Overall: {formatSuccessRate(metrics.overall)}</p>
-                  <div className="mt-1 space-y-0.5">
-                    <p>Orders: {formatSuccessRate(metrics.categories.drink_order.successRate)}</p>
-                    <p>System: {formatSuccessRate(metrics.categories.system_command.successRate)}</p>
-                    <p>Completion: {formatSuccessRate(metrics.categories.order_completion.successRate)}</p>
-                  </div>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+      <div className="fixed left-6 bottom-6 z-50 flex items-center gap-3">
+        <motion.button
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          onClick={isInitialized ? handleShutdown : initializeVoiceControl}
+          className={`
+            h-12 px-6 rounded-lg flex items-center gap-2
+            transition-colors duration-200
+            ${getButtonStyle()}
+            ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}
+          `}
+          disabled={!isSupported || isProcessing}
+          aria-label={!isInitialized ? "Initialize voice control" : mode === 'command' ? "Listening for commands" : "Listening for wake word"}
+        >
+          {getButtonIcon()}
+          <span className="font-medium">
+            {!isInitialized ? "Voice Control" : mode === 'command' ? "Listening" : "Ready"}
+          </span>
+        </motion.button>
 
-          <SoundWaveVisualizer
-            isListening={isListening && isInitialized}
-            mode={mode}
-          />
-        </div>
-      </motion.div>
+        <SoundWaveVisualizer
+          isListening={isListening && isInitialized}
+          mode={mode}
+        />
+      </div>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent>
