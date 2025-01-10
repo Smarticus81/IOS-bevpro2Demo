@@ -39,18 +39,12 @@ export function Home() {
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case "Beer":
-        return "bg-[#4D2D14]";
-      case "Wine":
-        return "bg-[#722F37]";
-      case "Spirits":
-        return "bg-[#0B4FA1]";
-      case "Signature":
-        return "bg-[#E67E23]";
-      case "Non-Alcoholic":
-        return "bg-[#2C8A3B]";
-      default:
-        return "bg-gray-500";
+      case "Beer": return "bg-category-beer";
+      case "Wine": return "bg-category-wine";
+      case "Spirits": return "bg-category-spirits";
+      case "Signature": return "bg-category-signature";
+      case "Non-Alcoholic": return "bg-category-non-alcoholic";
+      default: return "bg-gray-500";
     }
   };
 
@@ -91,38 +85,22 @@ export function Home() {
             {/* Categories Grid - Fixed to Bottom */}
             {!selectedCategory && (
               <div className="fixed bottom-0 left-0 right-0 md:right-[360px]">
-                <motion.div
-                  layout
-                  className="grid grid-cols-3 gap-0"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                >
+                <div className="grid grid-cols-3">
                   {categories.map((category) => (
-                    <motion.button
+                    <button
                       key={category}
                       onClick={() => setSelectedCategory(category)}
-                      className="aspect-square"
-                      whileTap={{ scale: 0.98 }}
+                      className={`aspect-square ${getCategoryColor(category)} flex items-center justify-center flex-col`}
                     >
-                      <div
-                        className={`w-full h-full ${getCategoryColor(
-                          category
-                        )} flex items-center justify-center`}
-                      >
-                        <div className="text-center">
-                          <h3 className="text-white font-sf-pro-display text-lg">
-                            {category}
-                          </h3>
-                          <span className="text-white/80 text-sm">
-                            {drinks.filter((d) => d.category === category).length}{" "}
-                            items
-                          </span>
-                        </div>
-                      </div>
-                    </motion.button>
+                      <span className="text-white font-sf-pro-display text-lg font-medium">
+                        {category}
+                      </span>
+                      <span className="text-white/80 text-sm mt-1">
+                        {drinks.filter((d) => d.category === category).length} items
+                      </span>
+                    </button>
                   ))}
-                </motion.div>
+                </div>
               </div>
             )}
           </div>
@@ -131,15 +109,7 @@ export function Home() {
         {/* Right Panel - Order Summary (Landscape) */}
         <div className="hidden md:block w-[360px] border-l border-gray-200 bg-white shadow-lg">
           <div className="h-full p-4">
-            <OrderSummary
-              cart={cart}
-              onRemoveItem={removeItem}
-              onPlaceOrder={placeOrder}
-              isLoading={isProcessing}
-              variant="default"
-              isCollapsed={isOrderSummaryCollapsed}
-              onToggleCollapse={() => setIsOrderSummaryCollapsed(!isOrderSummaryCollapsed)}
-            />
+            {/* OrderSummary component removed */}
           </div>
         </div>
 
