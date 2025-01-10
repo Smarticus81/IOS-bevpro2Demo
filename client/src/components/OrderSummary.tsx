@@ -25,8 +25,8 @@ export function OrderSummary({
   }, 0);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="h-full flex flex-col">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">Order Summary</h3>
           <Badge variant="outline" className="bg-gray-100">
@@ -35,7 +35,7 @@ export function OrderSummary({
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="flex-1 overflow-y-auto space-y-3">
         {cart.map((item, index) => {
           const itemPrice = Number(item.drink.price);
           const totalPrice = itemPrice * item.quantity;
@@ -71,7 +71,7 @@ export function OrderSummary({
         })}
       </div>
 
-      <div className="space-y-4 pt-4 border-t border-gray-200">
+      <div className="mt-auto pt-4 space-y-4 border-t border-gray-200">
         <div className="flex items-center justify-between font-semibold text-lg">
           <span>Total</span>
           <span>${total.toFixed(2)}</span>

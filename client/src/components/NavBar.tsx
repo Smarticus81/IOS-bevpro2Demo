@@ -1,20 +1,17 @@
-import { Home, Package, Menu } from "lucide-react";
-import {
-  DropdownMenu,
+import { Home, Package, Menu as MenuIcon } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Link, useLocation } from "wouter";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { BevProLogo } from "./BevProLogo";
 import { motion } from "framer-motion";
-import type { Drink } from "@db/schema";
 
 interface NavBarProps {
-  drinks?: Drink[];
+  drinks?: any[];
 }
 
 export function NavBar({ drinks }: NavBarProps) {
@@ -34,16 +31,9 @@ export function NavBar({ drinks }: NavBarProps) {
     >
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <BevProLogo />
-          </motion.div>
 
           <motion.div 
-            className="hidden md:flex items-center space-x-1"
+            className="hidden md:flex items-center space-x-1 w-full justify-end"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
@@ -71,7 +61,7 @@ export function NavBar({ drinks }: NavBarProps) {
           </motion.div>
 
           <motion.div 
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 md:hidden"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
@@ -81,13 +71,13 @@ export function NavBar({ drinks }: NavBarProps) {
                 <motion.button
                   whileHover={{ scale: 1.05, y: -2 }}
                   whileTap={{ scale: 0.95 }}
-                  className="md:hidden p-2 rounded-xl text-gray-600 hover:text-gray-900 
+                  className="p-2 rounded-xl text-gray-600 hover:text-gray-900 
                            bg-white/50 dark:bg-gray-800/50 backdrop-blur-lg
                            border border-gray-200/20 dark:border-gray-700/20
                            shadow-lg dark:text-gray-400 dark:hover:text-white 
                            transition-all duration-200"
                 >
-                  <Menu className="h-5 w-5" />
+                  <MenuIcon className="h-5 w-5" />
                 </motion.button>
               </DropdownMenuTrigger>
               <DropdownMenuContent 

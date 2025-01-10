@@ -24,7 +24,7 @@ interface DrinksResponse {
 export function Home() {
   const { cart, addToCart, removeItem: removeFromCart, placeOrder, isProcessing } = useCart();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedTier, setSelectedTier] = useState<string | null>("ALL PRODUCTS");
+  const [selectedTier, setSelectedTier] = useState<string | null>("All Products");
 
   const { data } = useQuery<DrinksResponse>({
     queryKey: ["/api/drinks"],
@@ -32,15 +32,14 @@ export function Home() {
 
   const drinks = data?.drinks || [];
 
-  // Define the tiers and their corresponding icons
   const tiers = [
-    { name: 'SILVER' },
-    { name: 'GOLD' },
-    { name: 'PLATINUM' },
-    { name: 'DIAMOND' },
-    { name: 'CASHBAR' },
-    { name: 'TIPS' },
-    { name: 'ALL PRODUCTS' }
+    { name: 'Silver' },
+    { name: 'Gold' },
+    { name: 'Platinum' },
+    { name: 'Diamond' },
+    { name: 'Cashbar' },
+    { name: 'Tips' },
+    { name: 'All Products' }
   ];
 
   const categories = useMemo(() => 
@@ -65,22 +64,21 @@ export function Home() {
         <div className="w-1/2 flex flex-col h-full">
           {/* Tiers Selection */}
           <div className="bg-white border-b border-gray-200">
-            <div className="overflow-x-auto whitespace-nowrap py-2 px-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-              <div className="inline-flex gap-2">
+            <div className="overflow-x-auto scrollbar-hide whitespace-nowrap py-2 px-4">
+              <div className="inline-flex gap-4">
                 {tiers.map((tier) => (
                   <button
                     key={tier.name}
                     onClick={() => setSelectedTier(tier.name)}
                     className={`
-                      px-4 py-2 rounded-lg transition-all duration-200
+                      transition-colors duration-200
+                      font-medium
                       ${selectedTier === tier.name 
-                        ? 'bg-gray-900 text-white shadow-md' 
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}
-                      flex items-center gap-2 whitespace-nowrap
-                      h-9 text-sm font-medium
+                        ? 'text-gray-900' 
+                        : 'text-gray-500 hover:text-gray-700'}
                     `}
                   >
-                    <span>{tier.name}</span>
+                    {tier.name}
                   </button>
                 ))}
               </div>
@@ -177,9 +175,9 @@ export function Home() {
           </div>
         </div>
 
-        {/* Right Side - Order Summary */}
-        <div className="w-1/2 bg-white border-l border-gray-200 h-full overflow-y-auto">
-          <div className="p-4">
+        {/* Right Side - Order Summary with fixed height and bottom total */}
+        <div className="w-1/2 bg-white border-l border-gray-200 flex flex-col h-full">
+          <div className="flex-1 overflow-y-auto p-4">
             <OrderSummary
               cart={cart}
               onRemoveItem={removeFromCart}
