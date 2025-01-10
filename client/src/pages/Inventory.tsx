@@ -256,6 +256,18 @@ export function Inventory() {
                   >
                     Transactions
                   </TabsTrigger>
+                  <TabsTrigger 
+                    value="counting" 
+                    className="rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-500 px-4 py-2"
+                  >
+                    Counting Tool
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="insights" 
+                    className="rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-500 px-4 py-2"
+                  >
+                    Insights
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="pour" className="mt-0">
@@ -453,6 +465,9 @@ export function Inventory() {
                     </div>
                   </ScrollArea>
                 </TabsContent>
+                {/* Placeholder for "Counting Tool" and "Insights" content */}
+                <TabsContent value="counting" className="mt-0">Counting Tool Content</TabsContent>
+                <TabsContent value="insights" className="mt-0">Insights Content</TabsContent>
               </Tabs>
             </CardContent>
           </Card>

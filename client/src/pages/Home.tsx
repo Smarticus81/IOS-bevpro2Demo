@@ -109,6 +109,8 @@ export function Home() {
                       className={`
                         ${color} text-white aspect-square rounded-lg
                         flex items-center justify-center
+                        border border-white/10 backdrop-blur-sm
+                        hover:opacity-90 transition-opacity duration-200
                       `}
                     >
                       <h3 className="text-2xl font-semibold">
