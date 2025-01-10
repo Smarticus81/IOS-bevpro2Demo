@@ -36,6 +36,25 @@
 }
 
 @layer components {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    height: 4px;
+    width: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 20px;
+  }
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -62,7 +81,6 @@
            dark:hover:shadow-[0_12px_48px_rgba(0,0,0,0.16)]
            transition-all duration-300;
   }
-
   /* Position the ElevenLabs Convai widget on the left side */
   elevenlabs-convai {
     position: fixed !important;

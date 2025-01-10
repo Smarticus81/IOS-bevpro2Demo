@@ -24,7 +24,7 @@ interface DrinksResponse {
 export function Home() {
   const { cart, addToCart, removeItem: removeFromCart, placeOrder, isProcessing } = useCart();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedTier, setSelectedTier] = useState<string | null>(null);
+  const [selectedTier, setSelectedTier] = useState<string | null>("ALL PRODUCTS");
 
   const { data } = useQuery<DrinksResponse>({
     queryKey: ["/api/drinks"],
@@ -34,13 +34,13 @@ export function Home() {
 
   // Define the tiers and their corresponding icons
   const tiers = [
-    { name: 'SILVER', icon: '🥈' },
-    { name: 'GOLD', icon: '🥇' },
-    { name: 'PLATINUM', icon: '💎' },
-    { name: 'DIAMOND', icon: '💠' },
-    { name: 'CASHBAR', icon: '💵' },
-    { name: 'TIPS', icon: '💰' },
-    { name: 'ALL PRODUCTS', icon: '🛍️' }
+    { name: 'SILVER' },
+    { name: 'GOLD' },
+    { name: 'PLATINUM' },
+    { name: 'DIAMOND' },
+    { name: 'CASHBAR' },
+    { name: 'TIPS' },
+    { name: 'ALL PRODUCTS' }
   ];
 
   const categories = useMemo(() => 
@@ -64,22 +64,26 @@ export function Home() {
         {/* Left Side - Menu */}
         <div className="w-1/2 flex flex-col h-full">
           {/* Tiers Selection */}
-          <div className="p-4 bg-white border-b border-gray-200">
-            <div className="grid grid-cols-4 gap-2">
-              {tiers.map((tier) => (
-                <button
-                  key={tier.name}
-                  onClick={() => setSelectedTier(tier.name)}
-                  className={`p-2 rounded ${
-                    selectedTier === tier.name
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-800 hover:bg-gray-100'
-                  } text-sm font-medium transition-colors`}
-                >
-                  <span className="block text-center mb-1">{tier.icon}</span>
-                  <span className="block text-center text-xs">{tier.name}</span>
-                </button>
-              ))}
+          <div className="bg-white border-b border-gray-200">
+            <div className="overflow-x-auto whitespace-nowrap py-2 px-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+              <div className="inline-flex gap-2">
+                {tiers.map((tier) => (
+                  <button
+                    key={tier.name}
+                    onClick={() => setSelectedTier(tier.name)}
+                    className={`
+                      px-4 py-2 rounded-lg transition-all duration-200
+                      ${selectedTier === tier.name 
+                        ? 'bg-gray-900 text-white shadow-md' 
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}
+                      flex items-center gap-2 whitespace-nowrap
+                      h-9 text-sm font-medium
+                    `}
+                  >
+                    <span>{tier.name}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
