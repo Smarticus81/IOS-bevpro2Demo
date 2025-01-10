@@ -6,13 +6,6 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        'sf-pro-display': [
-          "SF Pro Display",
-          "system-ui",
-          "-apple-system",
-          "BlinkMacSystemFont",
-          "sans-serif"
-        ],
         sans: [
           "SF Pro Display",
           "Roboto",
@@ -37,13 +30,6 @@ export default {
         pearl: {
           light: "#F8F9FC",
           dark: "#F0F2F8"
-        },
-        category: {
-          beer: "#4D2D14",
-          wine: "#722F37",
-          spirits: "#0B4FA1",
-          signature: "#E67E23",
-          "non-alcoholic": "#2C8A3B",
         },
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
@@ -79,23 +65,6 @@ export default {
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
       },
-      screens: {
-        'xs': '375px',
-        'sm': '640px',
-        'md': '744px', // iPad Mini landscape
-        'lg': '1024px',
-        'xl': '1280px',
-        'landscape': { 'raw': '(orientation: landscape)' },
-        'portrait': { 'raw': '(orientation: portrait)' },
-      },
-      spacing: {
-        'safe': 'env(safe-area-inset-bottom)',
-      },
-      boxShadow: {
-        'up': '0 -4px 6px -1px rgba(0, 0, 0, 0.05)',
-        'glass': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-        'premium': '0 8px 16px -4px rgba(0, 0, 0, 0.1), 0 4px 8px -4px rgba(0, 0, 0, 0.06)',
-      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
@@ -105,15 +74,39 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "pulse-ring": {
+          "0%": { transform: "scale(1)", opacity: "0.6" },
+          "50%": { transform: "scale(1.05)", opacity: "0.3" },
+          "100%": { transform: "scale(1)", opacity: "0.6" },
+        },
         "pulse-soft": {
-          '0%, 100%': { transform: 'scale(1)', opacity: '1' },
-          '50%': { transform: 'scale(1.05)', opacity: '0.8' },
+          "0%": { opacity: "1", boxShadow: "0 0 0 0 rgba(var(--primary), 0.4)" },
+          "50%": { opacity: "0.85", boxShadow: "0 0 0 10px rgba(var(--primary), 0)" },
+          "100%": { opacity: "1", boxShadow: "0 0 0 0 rgba(var(--primary), 0)" },
+        },
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
         },
       },
       animation: {
-        "accordion-down": "accordion-down 0.3s ease-out",
-        "accordion-up": "accordion-up 0.3s ease-out",
-        "pulse-soft": "pulse-soft 2s infinite",
+        "accordion-down": "accordion-down 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        "accordion-up": "accordion-up 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        "pulse-ring": "pulse-ring 2s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+        "pulse-soft": "pulse-soft 2s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+        "fade-in": "fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+      },
+      backdropBlur: {
+        'xs': '2px',
+      },
+      boxShadow: {
+        'glass': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+      },
+      screens: {
+        'xs': '375px',  // iPhone SE
+        'sm': '428px',  // iPhone 14 Pro Max
+        'md': '744px',  // iPad Mini
+        'lg': '1024px', // iPad Pro
       },
     },
   },
@@ -122,11 +115,16 @@ export default {
     require("@tailwindcss/typography"),
     function({ addUtilities }) {
       addUtilities({
-        '.glass-effect': {
-          'background': 'rgba(255, 255, 255, 0.8)',
-          'backdrop-filter': 'blur(12px)',
+        '.glass-morphism': {
+          'background': 'rgba(255, 255, 255, 0.7)',
+          'backdrop-filter': 'blur(8px)',
           'border': '1px solid rgba(255, 255, 255, 0.125)',
+          'box-shadow': '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
         },
+        '.touch-target': {
+          'min-width': '44px',
+          'min-height': '44px',
+        }
       })
     }
   ],
