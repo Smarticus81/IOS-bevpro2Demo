@@ -25,72 +25,70 @@ export function OrderSummary({
   }, 0);
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <h3 className="text-lg font-semibold">Order Summary</h3>
-          <Badge variant="outline" className="bg-gray-100">
-            {cart.length} items
-          </Badge>
+    <div className="h-full flex flex-col p-6">
+      <div className="mb-6">
+        <h2 className="text-2xl font-medium text-gray-900">Order Summary</h2>
+        <p className="text-gray-500 mt-1">{cart.length} items</p>
+      </div>
+
+      <div className="flex-1 overflow-y-auto -mx-6 px-6">
+        <div className="space-y-4">
+          {cart.map((item, index) => {
+            const itemPrice = Number(item.drink.price);
+            const totalPrice = itemPrice * item.quantity;
+
+            return (
+              <div 
+                key={`${item.drink.id}-${index}`}
+                className="flex items-center justify-between py-2"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline justify-between gap-4">
+                    <h3 className="font-medium text-gray-900 truncate">
+                      {item.drink.name}
+                    </h3>
+                    <span className="font-medium text-gray-900">
+                      ${totalPrice.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-gray-500 text-sm">
+                      {item.quantity} × ${itemPrice.toFixed(2)}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onRemoveItem(item.drink.id)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-3">
-        {cart.map((item, index) => {
-          const itemPrice = Number(item.drink.price);
-          const totalPrice = itemPrice * item.quantity;
-
-          return (
-            <div 
-              key={`${item.drink.id}-${index}`}
-              className="flex items-center justify-between gap-2 py-2"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline justify-between gap-2">
-                  <div className="font-medium">
-                    {item.drink.name}
-                  </div>
-                  <span className="font-medium">
-                    ${totalPrice.toFixed(2)}
-                  </span>
-                </div>
-                <div className="text-sm text-gray-600 flex items-center justify-between">
-                  <span>{item.quantity} × ${itemPrice.toFixed(2)}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onRemoveItem(item.drink.id)}
-                    className="h-8 px-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="mt-auto pt-4 space-y-4 border-t border-gray-200">
-        <div className="flex items-center justify-between font-semibold text-lg">
-          <span>Total</span>
-          <span>${total.toFixed(2)}</span>
+      <div className="mt-auto pt-6 border-t border-gray-100">
+        <div className="flex items-center justify-between mb-6">
+          <span className="text-lg font-medium text-gray-900">Total</span>
+          <span className="text-lg font-medium text-gray-900">${total.toFixed(2)}</span>
         </div>
 
         <div className="space-y-3">
           <Button
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-            size="lg"
+            className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium"
             onClick={onPlaceOrder}
             disabled={cart.length === 0 || isLoading}
           >
-            {isLoading ? "Processing..." : "Place Order"}
+            {isLoading ? "Processing..." : "Charge"}
           </Button>
 
           <Button
-            variant="destructive"
-            className="w-full bg-red-600 hover:bg-red-700 text-white"
-            size="lg"
+            variant="outline"
+            className="w-full h-12 text-red-600 border-red-600 hover:bg-red-50 font-medium"
             onClick={() => {
               if (cart.length > 0) {
                 cart.forEach(item => onRemoveItem(item.drink.id));
