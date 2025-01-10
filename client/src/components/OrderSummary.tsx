@@ -69,12 +69,6 @@ export function OrderSummary({
             </div>
           );
         })}
-
-        {cart.length === 0 && (
-          <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
-            <p className="text-gray-600">Ready to take your order</p>
-          </div>
-        )}
       </div>
 
       <div className="space-y-4 pt-4 border-t border-gray-200">
