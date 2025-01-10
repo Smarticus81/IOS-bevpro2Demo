@@ -3,10 +3,8 @@ import { DrinkCard } from "@/components/DrinkCard";
 import { useQuery } from "@tanstack/react-query";
 import { VoiceControlButton } from "@/components/VoiceControlButton";
 import { OrderSummary } from "@/components/OrderSummary";
-import { OrderSummaryDrawer } from "@/components/OrderSummaryDrawer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { NavBar } from "@/components/NavBar";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Drink } from "@db/schema";
 import { useCart } from "@/contexts/CartContext";
@@ -41,70 +39,25 @@ export function Home() {
     [drinks, selectedCategory]
   );
 
+  const getCategoryColor = (category: string) => {
+    switch(category) {
+      case 'Beer': return 'bg-[#4D2D14]';
+      case 'Wine': return 'bg-[#722F37]';
+      case 'Spirits': return 'bg-[#0B4FA1]';
+      case 'Signature': return 'bg-[#E67E23]';
+      case 'Non-Alcoholic': return 'bg-[#2C8A3B]';
+      default: return 'bg-gray-500';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-pearl-light">
-      <NavBar />
-
       {/* Main Container - Split for iPad mini landscape */}
-      <div className="flex h-[calc(100vh-4rem)]">
+      <div className="flex h-screen">
         {/* Left Panel - Menu Content */}
-        <div className="flex-1 overflow-hidden">
-          <div className="h-full overflow-y-auto px-4 py-4">
-            {/* Categories Grid */}
-            {!selectedCategory && (
-              <motion.div 
-                layout
-                className="grid grid-cols-2 md:grid-cols-3 gap-4"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                {categories.map((category) => (
-                  <motion.button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className="h-full"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Card className="border border-primary/10 shadow-glass hover:shadow-premium transition-all duration-300">
-                      <CardContent className="p-4 bg-white/95">
-                        <div className="flex flex-col items-center text-center space-y-3">
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/90 to-primary/80 flex items-center justify-center shadow-lg">
-                            <span className="text-2xl">
-                              {category === 'Spirits' ? '🥃' :
-                               category === 'Beer' ? '🍺' :
-                               category === 'Wine' ? '🍷' :
-                               category === 'Signature' ? '🍸' :
-                               category === 'Classics' ? '🥂' :
-                               category === 'Non-Alcoholic' ? '🥤' : '🍹'}
-                            </span>
-                          </div>
-                          <h3 className="font-semibold text-gray-900">
-                            {category}
-                          </h3>
-                          <Badge variant="secondary" className="bg-primary/5 text-primary">
-                            {drinks.filter(d => d.category === category).length} items
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.button>
-                ))}
-              </motion.div>
-            )}
-
-            {/* Back Button */}
-            {selectedCategory && (
-              <button
-                onClick={() => setSelectedCategory(null)}
-                className="mb-4 flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <span className="text-lg">←</span>
-                Back to Categories
-              </button>
-            )}
-
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto px-4 pt-4 pb-24">
             {/* Drinks Grid */}
             {selectedCategory && (
               <motion.div 
@@ -130,7 +83,54 @@ export function Home() {
                 </AnimatePresence>
               </motion.div>
             )}
+
+            {/* Categories Grid */}
+            {!selectedCategory && (
+              <motion.div 
+                layout
+                className="grid grid-cols-2 md:grid-cols-3 gap-4"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                {categories.map((category) => (
+                  <motion.button
+                    key={category}
+                    onClick={() => setSelectedCategory(category)}
+                    className="h-full"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Card className={`border-none shadow-lg ${getCategoryColor(category)} text-white hover:opacity-90 transition-all duration-300`}>
+                      <CardContent className="p-4">
+                        <div className="flex flex-col items-center text-center space-y-3">
+                          <h3 className="font-semibold">
+                            {category}
+                          </h3>
+                          <Badge variant="secondary" className="bg-white/20 text-white">
+                            {drinks.filter(d => d.category === category).length} items
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.button>
+                ))}
+              </motion.div>
+            )}
           </div>
+
+          {/* Bottom Navigation */}
+          {selectedCategory && (
+            <div className="fixed bottom-0 left-0 right-0 md:right-[360px] bg-white border-t border-gray-200 px-4 py-3">
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <span className="text-lg">←</span>
+                Back to Categories
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Right Panel - Order Summary (Landscape) */}
@@ -145,17 +145,6 @@ export function Home() {
               isCollapsed={isOrderSummaryCollapsed}
               onToggleCollapse={() => setIsOrderSummaryCollapsed(!isOrderSummaryCollapsed)}
             />
-          </div>
-        </div>
-
-        {/* Mobile Order Summary Panel */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50">
-          <div className="px-4 pb-safe">
-            <Card className="border-t border-primary/10 shadow-up bg-white/95 backdrop-blur-sm">
-              <CardContent className="p-4">
-                <OrderSummaryDrawer />
-              </CardContent>
-            </Card>
           </div>
         </div>
 
