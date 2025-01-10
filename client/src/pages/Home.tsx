@@ -3,8 +3,6 @@ import { DrinkCard } from "@/components/DrinkCard";
 import { useQuery } from "@tanstack/react-query";
 import { VoiceControlButton } from "@/components/VoiceControlButton";
 import { OrderSummary } from "@/components/OrderSummary";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { NavBar } from "@/components/NavBar";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Drink } from "@db/schema";
@@ -86,7 +84,7 @@ export function Home() {
           </div>
 
           {/* Menu Content */}
-          <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-4">
             {/* Categories Grid */}
             {!selectedCategory && (
               <motion.div 
@@ -110,14 +108,14 @@ export function Home() {
                     <motion.button
                       key={category}
                       onClick={() => setSelectedCategory(category)}
-                      className={`${color} text-white p-6 rounded-lg text-left`}
+                      className={`
+                        ${color} text-white aspect-square rounded-lg
+                        flex items-center justify-center
+                      `}
                     >
-                      <h3 className="text-xl font-medium mb-2">
+                      <h3 className="text-2xl font-semibold">
                         {category}
                       </h3>
-                      <span className="text-sm opacity-90">
-                        {drinks.filter(d => d.category === category).length} items
-                      </span>
                     </motion.button>
                   );
                 })}
@@ -169,7 +167,7 @@ export function Home() {
 
         {/* Right Side - Order Summary */}
         <div className="w-1/2 bg-white border-l border-gray-100 flex flex-col h-full">
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto scrollbar-hide">
             <OrderSummary
               cart={cart}
               onRemoveItem={removeFromCart}
