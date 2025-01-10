@@ -236,8 +236,14 @@ export function Inventory() {
             </CardHeader>
 
             <CardContent className="p-0">
-              <Tabs defaultValue="pour" className="w-full">
+              <Tabs defaultValue="all" className="w-full">
                 <TabsList className="w-full justify-start rounded-none border-b p-0 h-auto">
+                  <TabsTrigger 
+                    value="all" 
+                    className="rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-500 px-4 py-2"
+                  >
+                    All
+                  </TabsTrigger>
                   <TabsTrigger 
                     value="pour" 
                     className="rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-500 px-4 py-2"
@@ -270,6 +276,7 @@ export function Inventory() {
                   </TabsTrigger>
                 </TabsList>
 
+                <TabsContent value="all" className="mt-0">All Content</TabsContent>
                 <TabsContent value="pour" className="mt-0">
                   <ScrollArea className="h-[calc(100vh-24rem)] scrollbar-hide">
                     <div className="w-full">
