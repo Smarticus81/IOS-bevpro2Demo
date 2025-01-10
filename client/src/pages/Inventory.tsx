@@ -81,7 +81,7 @@ export function Inventory() {
       case 'beer': return <Beer className="h-4 w-4 text-amber-500" />;
       case 'wine': return <Wine className="h-4 w-4 text-purple-500" />;
       case 'non-alcoholic': return <Coffee className="h-4 w-4 text-blue-500" />;
-      default: return <Package className="h-4 w-4 text-primary" />;
+      default: return <Package className="h-4 w-4 text-blue-500" />;
     }
   };
 
@@ -134,29 +134,29 @@ export function Inventory() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white">
       <NavBar />
 
-      <div className="container mx-auto p-4 lg:p-8">
+      <div className="container mx-auto px-4 py-6">
         <InventoryAnalytics 
           drinks={allDrinks}
           inventoryHistory={pourTransactions}
         />
 
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Beverage Inventory Management</h1>
-          <p className="text-white/70">Track all beverage inventory with specialized pour and package tracking</p>
+          <h1 className="text-2xl font-semibold text-gray-900">Beverage Inventory</h1>
+          <p className="text-gray-500 mt-1">Track all beverage inventory with specialized pour and package tracking</p>
         </div>
 
-        <div className="grid gap-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
+        <div className="grid gap-4">
+          <div className="grid grid-cols-4 gap-4">
+            <Card className="bg-white border border-gray-100">
               <CardContent className="p-4">
-                <div className="flex items-center gap-4">
-                  <Package className="h-6 w-6 text-primary" />
+                <div className="flex items-center gap-3">
+                  <Package className="h-5 w-5 text-blue-500" />
                   <div>
                     <p className="text-sm text-gray-600">Active Inventory</p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-xl font-semibold text-gray-900">
                       {pourInventory.filter(i => i.is_active).length + 
                        allDrinks.filter(d => !needsPourTracking(d.category)).length}
                     </p>
@@ -165,13 +165,13 @@ export function Inventory() {
               </CardContent>
             </Card>
 
-            <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
+            <Card className="bg-white border border-gray-100">
               <CardContent className="p-4">
-                <div className="flex items-center gap-4">
-                  <AlertTriangle className="h-6 w-6 text-yellow-500" />
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
                   <div>
                     <p className="text-sm text-gray-600">Low Stock</p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-xl font-semibold text-gray-900">
                       {getLowStockBottles().length + getLowStockPackages().length}
                     </p>
                   </div>
@@ -179,13 +179,13 @@ export function Inventory() {
               </CardContent>
             </Card>
 
-            <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
+            <Card className="bg-white border border-gray-100">
               <CardContent className="p-4">
-                <div className="flex items-center gap-4">
-                  <History className="h-6 w-6 text-emerald-500" />
+                <div className="flex items-center gap-3">
+                  <History className="h-5 w-5 text-green-500" />
                   <div>
                     <p className="text-sm text-gray-600">Today's Activity</p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-xl font-semibold text-gray-900">
                       {pourTransactions.filter(t => {
                         const date = t.transaction_time ? new Date(t.transaction_time) : null;
                         return date && date.toDateString() === new Date().toDateString();
@@ -196,13 +196,13 @@ export function Inventory() {
               </CardContent>
             </Card>
 
-            <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
+            <Card className="bg-white border border-gray-100">
               <CardContent className="p-4">
-                <div className="flex items-center gap-4">
-                  <AlertTriangle className="h-6 w-6 text-blue-500" />
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="h-5 w-5 text-blue-500" />
                   <div>
                     <p className="text-sm text-gray-600">Tax Owed</p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-xl font-semibold text-gray-900">
                       ${getTotalTaxOwed().toFixed(2)}
                     </p>
                   </div>
@@ -211,22 +211,22 @@ export function Inventory() {
             </Card>
           </div>
 
-          <Card className="bg-white/90 backdrop-blur-md border-white/20 shadow-xl">
-            <CardHeader className="p-4 flex flex-row items-center justify-between">
-              <CardTitle>Inventory Management</CardTitle>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Search className="h-4 w-4 text-gray-500" />
+          <Card className="bg-white border border-gray-100">
+            <CardHeader className="px-4 py-3 flex flex-row items-center justify-between border-b border-gray-100">
+              <CardTitle className="text-lg font-semibold">Inventory Management</CardTitle>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 bg-gray-50 rounded-md px-3 py-1.5">
+                  <Search className="h-4 w-4 text-gray-400" />
                   <Input
                     placeholder="Search inventory..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-[200px]"
+                    className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 p-0 h-auto placeholder:text-gray-400"
                   />
                 </div>
                 <AddInventoryItem
                   trigger={
-                    <Button variant="outline" size="sm" className="gap-2">
+                    <Button size="sm" className="h-8 gap-1.5 bg-blue-500 hover:bg-blue-600">
                       <Plus className="h-4 w-4" />
                       Add Item
                     </Button>
@@ -237,22 +237,31 @@ export function Inventory() {
 
             <CardContent className="p-0">
               <Tabs defaultValue="pour" className="w-full">
-                <TabsList className="w-full justify-start rounded-none border-b p-0">
-                  <TabsTrigger value="pour" className="rounded-none border-b-2 data-[state=active]:border-primary">
-                    Pour Tracked Items
+                <TabsList className="w-full justify-start rounded-none border-b p-0 h-auto">
+                  <TabsTrigger 
+                    value="pour" 
+                    className="rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-500 px-4 py-2"
+                  >
+                    Pour Tracked
                   </TabsTrigger>
-                  <TabsTrigger value="package" className="rounded-none border-b-2 data-[state=active]:border-primary">
-                    Package Tracked Items
+                  <TabsTrigger 
+                    value="package" 
+                    className="rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-500 px-4 py-2"
+                  >
+                    Package Tracked
                   </TabsTrigger>
-                  <TabsTrigger value="transactions" className="rounded-none border-b-2 data-[state=active]:border-primary">
-                    Transaction History
+                  <TabsTrigger 
+                    value="transactions" 
+                    className="rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-500 px-4 py-2"
+                  >
+                    Transactions
                   </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="pour" className="mt-0">
-                  <ScrollArea className="h-[60vh]">
+                  <ScrollArea className="h-[calc(100vh-24rem)] scrollbar-hide">
                     <div className="w-full">
-                      <div className="grid grid-cols-8 gap-4 p-4 text-sm font-medium text-gray-500 border-b">
+                      <div className="grid grid-cols-8 gap-4 p-3 text-sm font-medium text-gray-500 border-b border-gray-100">
                         <div className="col-span-2">Drink</div>
                         <div>Bottle ID</div>
                         <div>Tax Category</div>
@@ -262,13 +271,15 @@ export function Inventory() {
                         <div>Status</div>
                       </div>
 
-                      <div className="divide-y">
+                      <div className="divide-y divide-gray-50">
                         {isPourInventoryLoading ? (
-                          <>
-                            {Array(5).fill(0).map((_, i) => (
-                              <LoadingRow key={i} />
-                            ))}
-                          </>
+                          Array(5).fill(0).map((_, i) => (
+                            <div key={i} className="grid grid-cols-8 gap-4 p-3 items-center">
+                              {Array(8).fill(0).map((_, j) => (
+                                <Skeleton key={j} className={`h-8 ${j === 0 ? 'col-span-2' : ''}`} />
+                              ))}
+                            </div>
+                          ))
                         ) : (
                           filteredInventory.pourTracked.map((item) => {
                             const remainingPercentage = item.remaining_volume_ml && item.initial_volume_ml
@@ -280,7 +291,7 @@ export function Inventory() {
                                 key={item.id}
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                className="grid grid-cols-8 gap-4 p-4 items-center hover:bg-gray-50/50"
+                                className="grid grid-cols-8 gap-4 p-3 items-center hover:bg-gray-50/50"
                               >
                                 <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
                                   {getBeverageIcon(item.drink_category || '')}
@@ -289,18 +300,18 @@ export function Inventory() {
                                     <div className="text-xs text-gray-500">{item.drink_category}</div>
                                   </div>
                                 </div>
-                                <div className="font-mono text-sm">{item.bottle_id}</div>
-                                <div>{item.tax_category_name || 'N/A'}</div>
-                                <div>{item.initial_volume_ml}ml</div>
+                                <div className="font-mono text-sm text-gray-600">{item.bottle_id}</div>
+                                <div className="text-gray-600">{item.tax_category_name || 'N/A'}</div>
+                                <div className="text-gray-600">{item.initial_volume_ml}ml</div>
                                 <div>
                                   <div className="flex items-center gap-2">
-                                    <div className="w-16 bg-gray-200 rounded-full h-2">
+                                    <div className="w-16 bg-gray-100 rounded-full h-1.5">
                                       <div
-                                        className="bg-primary rounded-full h-2"
+                                        className="bg-blue-500 rounded-full h-1.5"
                                         style={{ width: `${remainingPercentage}%` }}
                                       />
                                     </div>
-                                    <span className="text-sm">{Math.round(remainingPercentage)}%</span>
+                                    <span className="text-sm text-gray-600">{Math.round(remainingPercentage)}%</span>
                                   </div>
                                 </div>
                                 <div className="text-sm text-gray-500">
@@ -312,7 +323,9 @@ export function Inventory() {
                                 <div>
                                   <Badge
                                     variant={remainingPercentage < 20 ? "destructive" : "default"}
-                                    className="bg-gradient-to-b from-zinc-800 to-black text-white shadow-sm"
+                                    className={remainingPercentage < 20 
+                                      ? "bg-red-50 text-red-600 border border-red-200" 
+                                      : "bg-green-50 text-green-600 border border-green-200"}
                                   >
                                     {remainingPercentage < 20 ? "Low" : "OK"}
                                   </Badge>
@@ -327,9 +340,9 @@ export function Inventory() {
                 </TabsContent>
 
                 <TabsContent value="package" className="mt-0">
-                  <ScrollArea className="h-[60vh]">
+                  <ScrollArea className="h-[calc(100vh-24rem)] scrollbar-hide">
                     <div className="w-full">
-                      <div className="grid grid-cols-6 gap-4 p-4 text-sm font-medium text-gray-500 border-b">
+                      <div className="grid grid-cols-6 gap-4 p-3 text-sm font-medium text-gray-500 border-b border-gray-100">
                         <div className="col-span-2">Item</div>
                         <div>Category</div>
                         <div>Price</div>
@@ -337,20 +350,22 @@ export function Inventory() {
                         <div>Status</div>
                       </div>
 
-                      <div className="divide-y">
+                      <div className="divide-y divide-gray-50">
                         {isDrinksLoading ? (
-                          <>
-                            {Array(5).fill(0).map((_, i) => (
-                              <LoadingRow key={i} />
-                            ))}
-                          </>
+                          Array(5).fill(0).map((_, i) => (
+                            <div key={i} className="grid grid-cols-6 gap-4 p-3 items-center">
+                              {Array(6).fill(0).map((_, j) => (
+                                <Skeleton key={j} className={`h-8 ${j === 0 ? 'col-span-2' : ''}`} />
+                              ))}
+                            </div>
+                          ))
                         ) : (
                           filteredInventory.packageTracked.map((drink) => (
                             <motion.div
                               key={drink.id}
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
-                              className="grid grid-cols-6 gap-4 p-4 items-center hover:bg-gray-50/50"
+                              className="grid grid-cols-6 gap-4 p-3 items-center hover:bg-gray-50/50"
                             >
                               <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
                                 {getBeverageIcon(drink.category)}
@@ -359,13 +374,15 @@ export function Inventory() {
                                   <div className="text-xs text-gray-500">{drink.subcategory}</div>
                                 </div>
                               </div>
-                              <div>{drink.category}</div>
-                              <div>${drink.price}</div>
-                              <div>{drink.inventory} units</div>
+                              <div className="text-gray-600">{drink.category}</div>
+                              <div className="text-gray-600">${drink.price}</div>
+                              <div className="text-gray-600">{drink.inventory} units</div>
                               <div>
                                 <Badge
                                   variant={drink.inventory < 10 ? "destructive" : "default"}
-                                  className="bg-gradient-to-b from-zinc-800 to-black text-white shadow-sm"
+                                  className={drink.inventory < 10 
+                                    ? "bg-red-50 text-red-600 border border-red-200" 
+                                    : "bg-green-50 text-green-600 border border-green-200"}
                                 >
                                   {drink.inventory < 10 ? "Low" : "OK"}
                                 </Badge>
@@ -379,9 +396,9 @@ export function Inventory() {
                 </TabsContent>
 
                 <TabsContent value="transactions" className="mt-0">
-                  <ScrollArea className="h-[60vh]">
+                  <ScrollArea className="h-[calc(100vh-24rem)] scrollbar-hide">
                     <div className="w-full">
-                      <div className="grid grid-cols-7 gap-4 p-4 text-sm font-medium text-gray-500 border-b">
+                      <div className="grid grid-cols-7 gap-4 p-3 text-sm font-medium text-gray-500 border-b border-gray-100">
                         <div className="col-span-2">Item</div>
                         <div>Type</div>
                         <div>Quantity</div>
@@ -390,20 +407,22 @@ export function Inventory() {
                         <div>Staff</div>
                       </div>
 
-                      <div className="divide-y">
+                      <div className="divide-y divide-gray-50">
                         {isTransactionsLoading ? (
-                          <>
-                            {Array(5).fill(0).map((_, i) => (
-                              <LoadingRow key={i} />
-                            ))}
-                          </>
+                          Array(5).fill(0).map((_, i) => (
+                            <div key={i} className="grid grid-cols-7 gap-4 p-3 items-center">
+                              {Array(7).fill(0).map((_, j) => (
+                                <Skeleton key={j} className={`h-8 ${j === 0 ? 'col-span-2' : ''}`} />
+                              ))}
+                            </div>
+                          ))
                         ) : (
                           pourTransactions.map((transaction) => (
                             <motion.div
                               key={transaction.id}
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
-                              className="grid grid-cols-7 gap-4 p-4 items-center hover:bg-gray-50/50"
+                              className="grid grid-cols-7 gap-4 p-3 items-center hover:bg-gray-50/50"
                             >
                               <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
                                 {getBeverageIcon(transaction.drink_category || '')}
@@ -412,21 +431,21 @@ export function Inventory() {
                                   <div className="text-xs text-gray-500">{transaction.drink_category}</div>
                                 </div>
                               </div>
-                              <div>{transaction.pour_size_id ? 'Pour' : 'Package'}</div>
-                              <div>
+                              <div className="text-gray-600">{transaction.pour_size_id ? 'Pour' : 'Package'}</div>
+                              <div className="text-gray-600">
                                 {transaction.volume_ml 
                                   ? `${transaction.volume_ml}ml`
                                   : '1 unit'
                                 }
                               </div>
-                              <div>${Number(transaction.tax_amount || 0).toFixed(2)}</div>
+                              <div className="text-gray-600">${Number(transaction.tax_amount || 0).toFixed(2)}</div>
                               <div className="text-sm text-gray-500">
                                 {transaction.transaction_time
                                   ? new Date(transaction.transaction_time).toLocaleTimeString()
                                   : 'N/A'
                                 }
                               </div>
-                              <div className="text-sm">Staff #{transaction.staff_id}</div>
+                              <div className="text-sm text-gray-600">Staff #{transaction.staff_id}</div>
                             </motion.div>
                           ))
                         )}
