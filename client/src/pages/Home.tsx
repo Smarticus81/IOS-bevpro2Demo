@@ -22,7 +22,7 @@ interface DrinksResponse {
 }
 
 export function Home() {
-  const { cart, addToCart, removeFromCart, placeOrder, isProcessing } = useCart();
+  const { cart, addToCart, removeItem, placeOrder, isProcessing } = useCart();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isOrderSummaryCollapsed, setIsOrderSummaryCollapsed] = useState(false);
 
@@ -31,7 +31,6 @@ export function Home() {
   });
 
   const drinks = data?.drinks || [];
-
   const categories = useMemo(() => 
     Array.from(new Set(drinks.map(drink => drink.category))).sort(),
     [drinks]
@@ -43,88 +42,74 @@ export function Home() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
+    <div className="min-h-screen bg-pearl-light">
       <NavBar />
 
-      {/* Voice Control Button - Fixed position for iPad mini landscape */}
-      <div className="fixed bottom-6 right-6 z-[100] md:bottom-8 md:right-8">
-        <VoiceControlButton />
-      </div>
-
-      <main className="container mx-auto px-4 pt-20 pb-24 md:pt-24 md:pb-8">
-        {/* Main Content Grid - Optimized for iPad mini landscape */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8">
-          {/* Category and Drinks Section */}
-          <div className="md:col-span-9 space-y-6">
+      {/* Main Container - Split for iPad mini landscape */}
+      <div className="flex h-[calc(100vh-4rem)]">
+        {/* Left Panel - Menu Content */}
+        <div className="flex-1 overflow-hidden">
+          <div className="h-full overflow-y-auto px-4 py-4">
             {/* Categories Grid */}
             {!selectedCategory && (
               <motion.div 
                 layout
-                className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6"
+                className="grid grid-cols-2 md:grid-cols-3 gap-4"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
+                transition={{ duration: 0.3 }}
               >
                 {categories.map((category) => (
-                  <motion.div
+                  <motion.button
                     key={category}
+                    onClick={() => setSelectedCategory(category)}
+                    className="h-full"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <button
-                      onClick={() => setSelectedCategory(category)}
-                      className="w-full h-full"
-                    >
-                      <Card className="border-2 border-primary/10 shadow-lg hover:shadow-xl transition-all duration-300">
-                        <CardContent className="p-4 md:p-6 bg-gradient-to-br from-white/95 to-white/90">
-                          <div className="flex flex-col items-center text-center space-y-3">
-                            <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-primary/90 to-primary/80 flex items-center justify-center shadow-lg">
-                              <span className="text-2xl md:text-3xl">
-                                {category === 'Spirits' ? '🥃' :
-                                 category === 'Beer' ? '🍺' :
-                                 category === 'Wine' ? '🍷' :
-                                 category === 'Signature' ? '🍸' :
-                                 category === 'Classics' ? '🥂' :
-                                 category === 'Non-Alcoholic' ? '🥤' : '🍹'}
-                              </span>
-                            </div>
-                            <h3 className="font-semibold text-gray-900 text-base md:text-lg">
-                              {category}
-                            </h3>
-                            <Badge variant="secondary" className="bg-primary/5 text-primary text-sm">
-                              {drinks.filter(d => d.category === category).length} items
-                            </Badge>
+                    <Card className="border border-primary/10 shadow-glass hover:shadow-premium transition-all duration-300">
+                      <CardContent className="p-4 bg-white/95">
+                        <div className="flex flex-col items-center text-center space-y-3">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/90 to-primary/80 flex items-center justify-center shadow-lg">
+                            <span className="text-2xl">
+                              {category === 'Spirits' ? '🥃' :
+                               category === 'Beer' ? '🍺' :
+                               category === 'Wine' ? '🍷' :
+                               category === 'Signature' ? '🍸' :
+                               category === 'Classics' ? '🥂' :
+                               category === 'Non-Alcoholic' ? '🥤' : '🍹'}
+                            </span>
                           </div>
-                        </CardContent>
-                      </Card>
-                    </button>
-                  </motion.div>
+                          <h3 className="font-semibold text-gray-900">
+                            {category}
+                          </h3>
+                          <Badge variant="secondary" className="bg-primary/5 text-primary">
+                            {drinks.filter(d => d.category === category).length} items
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.button>
                 ))}
               </motion.div>
             )}
 
-            {/* Back Button when category is selected */}
+            {/* Back Button */}
             {selectedCategory && (
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-4"
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className="mb-4 flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
               >
-                <button
-                  onClick={() => setSelectedCategory(null)}
-                  className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-                >
-                  <span className="text-lg">←</span>
-                  Back to Categories
-                </button>
-              </motion.div>
+                <span className="text-lg">←</span>
+                Back to Categories
+              </button>
             )}
 
-            {/* Drinks Grid - Optimized for iPad mini landscape */}
+            {/* Drinks Grid */}
             {selectedCategory && (
               <motion.div 
                 layout
-                className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6"
+                className="grid grid-cols-2 md:grid-cols-3 gap-4"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.3 }}
@@ -138,7 +123,7 @@ export function Home() {
                         drink={drink}
                         quantity={cartItem?.quantity || 0}
                         onAdd={() => addToCart({ type: 'ADD_ITEM', drink, quantity: 1 })}
-                        onRemove={() => removeFromCart(drink.id)}
+                        onRemove={() => removeItem(drink.id)}
                       />
                     );
                   })}
@@ -146,38 +131,39 @@ export function Home() {
               </motion.div>
             )}
           </div>
+        </div>
 
-          {/* Order Summary - Desktop */}
-          <div className="hidden md:block md:col-span-3">
-            <div className="sticky top-24">
-              <Card className="border-2 border-primary/10 shadow-xl bg-white/95 backdrop-blur-sm">
-                <CardContent className="p-6">
-                  <OrderSummary
-                    cart={cart}
-                    onRemoveItem={removeFromCart}
-                    onPlaceOrder={placeOrder}
-                    isLoading={isProcessing}
-                    variant="default"
-                    isCollapsed={isOrderSummaryCollapsed}
-                    onToggleCollapse={() => setIsOrderSummaryCollapsed(!isOrderSummaryCollapsed)}
-                  />
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* Order Summary - Mobile/Tablet */}
-          <div className="md:hidden fixed bottom-0 left-0 right-0 z-40">
-            <div className="container mx-auto px-4 pb-safe">
-              <Card className="border-t-2 border-primary/10 shadow-up bg-white/95 backdrop-blur-sm">
-                <CardContent className="p-4">
-                  <OrderSummaryDrawer />
-                </CardContent>
-              </Card>
-            </div>
+        {/* Right Panel - Order Summary (Landscape) */}
+        <div className="hidden md:block w-[360px] border-l border-gray-200 bg-white shadow-lg">
+          <div className="h-full p-4">
+            <OrderSummary
+              cart={cart}
+              onRemoveItem={removeItem}
+              onPlaceOrder={placeOrder}
+              isLoading={isProcessing}
+              variant="default"
+              isCollapsed={isOrderSummaryCollapsed}
+              onToggleCollapse={() => setIsOrderSummaryCollapsed(!isOrderSummaryCollapsed)}
+            />
           </div>
         </div>
-      </main>
+
+        {/* Mobile Order Summary Panel */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50">
+          <div className="px-4 pb-safe">
+            <Card className="border-t border-primary/10 shadow-up bg-white/95 backdrop-blur-sm">
+              <CardContent className="p-4">
+                <OrderSummaryDrawer />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Voice Control Button - Optimized position for iPad mini landscape */}
+        <div className="fixed bottom-24 right-4 z-[100] md:bottom-6 md:right-[380px]">
+          <VoiceControlButton />
+        </div>
+      </div>
     </div>
   );
 }
