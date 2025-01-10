@@ -36,10 +36,10 @@ export function OrderSummaryDrawer() {
                     transition-all duration-300 ease-in-out
                     font-medium"
           disabled={isProcessing}
-          aria-label={`View order cart with ${itemCount} items`}
+          aria-label={`View cart with ${itemCount} items`}
         >
           <ShoppingBag className="mr-2 h-4 w-4" />
-          {itemCount > 0 ? `View Order (${itemCount})` : 'Start Order'}
+          {itemCount > 0 && `(${itemCount})`}
         </Button>
       </DrawerTrigger>
       <DrawerContent className="bg-white/95 backdrop-blur-lg">
