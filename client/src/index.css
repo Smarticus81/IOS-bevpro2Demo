@@ -32,6 +32,7 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
   }
 }
 
@@ -65,20 +66,18 @@
   }
 
   .glass-effect {
-    @apply bg-white/80 dark:bg-black/80 
+    @apply bg-white/80 
            backdrop-blur-md
-           border border-white/20 dark:border-white/10;
+           border border-white/20;
   }
 
   .premium-shadow {
-    @apply shadow-[0_8px_32px_rgba(0,0,0,0.06)]
-           dark:shadow-[0_8px_32px_rgba(0,0,0,0.12)];
+    @apply shadow-[0_8px_32px_rgba(0,0,0,0.06)];
   }
 
   .hover-lift {
     @apply hover:-translate-y-0.5
            hover:shadow-[0_12px_48px_rgba(0,0,0,0.08)]
-           dark:hover:shadow-[0_12px_48px_rgba(0,0,0,0.16)]
            transition-all duration-300;
   }
   /* Position the ElevenLabs Convai widget on the left side */
