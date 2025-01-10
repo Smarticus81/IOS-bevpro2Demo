@@ -54,17 +54,17 @@ export function Home() {
   );
 
   return (
-    <div className="fixed inset-0 bg-gray-50 flex flex-col">
+    <div className="h-screen flex flex-col bg-gray-50">
       <NavBar />
       <div className="fixed top-4 right-4 z-50">
         <VoiceControlButton />
       </div>
 
-      <main className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex h-[calc(100vh-4rem)] overflow-hidden">
         {/* Left Side - Menu */}
-        <div className="w-1/2 flex flex-col overflow-hidden">
+        <div className="w-1/2 flex flex-col h-full">
           {/* Tiers Selection */}
-          <div className="p-4 border-b border-gray-200">
+          <div className="p-4 bg-white border-b border-gray-200">
             <div className="grid grid-cols-4 gap-2">
               {tiers.map((tier) => (
                 <button
@@ -84,95 +84,97 @@ export function Home() {
           </div>
 
           {/* Menu Content - Scrollable */}
-          <div className="flex-1 p-4 overflow-y-auto">
-            {/* Categories Grid */}
-            {!selectedCategory && (
-              <motion.div 
-                layout
-                className="grid grid-cols-3 gap-4"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              >
-                {categories.map((category) => (
-                  <motion.div
-                    key={category}
-                    className="relative"
-                  >
-                    <button
-                      onClick={() => setSelectedCategory(category)}
-                      className="w-full h-full"
-                    >
-                      <Card className="border">
-                        <CardContent className="p-4 bg-white">
-                          <div className="flex flex-col items-center text-center space-y-3">
-                            <span className="text-3xl">
-                              {category === 'Spirits' ? '🥃' :
-                               category === 'Beer' ? '🍺' :
-                               category === 'Wine' ? '🍷' :
-                               category === 'Signature' ? '🍸' :
-                               category === 'Classics' ? '🥂' :
-                               category === 'Non-Alcoholic' ? '🥤' : '🍹'}
-                            </span>
-                            <h3 className="font-semibold text-gray-900">
-                              {category}
-                            </h3>
-                            <Badge variant="secondary" className="bg-gray-100">
-                              {drinks.filter(d => d.category === category).length} items
-                            </Badge>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </button>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-
-            {/* Back Button when category is selected */}
-            {selectedCategory && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="mb-4"
-              >
-                <button
-                  onClick={() => setSelectedCategory(null)}
-                  className="text-gray-600 hover:text-gray-900"
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-4">
+              {/* Categories Grid */}
+              {!selectedCategory && (
+                <motion.div 
+                  layout
+                  className="grid grid-cols-3 gap-4"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                 >
-                  ← Back to Categories
-                </button>
-              </motion.div>
-            )}
+                  {categories.map((category) => (
+                    <motion.div
+                      key={category}
+                      className="relative"
+                    >
+                      <button
+                        onClick={() => setSelectedCategory(category)}
+                        className="w-full h-full"
+                      >
+                        <Card className="border">
+                          <CardContent className="p-4 bg-white">
+                            <div className="flex flex-col items-center text-center space-y-3">
+                              <span className="text-3xl">
+                                {category === 'Spirits' ? '🥃' :
+                                 category === 'Beer' ? '🍺' :
+                                 category === 'Wine' ? '🍷' :
+                                 category === 'Signature' ? '🍸' :
+                                 category === 'Classics' ? '🥂' :
+                                 category === 'Non-Alcoholic' ? '🥤' : '🍹'}
+                              </span>
+                              <h3 className="font-semibold text-gray-900">
+                                {category}
+                              </h3>
+                              <Badge variant="secondary" className="bg-gray-100">
+                                {drinks.filter(d => d.category === category).length} items
+                              </Badge>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </button>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
 
-            {/* Drinks Grid */}
-            {selectedCategory && (
-              <motion.div 
-                layout
-                className="grid grid-cols-3 gap-4"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              >
-                <AnimatePresence>
-                  {filteredDrinks.map((drink) => {
-                    const cartItem = cart.find((item: CartItem) => item.drink.id === drink.id);
-                    return (
-                      <DrinkCard
-                        key={drink.id}
-                        drink={drink}
-                        quantity={cartItem?.quantity || 0}
-                        onAdd={() => addToCart({ type: 'ADD_ITEM', drink, quantity: 1 })}
-                        onRemove={() => removeFromCart(drink.id)}
-                      />
-                    );
-                  })}
-                </AnimatePresence>
-              </motion.div>
-            )}
+              {/* Back Button when category is selected */}
+              {selectedCategory && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mb-4"
+                >
+                  <button
+                    onClick={() => setSelectedCategory(null)}
+                    className="text-gray-600 hover:text-gray-900"
+                  >
+                    ← Back to Categories
+                  </button>
+                </motion.div>
+              )}
+
+              {/* Drinks Grid */}
+              {selectedCategory && (
+                <motion.div 
+                  layout
+                  className="grid grid-cols-3 gap-4"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                >
+                  <AnimatePresence>
+                    {filteredDrinks.map((drink) => {
+                      const cartItem = cart.find((item: CartItem) => item.drink.id === drink.id);
+                      return (
+                        <DrinkCard
+                          key={drink.id}
+                          drink={drink}
+                          quantity={cartItem?.quantity || 0}
+                          onAdd={() => addToCart({ type: 'ADD_ITEM', drink, quantity: 1 })}
+                          onRemove={() => removeFromCart(drink.id)}
+                        />
+                      );
+                    })}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Right Side - Order Summary */}
-        <div className="w-1/2 border-l border-gray-200 bg-white overflow-y-auto">
+        <div className="w-1/2 bg-white border-l border-gray-200 h-full overflow-y-auto">
           <div className="p-4">
             <OrderSummary
               cart={cart}
@@ -183,7 +185,7 @@ export function Home() {
             />
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
