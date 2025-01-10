@@ -22,7 +22,7 @@ interface DrinksResponse {
 }
 
 export function Home() {
-  const { cart, addToCart, removeItem: removeFromCart, placeOrder, isProcessing } = useCart();
+  const { cart, addToCart, removeFromCart, placeOrder, isProcessing } = useCart();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isOrderSummaryCollapsed, setIsOrderSummaryCollapsed] = useState(false);
 
@@ -43,22 +43,24 @@ export function Home() {
   );
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-50 via-pearl-light to-pearl-dark">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
       <NavBar />
-      <VoiceControlButton />
 
-      <main className="container mx-auto px-4 pt-4 pb-8 sm:px-6 lg:px-8">
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      {/* Voice Control Button - Fixed position for iPad mini landscape */}
+      <div className="fixed bottom-6 right-6 z-[100] md:bottom-8 md:right-8">
+        <VoiceControlButton />
+      </div>
+
+      <main className="container mx-auto px-4 pt-20 pb-24 md:pt-24 md:pb-8">
+        {/* Main Content Grid - Optimized for iPad mini landscape */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8">
           {/* Category and Drinks Section */}
-          <div className="lg:col-span-3 space-y-8">
+          <div className="md:col-span-9 space-y-6">
             {/* Categories Grid */}
             {!selectedCategory && (
               <motion.div 
                 layout
-                className="grid auto-rows-fr grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 
-                           portrait:grid-cols-2 portrait:sm:grid-cols-2 portrait:md:grid-cols-3
-                           gap-3 sm:gap-4 md:gap-6 max-w-5xl mx-auto"
+                className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
@@ -68,21 +70,16 @@ export function Home() {
                     key={category}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="relative min-h-[180px] h-full"
                   >
                     <button
                       onClick={() => setSelectedCategory(category)}
                       className="w-full h-full"
                     >
-                      <Card className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
-                        <CardContent className="p-4 sm:p-6 bg-gradient-to-br from-white/90 to-white/70 backdrop-blur-md h-full flex flex-col justify-center">
+                      <Card className="border-2 border-primary/10 shadow-lg hover:shadow-xl transition-all duration-300">
+                        <CardContent className="p-4 md:p-6 bg-gradient-to-br from-white/95 to-white/90">
                           <div className="flex flex-col items-center text-center space-y-3">
-                            <div className="w-12 h-12 xs:w-14 xs:h-14 sm:w-16 sm:h-16 
-                                        portrait:w-16 portrait:h-16
-                                        rounded-full bg-gradient-to-br from-gray-800 to-gray-900 
-                                        flex items-center justify-center shadow-xl transform 
-                                        transition-transform border border-white/10">
-                              <span className="text-xl xs:text-2xl sm:text-3xl portrait:text-3xl">
+                            <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-primary/90 to-primary/80 flex items-center justify-center shadow-lg">
+                              <span className="text-2xl md:text-3xl">
                                 {category === 'Spirits' ? '🥃' :
                                  category === 'Beer' ? '🍺' :
                                  category === 'Wine' ? '🍷' :
@@ -91,10 +88,10 @@ export function Home() {
                                  category === 'Non-Alcoholic' ? '🥤' : '🍹'}
                               </span>
                             </div>
-                            <h3 className="font-semibold text-gray-900 text-sm xs:text-base sm:text-lg portrait:text-lg">
+                            <h3 className="font-semibold text-gray-900 text-base md:text-lg">
                               {category}
                             </h3>
-                            <Badge variant="secondary" className="bg-gray-100/80 text-xs xs:text-sm portrait:text-sm">
+                            <Badge variant="secondary" className="bg-primary/5 text-primary text-sm">
                               {drinks.filter(d => d.category === category).length} items
                             </Badge>
                           </div>
@@ -111,7 +108,7 @@ export function Home() {
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-6"
+                className="mb-4"
               >
                 <button
                   onClick={() => setSelectedCategory(null)}
@@ -123,13 +120,11 @@ export function Home() {
               </motion.div>
             )}
 
-            {/* Drinks Grid - Only show when category is selected */}
+            {/* Drinks Grid - Optimized for iPad mini landscape */}
             {selectedCategory && (
               <motion.div 
                 layout
-                className="grid auto-rows-fr grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4
-                           portrait:grid-cols-2 portrait:sm:grid-cols-2 portrait:md:grid-cols-3 
-                           gap-3 sm:gap-4"
+                className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.3 }}
@@ -153,15 +148,16 @@ export function Home() {
           </div>
 
           {/* Order Summary - Desktop */}
-          <div className="hidden lg:block">
+          <div className="hidden md:block md:col-span-3">
             <div className="sticky top-24">
-              <Card className="glass-effect premium-shadow backdrop-blur-md border-white/20 shadow-xl">
+              <Card className="border-2 border-primary/10 shadow-xl bg-white/95 backdrop-blur-sm">
                 <CardContent className="p-6">
                   <OrderSummary
                     cart={cart}
                     onRemoveItem={removeFromCart}
                     onPlaceOrder={placeOrder}
                     isLoading={isProcessing}
+                    variant="default"
                     isCollapsed={isOrderSummaryCollapsed}
                     onToggleCollapse={() => setIsOrderSummaryCollapsed(!isOrderSummaryCollapsed)}
                   />
@@ -170,10 +166,10 @@ export function Home() {
             </div>
           </div>
 
-          {/* Order Summary - Mobile */}
-          <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40">
+          {/* Order Summary - Mobile/Tablet */}
+          <div className="md:hidden fixed bottom-0 left-0 right-0 z-40">
             <div className="container mx-auto px-4 pb-safe">
-              <Card className="glass-morphism border-white/20 shadow-lg backdrop-blur-md">
+              <Card className="border-t-2 border-primary/10 shadow-up bg-white/95 backdrop-blur-sm">
                 <CardContent className="p-4">
                   <OrderSummaryDrawer />
                 </CardContent>

@@ -14,14 +14,17 @@ function App() {
 
   return (
     <CartProvider>
-      <Switch>
-        {/* Core POS and Inventory routes only */}
-        <Route path="/" component={Home} />
-        <Route path="/inventory" component={Inventory} />
-        <Route path="/payment-confirmation" component={PaymentConfirmation} />
-        <Route component={NotFound} />
-      </Switch>
-      <OrderSummaryDrawer />
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
+        <Switch>
+          {/* Core POS and Inventory routes only */}
+          <Route path="/" component={Home} />
+          <Route path="/inventory" component={Inventory} />
+          <Route path="/payment-confirmation" component={PaymentConfirmation} />
+          <Route component={NotFound} />
+        </Switch>
+        {/* Order Summary Drawer - Available globally */}
+        <OrderSummaryDrawer />
+      </div>
     </CartProvider>
   );
 }
