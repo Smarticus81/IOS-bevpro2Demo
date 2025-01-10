@@ -29,24 +29,30 @@ export function Home() {
   });
 
   const drinks = data?.drinks || [];
-  const categories = useMemo(() => 
-    Array.from(new Set(drinks.map(drink => drink.category))).sort(),
+  const categories = useMemo(() =>
+    Array.from(new Set(drinks.map((drink) => drink.category))).sort(),
     [drinks]
   );
 
-  const filteredDrinks = useMemo(() => 
-    drinks.filter(drink => !selectedCategory || drink.category === selectedCategory),
+  const filteredDrinks = useMemo(() =>
+    drinks.filter((drink) => !selectedCategory || drink.category === selectedCategory),
     [drinks, selectedCategory]
   );
 
   const getCategoryColor = (category: string) => {
-    switch(category) {
-      case 'Beer': return 'bg-[#4D2D14]';
-      case 'Wine': return 'bg-[#722F37]';
-      case 'Spirits': return 'bg-[#0B4FA1]';
-      case 'Signature': return 'bg-[#E67E23]';
-      case 'Non-Alcoholic': return 'bg-[#2C8A3B]';
-      default: return 'bg-gray-500';
+    switch (category) {
+      case "Beer":
+        return "bg-[#4D2D14]";
+      case "Wine":
+        return "bg-[#722F37]";
+      case "Spirits":
+        return "bg-[#0B4FA1]";
+      case "Signature":
+        return "bg-[#E67E23]";
+      case "Non-Alcoholic":
+        return "bg-[#2C8A3B]";
+      default:
+        return "bg-gray-500";
     }
   };
 
@@ -60,7 +66,7 @@ export function Home() {
           <div className="flex-1 overflow-y-auto px-4 pt-4 pb-24">
             {/* Drinks Grid */}
             {selectedCategory && (
-              <motion.div 
+              <motion.div
                 layout
                 className="grid grid-cols-2 md:grid-cols-3 gap-4"
                 initial={{ opacity: 0 }}
@@ -69,13 +75,13 @@ export function Home() {
               >
                 <AnimatePresence>
                   {filteredDrinks.map((drink) => {
-                    const cartItem = cart.find(item => item.drink.id === drink.id);
+                    const cartItem = cart.find((item) => item.drink.id === drink.id);
                     return (
                       <DrinkCard
                         key={drink.id}
                         drink={drink}
                         quantity={cartItem?.quantity || 0}
-                        onAdd={() => addToCart({ type: 'ADD_ITEM', drink, quantity: 1 })}
+                        onAdd={() => addToCart({ type: "ADD_ITEM", drink, quantity: 1 })}
                         onRemove={() => removeItem(drink.id)}
                       />
                     );
@@ -84,53 +90,46 @@ export function Home() {
               </motion.div>
             )}
 
-            {/* Categories Grid */}
+            {/* Categories Grid - Fixed to Bottom */}
             {!selectedCategory && (
-              <motion.div 
-                layout
-                className="grid grid-cols-2 md:grid-cols-3 gap-4"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                {categories.map((category) => (
-                  <motion.button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className="h-full"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Card className={`border-none shadow-lg ${getCategoryColor(category)} text-white hover:opacity-90 transition-all duration-300`}>
-                      <CardContent className="p-4">
-                        <div className="flex flex-col items-center text-center space-y-3">
-                          <h3 className="font-semibold">
+              <div className="fixed bottom-0 left-0 right-0 md:right-[360px] bg-white">
+                <motion.div
+                  layout
+                  className="grid grid-cols-3 gap-0"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {categories.map((category) => (
+                    <motion.button
+                      key={category}
+                      onClick={() => setSelectedCategory(category)}
+                      className="aspect-square"
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <div
+                        className={`w-full h-full ${getCategoryColor(
+                          category
+                        )} flex items-center justify-center`}
+                      >
+                        <div className="text-center">
+                          <h3 className="text-white font-sf-pro-display text-lg">
                             {category}
                           </h3>
-                          <Badge variant="secondary" className="bg-white/20 text-white">
-                            {drinks.filter(d => d.category === category).length} items
-                          </Badge>
+                          <span className="text-white/80 text-sm">
+                            {drinks.filter((d) => d.category === category).length}{" "}
+                            items
+                          </span>
                         </div>
-                      </CardContent>
-                    </Card>
-                  </motion.button>
-                ))}
-              </motion.div>
+                      </div>
+                    </motion.button>
+                  ))}
+                </motion.div>
+              </div>
             )}
           </div>
 
-          {/* Bottom Navigation */}
-          {selectedCategory && (
-            <div className="fixed bottom-0 left-0 right-0 md:right-[360px] bg-white border-t border-gray-200 px-4 py-3">
-              <button
-                onClick={() => setSelectedCategory(null)}
-                className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <span className="text-lg">←</span>
-                Back to Categories
-              </button>
-            </div>
-          )}
+
         </div>
 
         {/* Right Panel - Order Summary (Landscape) */}

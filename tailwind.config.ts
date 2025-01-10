@@ -6,6 +6,13 @@ export default {
   theme: {
     extend: {
       fontFamily: {
+        'sf-pro-display': [
+          "SF Pro Display",
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "sans-serif"
+        ],
         sans: [
           "SF Pro Display",
           "Roboto",
@@ -30,6 +37,13 @@ export default {
         pearl: {
           light: "#F8F9FC",
           dark: "#F0F2F8"
+        },
+        category: {
+          beer: "#4D2D14",
+          wine: "#722F37",
+          spirits: "#0B4FA1",
+          signature: "#E67E23",
+          "non-alcoholic": "#2C8A3B",
         },
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
@@ -113,16 +127,6 @@ export default {
           'backdrop-filter': 'blur(12px)',
           'border': '1px solid rgba(255, 255, 255, 0.125)',
         },
-        '.touch-safe': {
-          'min-width': '44px',
-          'min-height': '44px',
-        },
-        '.pb-safe': {
-          'padding-bottom': 'env(safe-area-inset-bottom)',
-        },
-        '.mb-safe': {
-          'margin-bottom': 'env(safe-area-inset-bottom)',
-        }
       })
     }
   ],
