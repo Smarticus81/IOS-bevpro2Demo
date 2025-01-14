@@ -46,30 +46,28 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
         transition: { duration: 0.1, ease: "easeIn" }
       }}
       onClick={onAdd}
-      className="group relative cursor-pointer select-none transform transition-all duration-200 hover:scale-[1.02]"
+      className="group relative cursor-pointer select-none"
     >
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-b from-white to-gray-50
-                    shadow-[0_8px_16px_rgba(0,0,0,0.1)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.15)]
-                    transition-all duration-300 border border-white/20
-                    backdrop-blur-sm hover:backdrop-blur-md">
-        <div className="aspect-[4/3]">
-          {/* Loading Skeleton with Category Icon */}
+      <div className="relative overflow-hidden rounded-2xl bg-white/95 backdrop-blur-md
+                    shadow-[0_8px_16px_rgba(0,0,0,0.08)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.12)]
+                    transition-all duration-300 border border-white/20">
+        <div className="aspect-[4/3] relative">
+          {/* Loading Skeleton */}
           <motion.div 
             className={`absolute inset-0 bg-gradient-to-b from-gray-50/90 to-gray-100/90
                      ${imageLoaded ? 'opacity-0' : 'opacity-100'} 
                      backdrop-blur-sm flex items-center justify-center`}
             initial={false}
-            animate={{
-              opacity: imageLoaded ? 0 : 1,
-              transition: { duration: 0.3, ease: "easeInOut" }
-            }}
+            animate={{ opacity: imageLoaded ? 0 : 1 }}
+            transition={{ duration: 0.3 }}
           >
             <div className="flex flex-col items-center gap-2">
-              <Icon className={`h-12 w-12 ${color} opacity-60`} />
+              <Icon className={`h-10 w-10 ${color} opacity-60`} />
               <p className="text-xs font-medium text-gray-500">Loading...</p>
             </div>
           </motion.div>
 
+          {/* Drink Image */}
           <img
             src={`/static/images/${drink.image}`}
             alt={drink.name}
@@ -79,63 +77,68 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
           />
 
           {/* Price Tag */}
-          <div className="absolute right-2 top-2 px-2 py-1
-                       bg-white/90 backdrop-blur-sm rounded-lg
+          <div className="absolute right-3 top-3 px-2.5 py-1.5
+                       bg-white/95 backdrop-blur-sm rounded-lg
                        shadow-sm border border-gray-100">
-            <span className="text-xs font-semibold text-gray-900">
+            <span className="text-sm font-semibold text-gray-900">
               ${drink.price}
             </span>
           </div>
 
+          {/* Quantity Badge */}
           <AnimatePresence>
             {quantity > 0 && (
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.8, opacity: 0 }}
-                className="absolute left-2 top-2 flex h-6 w-6 items-center justify-center 
+                className="absolute left-3 top-3 flex h-7 w-7 items-center justify-center 
                           rounded-lg bg-primary shadow-sm
-                          text-xs font-medium text-white"
+                          text-sm font-medium text-white"
               >
                 {quantity}
               </motion.div>
             )}
           </AnimatePresence>
 
-          <div className="absolute inset-x-0 bottom-0 p-2 bg-white/95 backdrop-blur-sm border-t border-gray-100">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-1.5">
-                <div className="p-1 rounded-md bg-gray-50">
-                  <Icon className={`h-3.5 w-3.5 ${color}`} />
+          {/* Info Panel */}
+          <div className="absolute inset-x-0 bottom-0 p-4 bg-white/95 backdrop-blur-md
+                       border-t border-white/10">
+            <div className="space-y-2">
+              <div className="flex items-start gap-3">
+                <div className="p-1.5 rounded-lg bg-gray-50/80 backdrop-blur-sm shrink-0
+                            border border-gray-100/50">
+                  <Icon className={`h-4 w-4 ${color}`} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-medium text-sm text-gray-900 truncate">
+                  <h3 className="font-medium text-sm leading-5 text-gray-900 line-clamp-2
+                             tracking-tight">
                     {drink.name}
                   </h3>
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium text-gray-500">
+                  <div className="flex items-center justify-between mt-1.5">
+                    <p className="text-xs font-medium text-gray-500 tracking-wide uppercase">
                       {drink.category}
                     </p>
-                    <div className="flex items-center gap-1">
-                    <motion.div
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        drink.inventory === 0 ? 'bg-red-500' :
-                        drink.inventory < 10 ? 'bg-yellow-500' :
-                        'bg-emerald-500'
-                      }`}
-                    />
-                    <span className={`text-[10px] font-medium ${
-                      drink.inventory === 0 ? 'text-red-500' :
-                      drink.inventory < 10 ? 'text-yellow-500' :
-                      'text-emerald-500'
-                    }`}>
-                      {drink.inventory === 0 ? 'Out of Stock' :
-                       drink.inventory < 10 ? 'Low Stock' :
-                       `${drink.inventory} Available`}
-                    </span>
-                  </div>
+                    <div className="flex items-center gap-1.5">
+                      <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className={`h-2 w-2 rounded-full ${
+                          drink.inventory === 0 ? 'bg-red-500' :
+                          drink.inventory < 10 ? 'bg-yellow-500' :
+                          'bg-emerald-500'
+                        }`}
+                      />
+                      <span className={`text-xs font-medium ${
+                        drink.inventory === 0 ? 'text-red-500' :
+                        drink.inventory < 10 ? 'text-yellow-500' :
+                        'text-emerald-500'
+                      }`}>
+                        {drink.inventory === 0 ? 'Out of Stock' :
+                         drink.inventory < 10 ? 'Low Stock' :
+                         `${drink.inventory} Available`}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>

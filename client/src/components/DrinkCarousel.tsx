@@ -17,21 +17,16 @@ export function DrinkCarousel({ drinks, selectedDrinkId, onSelectDrink }: DrinkC
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleScroll = () => {
-    if (!containerRef.current) {
-      console.log('DrinkCarousel: containerRef is not available');
-      return;
-    }
-    
+    if (!containerRef.current) return;
+
     const { scrollLeft, scrollWidth, clientWidth } = containerRef.current;
-    console.log('DrinkCarousel: Scroll metrics', { scrollLeft, scrollWidth, clientWidth });
-    
     setShowLeftArrow(scrollLeft > 0);
     setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 10);
   };
 
   const scroll = (direction: 'left' | 'right') => {
     if (!containerRef.current) return;
-    
+
     const scrollAmount = direction === 'left' ? -300 : 300;
     containerRef.current.scrollBy({
       left: scrollAmount,
@@ -54,10 +49,10 @@ export function DrinkCarousel({ drinks, selectedDrinkId, onSelectDrink }: DrinkC
               variant="outline"
               size="icon"
               onClick={() => scroll('left')}
-              className="h-10 w-10 rounded-full bg-white/90 backdrop-blur-sm border-white/20 
+              className="h-12 w-12 rounded-full bg-white/90 backdrop-blur-sm border-white/20 
                        shadow-lg hover:bg-white hover:shadow-xl transition-all duration-200"
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="h-6 w-6" />
             </Button>
           </motion.div>
         )}
@@ -76,10 +71,10 @@ export function DrinkCarousel({ drinks, selectedDrinkId, onSelectDrink }: DrinkC
               variant="outline"
               size="icon"
               onClick={() => scroll('right')}
-              className="h-10 w-10 rounded-full bg-white/90 backdrop-blur-sm border-white/20 
+              className="h-12 w-12 rounded-full bg-white/90 backdrop-blur-sm border-white/20 
                        shadow-lg hover:bg-white hover:shadow-xl transition-all duration-200"
             >
-              <ChevronRight className="h-5 w-5" />
+              <ChevronRight className="h-6 w-6" />
             </Button>
           </motion.div>
         )}
@@ -102,7 +97,7 @@ export function DrinkCarousel({ drinks, selectedDrinkId, onSelectDrink }: DrinkC
           {drinks.map((drink, index) => (
             <motion.div
               key={drink.id}
-              className="flex-none w-[280px] snap-start"
+              className="flex-none w-[300px] snap-start" 
               initial={{ opacity: 0, scale: 0.8, y: 20 }}
               animate={{ 
                 opacity: 1, 

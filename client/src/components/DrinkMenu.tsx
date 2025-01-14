@@ -21,23 +21,12 @@ export function DrinkMenu({ drinks, onAddToCart }: DrinkMenuProps) {
   }, [drinks]);
 
   const filteredDrinks = useMemo(() => {
-    console.log('DrinkMenu: Filtering drinks', { 
-      totalDrinks: drinks.length,
-      search,
-      selectedCategory 
-    });
-    
     const filtered = drinks.filter(drink => {
       const matchesSearch = drink.name.toLowerCase().includes(search.toLowerCase());
       const matchesCategory = selectedCategory === "all" || drink.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
-    
-    console.log('DrinkMenu: Filtered results', { 
-      filteredCount: filtered.length,
-      categories: [...new Set(filtered.map(d => d.category))]
-    });
-    
+
     return filtered;
   }, [drinks, search, selectedCategory]);
 
@@ -66,8 +55,8 @@ export function DrinkMenu({ drinks, onAddToCart }: DrinkMenuProps) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full bg-white/10 border-white/20 text-white placeholder:text-white/50
-                     backdrop-blur-md rounded-xl shadow-xl focus:ring-2 focus:ring-white/30
-                     transition-all duration-200"
+                      backdrop-blur-md rounded-xl shadow-xl focus:ring-2 focus:ring-white/30
+                      transition-all duration-200"
           />
         </motion.div>
 
@@ -76,21 +65,22 @@ export function DrinkMenu({ drinks, onAddToCart }: DrinkMenuProps) {
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.3 }}
+          className="overflow-x-auto scrollbar-hide"
         >
           <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
             <TabsList className="w-full max-w-3xl mx-auto flex justify-center p-1 
-                             bg-white/10 backdrop-blur-md border border-white/20 
-                             rounded-xl shadow-xl">
+                              bg-white/10 backdrop-blur-md border border-white/20 
+                              rounded-xl shadow-xl">
               {categories.map(category => (
                 <TabsTrigger
                   key={category}
                   value={category}
-                  className="flex-1 capitalize text-white/70 data-[state=active]:bg-white/20 
+                  className="flex-1 capitalize text-sm text-white/70 data-[state=active]:bg-white/20 
                             data-[state=active]:backdrop-blur-md data-[state=active]:shadow-inner 
                             data-[state=active]:text-white rounded-lg transition-all duration-200 
-                            hover:text-white/90"
+                            hover:text-white/90 px-4 py-2 whitespace-nowrap"
                 >
-                  {category}
+                  {category === "all" ? "All" : category}
                 </TabsTrigger>
               ))}
             </TabsList>
