@@ -28,12 +28,12 @@ export function NavBar({ drinks }: NavBarProps) {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/80 backdrop-blur-xl"
+      className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl shadow-sm"
     >
-      <div className="container mx-auto px-4">
-        <div className="flex h-14 items-center justify-between">
+      <div className="container mx-auto px-6">
+        <div className="flex h-16 items-center justify-between">
           <motion.div 
-            className="hidden md:flex items-center space-x-1 w-full justify-end"
+            className="hidden md:flex items-center space-x-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
@@ -44,21 +44,21 @@ export function NavBar({ drinks }: NavBarProps) {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className={cn(
-                    "px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors",
+                    "px-5 py-2.5 rounded-xl flex items-center gap-2.5 text-sm font-medium transition-all duration-200",
                     location === item.href 
-                      ? "bg-blue-50 text-blue-600" 
-                      : "text-gray-600 hover:bg-gray-50"
+                      ? "bg-gray-900 text-white shadow-sm" 
+                      : "text-gray-600 hover:bg-gray-100"
                   )}
                 >
                   <item.icon className="h-4 w-4" />
-                  <span>{item.label}</span>
+                  <span className="font-medium">{item.label}</span>
                 </motion.button>
               </Link>
             ))}
           </motion.div>
 
           <motion.div 
-            className="flex items-center gap-2 md:hidden"
+            className="flex md:hidden"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
@@ -68,21 +68,23 @@ export function NavBar({ drinks }: NavBarProps) {
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  className="h-8 w-8 p-0"
+                  className="h-10 w-10 rounded-xl p-0 hover:bg-gray-100"
                 >
                   <MenuIcon className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent 
                 align="end" 
-                className="w-56 bg-white/95 backdrop-blur-xl border-gray-200"
+                className="w-56 bg-white/95 backdrop-blur-xl rounded-xl border-gray-200 shadow-lg"
               >
                 <DropdownMenuGroup>
                   {navItems.map((item) => (
                     <Link key={item.href} href={item.href}>
                       <DropdownMenuItem className={cn(
-                        "flex items-center gap-2 cursor-pointer",
-                        location === item.href && "bg-blue-50 text-blue-600"
+                        "flex items-center gap-2.5 rounded-lg px-3 py-2.5 cursor-pointer transition-colors duration-200",
+                        location === item.href 
+                          ? "bg-gray-900 text-white" 
+                          : "text-gray-600 hover:bg-gray-100"
                       )}>
                         <item.icon className="h-4 w-4" />
                         <span className="font-medium">{item.label}</span>

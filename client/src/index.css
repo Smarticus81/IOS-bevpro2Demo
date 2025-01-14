@@ -32,7 +32,12 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    @apply font-medium tracking-tight;
   }
 }
 
@@ -66,13 +71,16 @@
   }
 
   .glass-effect {
-    @apply bg-white/80 
-           backdrop-blur-md
-           border border-white/20;
+    @apply bg-white/90 
+           backdrop-blur-xl
+           border border-white/20
+           shadow-[0_8px_32px_rgba(0,0,0,0.04)];
   }
 
   .premium-shadow {
-    @apply shadow-[0_8px_32px_rgba(0,0,0,0.06)];
+    @apply shadow-[0_8px_32px_rgba(0,0,0,0.06)]
+           hover:shadow-[0_12px_48px_rgba(0,0,0,0.08)]
+           transition-shadow duration-300;
   }
 
   .hover-lift {
@@ -80,7 +88,31 @@
            hover:shadow-[0_12px_48px_rgba(0,0,0,0.08)]
            transition-all duration-300;
   }
-  /* Position the ElevenLabs Convai widget on the left side */
+
+  .card-premium {
+    @apply bg-white/90 
+           backdrop-blur-xl 
+           border border-white/20 
+           shadow-[0_8px_32px_rgba(0,0,0,0.04)]
+           hover:shadow-[0_12px_48px_rgba(0,0,0,0.08)]
+           transition-all duration-300;
+  }
+
+  .button-premium {
+    @apply bg-gray-900
+           text-white
+           hover:bg-gray-800
+           active:bg-gray-950
+           disabled:bg-gray-300
+           rounded-xl
+           px-5 py-2.5
+           font-medium
+           shadow-sm
+           hover:shadow-md
+           transition-all duration-200;
+  }
+
+  /* Position the voice control widget on the left side */
   elevenlabs-convai {
     position: fixed !important;
     left: 20px !important;
