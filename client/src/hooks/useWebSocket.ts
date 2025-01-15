@@ -12,9 +12,12 @@ export function useWebSocket() {
   const queryClient = useQueryClient();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const reconnectAttemptsRef = useRef(0);
+  const MAX_RECONNECT_ATTEMPTS = 5;
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
+      console.log('WebSocket already connected');
       return;
     }
 
@@ -33,10 +36,11 @@ export function useWebSocket() {
           case 'INVENTORY_UPDATE':
             // Handle different inventory update types
             if (message.data?.type === 'drinks_refresh' || message.data?.type === 'drinks') {
-              // Full refresh of drinks data
+              console.log('Refreshing all drinks data');
               queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
             } else if (message.data?.type === 'inventory_change') {
-              // Individual drink update
+              console.log('Updating specific drink:', message.data);
+              // Always refresh the full drinks list to ensure consistency
               queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
               if (message.data?.drinkId) {
                 queryClient.invalidateQueries({ 
@@ -47,13 +51,16 @@ export function useWebSocket() {
             break;
 
           case 'POUR_UPDATE':
-            // Invalidate pour-related queries
+            console.log('Updating pour-related data');
             queryClient.invalidateQueries({ queryKey: ['/api/pour-inventory'] });
             queryClient.invalidateQueries({ queryKey: ['/api/pour-transactions'] });
             break;
 
           case 'status':
             console.log('WebSocket status:', message.status);
+            if (message.status === 'connected') {
+              reconnectAttemptsRef.current = 0;
+            }
             break;
 
           default:
@@ -67,6 +74,7 @@ export function useWebSocket() {
     // Connection opened
     ws.onopen = () => {
       console.log('WebSocket connection established');
+      reconnectAttemptsRef.current = 0;
       // Clear any pending reconnection timeouts
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
@@ -92,10 +100,18 @@ export function useWebSocket() {
       clearTimeout(reconnectTimeoutRef.current);
     }
 
+    if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
+      console.log('Max reconnection attempts reached');
+      return;
+    }
+
+    reconnectAttemptsRef.current++;
+    const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 10000);
+
     reconnectTimeoutRef.current = setTimeout(() => {
-      console.log('Attempting to reconnect...');
+      console.log(`Attempting to reconnect (attempt ${reconnectAttemptsRef.current})...`);
       connect();
-    }, 5000); // 5 second delay before reconnecting
+    }, delay);
   }, [connect]);
 
   useEffect(() => {

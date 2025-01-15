@@ -39,10 +39,13 @@ export function registerRoutes(app: Express): Server {
   // Helper function to broadcast inventory updates
   const broadcastInventoryUpdate = (type: string, data: any) => {
     if (realtimeProxy) {
+      console.log('Broadcasting inventory update:', { type, data });
       realtimeProxy.broadcast({
-        type: type,
-        data: data,
-        timestamp: new Date().toISOString()
+        type: 'INVENTORY_UPDATE',
+        data: {
+          type,
+          ...data
+        }
       });
     }
   };
@@ -60,8 +63,7 @@ export function registerRoutes(app: Express): Server {
         .orderBy(drinks.category);
 
       // Broadcast drinks update
-      broadcastInventoryUpdate('INVENTORY_UPDATE', {
-        type: 'drinks',
+      broadcastInventoryUpdate('drinks', {
         items: allDrinks,
         timestamp: new Date().toISOString()
       });
@@ -79,6 +81,7 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/orders", async (req, res) => {
     try {
       const { items, total } = req.body;
+      console.log('Processing order:', { items, total });
 
       if (!items?.length || typeof total !== 'number' || total <= 0) {
         return res.status(400).json({
@@ -88,6 +91,8 @@ export function registerRoutes(app: Express): Server {
 
       // Process order in a transaction with proper locking
       const result = await db.transaction(async (tx) => {
+        console.log('Starting transaction for order processing');
+
         // First, lock and validate all inventory items
         const lockedItems = await Promise.all(
           items.map(async (item: any) => {
@@ -105,6 +110,8 @@ export function registerRoutes(app: Express): Server {
           })
         );
 
+        console.log('Locked and validated items:', lockedItems);
+
         // Create order
         const [order] = await tx.insert(orders)
           .values({
@@ -116,6 +123,8 @@ export function registerRoutes(app: Express): Server {
           })
           .returning();
 
+        console.log('Created order:', order);
+
         // Create order items
         const orderItemsData = items.map((item: any) => ({
           order_id: order.id,
@@ -125,6 +134,7 @@ export function registerRoutes(app: Express): Server {
         }));
 
         await tx.insert(orderItems).values(orderItemsData);
+        console.log('Created order items');
 
         // Update inventory atomically
         const updatedDrinks = await Promise.all(
@@ -145,36 +155,36 @@ export function registerRoutes(app: Express): Server {
           })
         );
 
+        console.log('Updated drinks inventory:', updatedDrinks);
         return { order, updatedDrinks };
       });
 
       // Broadcast individual inventory updates after successful transaction
       result.updatedDrinks.forEach(drink => {
-        broadcastInventoryUpdate('INVENTORY_UPDATE', {
-          type: 'inventory_change',
+        broadcastInventoryUpdate('inventory_change', {
           drinkId: drink.id,
           newInventory: drink.inventory,
-          sales: drink.sales,
-          timestamp: new Date().toISOString()
+          sales: drink.sales
         });
       });
 
       // Also broadcast full drinks update to ensure consistency
-      broadcastInventoryUpdate('INVENTORY_UPDATE', {
-        type: 'drinks_refresh',
+      broadcastInventoryUpdate('drinks_refresh', {
         timestamp: new Date().toISOString()
       });
 
+      console.log('Order processed successfully');
       res.json(result.order);
     } catch (error) {
       console.error("Error processing order:", error);
-      return res.status(error.message.includes("Insufficient inventory") ? 400 : 500)
+      return res.status(error.message?.includes("Insufficient inventory") ? 400 : 500)
         .json({ 
           error: error.message || "Failed to process order",
           details: error instanceof Error ? error.message : "Unknown error"
         });
     }
   });
+
   // Get pour inventory with real-time updates
   app.get("/api/pour-inventory", async (_req, res) => {
     try {
@@ -200,8 +210,7 @@ export function registerRoutes(app: Express): Server {
         .orderBy(desc(pourInventory.last_pour_at));
 
       // Broadcast pour inventory update
-      broadcastInventoryUpdate('POUR_UPDATE', {
-        type: 'inventory',
+      broadcastInventoryUpdate('inventory', {
         items: inventory,
         timestamp: new Date().toISOString()
       });
@@ -280,8 +289,7 @@ export function registerRoutes(app: Express): Server {
       });
 
       // Broadcast update after successful transaction
-      broadcastInventoryUpdate('POUR_UPDATE', {
-        type: 'pour_transaction',
+      broadcastInventoryUpdate('pour_transaction', {
         data: result,
         timestamp: new Date().toISOString()
       });
@@ -293,7 +301,6 @@ export function registerRoutes(app: Express): Server {
         .json({ error: error.message || "Failed to track pour" });
     }
   });
-
   // Add broadcast calls to relevant routes
   app.post("/api/pour-transactions/track", async (req, res) => {
     try {
@@ -349,7 +356,7 @@ export function registerRoutes(app: Express): Server {
         .returning();
 
       // Broadcast pour transaction update
-      broadcastInventoryUpdate('POUR_UPDATE', {
+      broadcastInventoryUpdate('pour_transaction', {
         transaction,
         updatedInventory
       });
@@ -910,8 +917,7 @@ export function registerRoutes(app: Express): Server {
           console.log("Created pour inventory item:", pourInventoryItem);
 
           // Broadcast inventory update
-          broadcastInventoryUpdate('INVENTORY_UPDATE', {
-            type: 'new_item',
+          broadcastInventoryUpdate('new_item', {
             item: {
               ...newDrink,
               pour_inventory: pourInventoryItem
@@ -925,8 +931,7 @@ export function registerRoutes(app: Express): Server {
         }
 
         // Broadcast inventory update for non-pour items
-        broadcastInventoryUpdate('INVENTORY_UPDATE', {
-          type: 'new_item',
+        broadcastInventoryUpdate('new_item', {
           item: newDrink
         });
 

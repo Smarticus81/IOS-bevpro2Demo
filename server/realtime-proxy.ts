@@ -73,19 +73,33 @@ export function setupRealtimeProxy(server: Server) {
     });
   });
 
+  const broadcast = (message: any) => {
+    // Add timestamp if not present
+    const finalMessage = {
+      ...message,
+      timestamp: message.timestamp || new Date().toISOString()
+    };
+
+    const broadcastData = JSON.stringify(finalMessage);
+    console.log('Broadcasting message:', finalMessage);
+
+    let successfulBroadcasts = 0;
+    wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        try {
+          client.send(broadcastData);
+          successfulBroadcasts++;
+        } catch (error) {
+          console.error('Failed to send message to client:', error);
+        }
+      }
+    });
+
+    console.log(`Successfully broadcasted to ${successfulBroadcasts} clients`);
+  };
+
   return {
     wss,
-    broadcast: (message: any) => {
-      const broadcastData = JSON.stringify({
-        ...message,
-        timestamp: new Date().toISOString()
-      });
-
-      wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(broadcastData);
-        }
-      });
-    }
+    broadcast
   };
 }
