@@ -1,4 +1,5 @@
 import { drizzle } from "drizzle-orm/neon-serverless";
+import { sql } from "drizzle-orm";
 import ws from "ws";
 import * as schema from "@db/schema";
 
@@ -14,27 +15,11 @@ export const db = drizzle({
   ws: ws,
 });
 
-// Export schema for use in other files
-export { schema };
+// Export schema and sql for use in other files
+export { schema, sql };
 
-// Handle cleanup on application shutdown
-process.on('SIGTERM', async () => {
-  console.log('Closing database connections...');
-  // Assuming drizzle's connection object has an end method, similar to postgres
-  // If not, appropriate cleanup method should be used based on drizzle-orm/neon-serverless documentation.
-  await db.connection.end(); 
-});
-
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught exception:', error);
-  db.connection.end().then(() => {
-    process.exit(1);
-  });
-});
-
+// Basic error handling for database operations
 process.on('unhandledRejection', (error) => {
-  console.error('Unhandled rejection:', error);
-  db.connection.end().then(() => {
-    process.exit(1);
-  });
+  console.error('Database operation failed:', error);
+  process.exit(1);
 });

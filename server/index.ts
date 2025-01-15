@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { db, sql } from "@db";
 
 const app = express();
 
@@ -11,8 +12,12 @@ app.use(express.urlencoded({ extended: false }));
 // CORS middleware for development
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
   next();
 });
 
@@ -22,9 +27,10 @@ app.use((req, res, next) => {
   const path = req.path;
 
   // Capture the response for logging
+  let capturedResponse: any;
   const originalJson = res.json;
   res.json = function(body) {
-    res.locals.body = body;
+    capturedResponse = body;
     return originalJson.call(this, body);
   };
 
@@ -36,7 +42,7 @@ app.use((req, res, next) => {
         path,
         status: res.statusCode,
         duration: `${duration}ms`,
-        response: res.locals.body
+        response: capturedResponse
       };
       log(`API ${JSON.stringify(logData)}`);
     }
@@ -47,15 +53,22 @@ app.use((req, res, next) => {
 
 (async () => {
   try {
+    // Test database connection first
+    await db.execute(sql`SELECT 1`);
+    log('Database connection successful');
+
     // Register API routes and get the server instance
-    const server = await registerRoutes(app);
+    const server = registerRoutes(app);
 
     // Error handling middleware
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       console.error('Error:', err);
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
-      res.status(status).json({ error: message });
+      res.status(status).json({ 
+        error: message,
+        timestamp: new Date().toISOString()
+      });
     });
 
     // Setup Vite or static serving
@@ -68,13 +81,14 @@ app.use((req, res, next) => {
     // Start server on port 5000
     const PORT = 5000;
     server.listen(PORT, "0.0.0.0", () => {
-      log(`Server running on port ${PORT}`);
+      log(`Server running on port ${PORT} (http://0.0.0.0:${PORT})`);
     }).on('error', (err: any) => {
       if (err.code === 'EADDRINUSE') {
         log(`Port ${PORT} is in use, shutting down`);
         process.exit(1);
       } else {
-        throw err;
+        console.error('Server error:', err);
+        process.exit(1);
       }
     });
   } catch (error) {
