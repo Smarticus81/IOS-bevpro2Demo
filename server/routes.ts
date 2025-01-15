@@ -962,7 +962,7 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "Invalid quantity" });
       }
 
-      // Process inventory update in a transaction
+      // Process inventory update in aa transaction
       const result = await db.transaction(async (tx) => {
         // Get current drink with locking
         const [drink] = await tx
@@ -996,7 +996,7 @@ export function registerRoutes(app: Express): Server {
           .where(eq(drinks.id, drinkId))
           .returning();
 
-        // Log the transaction
+        // Log the transaction -  This line was missing in the edited snippet.
         const [transaction] = await tx
           .insert(transactions)
           .values({
@@ -1021,7 +1021,7 @@ export function registerRoutes(app: Express): Server {
         drinkId: result.updatedDrink.id,
         newInventory: result.updatedDrink.inventory,
         sales: result.updatedDrink.sales,
-        transaction: result.transaction
+        transaction: result.transaction // Added transaction to broadcast
       });
 
       res.json(result);
