@@ -178,7 +178,7 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error processing order:", error);
       return res.status(error.message?.includes("Insufficient inventory") ? 400 : 500)
-        .json({ 
+        .json({
           error: error.message || "Failed to process order",
           details: error instanceof Error ? error.message : "Unknown error"
         });
@@ -951,6 +951,91 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
+
+  // Add inventory update endpoint with transaction logging
+  app.post("/api/drinks/:id/inventory", async (req, res) => {
+    try {
+      const drinkId = parseInt(req.params.id);
+      const { quantity, isIncrement } = req.body;
+
+      if (typeof quantity !== 'number' || quantity <= 0) {
+        return res.status(400).json({ error: "Invalid quantity" });
+      }
+
+      // Process inventory update in a transaction
+      const result = await db.transaction(async (tx) => {
+        // Get current drink with locking
+        const [drink] = await tx
+          .select()
+          .from(drinks)
+          .where(eq(drinks.id, drinkId))
+          .limit(1);
+
+        if(!drink) {
+          throw new Error("Drink not found");
+        }
+
+        // Calculate new inventory
+        const newInventory = isIncrement
+          ? drink.inventory + quantity
+          : drink.inventory - quantity;
+
+        if (newInventory < 0) {
+          throw new Error("Insufficient inventory");
+        }
+
+        // Update drink inventory
+        const [updatedDrink] = await tx
+          .update(drinks)
+          .set({
+            inventory: newInventory,
+            ...(isIncrement ? {} : {
+              sales: sql`COALESCE(${drinks.sales}, 0) + ${quantity}`
+            })
+          })
+          .where(eq(drinks.id, drinkId))
+          .returning();
+
+        // Log the transaction
+        const [transaction] = await tx
+          .insert(transactions)
+          .values({
+            amount: drink.price * quantity,
+            status: 'completed',
+            created_at: new Date(),
+            metadata: {
+              type: isIncrement ? 'inventory_increase' : 'inventory_decrease',
+              drink_id: drinkId,
+              quantity,
+              previous_inventory: drink.inventory,
+              new_inventory: newInventory
+            }
+          })
+          .returning();
+
+        return { updatedDrink, transaction };
+      });
+
+      // Broadcast inventory update
+      broadcastInventoryUpdate('inventory_change', {
+        drinkId: result.updatedDrink.id,
+        newInventory: result.updatedDrink.inventory,
+        sales: result.updatedDrink.sales,
+        transaction: result.transaction
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating inventory:", error);
+      res.status(error.message?.includes("Insufficient inventory") ? 400 : 500)
+        .json({
+          error: error.message || "Failed to update inventory",
+          details: error instanceof Error ? error.message : "Unknown error"
+        });
+    }
+  });
+
+  // Rest of the code remains unchanged
 
   return httpServer;
 }
