@@ -72,6 +72,17 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
+      // Get order details for the transaction record
+      const [order] = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.id, orderId))
+        .limit(1);
+
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
       // Create transaction record
       const [transaction] = await db.insert(transactions)
         .values({
@@ -83,24 +94,25 @@ export function registerRoutes(app: Express): Server {
           updated_at: new Date()
         })
         .returning();
+
       transactionId = transaction.id;
       console.log("Transaction created:", transactionId);
 
-      // In demo mode, payment always succeeds
-      // Update transaction record
+      // Process the transaction
       const [updatedTransaction] = await db.update(transactions)
         .set({
           status: 'completed',
           updated_at: new Date(),
           metadata: {
             completed_at: new Date().toISOString(),
-            success: true
+            success: true,
+            items: order.items
           }
         })
         .where(eq(transactions.id, transactionId))
         .returning();
 
-      // Update order status
+      // Update order status and complete the transaction
       const [updatedOrder] = await db
         .update(orders)
         .set({
@@ -111,11 +123,23 @@ export function registerRoutes(app: Express): Server {
         .where(eq(orders.id, orderId))
         .returning();
 
-      // Broadcast transaction update
+      // Update inventory for each item in the order
+      for (const item of order.items) {
+        await db
+          .update(drinks)
+          .set({
+            inventory: sql`${drinks.inventory} - ${item.quantity}`,
+            sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
+          })
+          .where(eq(drinks.id, item.drink.id));
+      }
+
+      // Broadcast transaction update for real-time updates
       broadcastInventoryUpdate('TRANSACTION_UPDATE', {
         type: 'payment_processed',
         transaction: updatedTransaction,
         order: updatedOrder,
+        items: order.items,
         timestamp: new Date().toISOString()
       });
 
@@ -158,6 +182,43 @@ export function registerRoutes(app: Express): Server {
         error: "Internal server error during payment processing",
         transactionId
       });
+    }
+  });
+
+  // Add transaction history endpoint
+  app.get("/api/transactions", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const page = parseInt(req.query.page as string) || 1;
+      const offset = (page - 1) * limit;
+
+      const transactions = await db.select({
+        id: transactions.id,
+        order_id: transactions.order_id,
+        amount: transactions.amount,
+        status: transactions.status,
+        created_at: transactions.created_at,
+        updated_at: transactions.updated_at,
+        metadata: transactions.metadata,
+        order: orders,
+      })
+        .from(transactions)
+        .leftJoin(orders, eq(transactions.order_id, orders.id))
+        .orderBy(desc(transactions.created_at))
+        .limit(limit)
+        .offset(offset);
+
+      res.json({
+        data: transactions,
+        pagination: {
+          currentPage: page,
+          limit,
+          totalItems: transactions.length
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      res.status(500).json({ error: "Failed to fetch transactions" });
     }
   });
 
