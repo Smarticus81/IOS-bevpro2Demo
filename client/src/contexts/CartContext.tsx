@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import type { CartState, CartContextType, AddToCartAction, CartItem } from '@/types/cart';
 import { useLocation } from 'wouter';
+import { paymentService } from '@/lib/paymentService';
 
 // Define the context
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -71,7 +72,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
-  // Define orderMutation first, before any functions that use it
   const orderMutation = useMutation({
     mutationFn: async (cartItems: CartItem[]) => {
       logger.info('Initiating order placement', {
@@ -79,15 +79,34 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         total: cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0)
       });
 
-      // In demo mode, always succeed
-      const demoTransactionId = `demo-${Date.now()}`;
+      // First create the order
+      const orderResponse = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          items: cartItems,
+          total: cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0)
+        }),
+      });
 
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!orderResponse.ok) {
+        throw new Error('Failed to create order');
+      }
+
+      const orderData = await orderResponse.json();
+
+      // Process payment through payment service
+      const paymentResponse = await paymentService.createPaymentIntent({
+        amount: orderData.order.total,
+        orderId: orderData.order.id
+      });
 
       return {
-        transactionId: demoTransactionId,
-        success: true
+        transactionId: paymentResponse.id,
+        success: paymentResponse.status === 'succeeded',
+        orderId: orderData.order.id
       };
     },
     onSuccess: async (data) => {
@@ -104,18 +123,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       // Navigate to confirmation page
       setLocation(`/payment-confirmation?transaction=${data.transactionId}`);
     },
-    onError: async () => {
-      logger.info('Payment error handled (demo mode), proceeding with success flow');
-      dispatch({ type: 'CLEAR_CART' });
-      queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
+    onError: async (error: Error) => {
+      logger.error('Payment processing failed:', error);
 
       toast({
-        title: 'Order Confirmed',
-        description: 'Your order has been processed successfully!',
-        variant: 'default',
+        title: 'Payment Failed',
+        description: error.message || 'Failed to process payment. Please try again.',
+        variant: 'destructive',
       });
-
-      setLocation(`/payment-confirmation?transaction=demo-${Date.now()}`);
     },
     onSettled: () => {
       logger.info('Payment processing complete');
@@ -232,7 +247,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg shadow-xl">
             <p className="text-lg font-medium">
-              {state.items.length > 1 
+              {state.items.length > 1
                 ? `Preparing your ${state.items.length} drinks...`
                 : "Preparing your drink..."}
             </p>

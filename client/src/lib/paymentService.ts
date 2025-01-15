@@ -1,115 +1,73 @@
-interface PaymentMethod {
-  id: string;
-  type: string;
-  provider: string;
-  display_name: string;
-  enabled: boolean;
-}
-
-interface CreatePaymentParams {
-  amount: number;
-  orderId?: string;
-  customerEmail?: string;
-  paymentMethod?: string;
-  currency?: string;
-}
-
-interface PaymentIntent {
-  clientSecret: string;
-  id: string;
-  status: string;
-}
-
-interface SimulatedPaymentMethod {
-  id: string;
-  type: string;
-  provider: string;
-  display_name: string;
-  enabled: boolean;
-}
-
-interface CreatePaymentParams {
-  amount: number;
-  orderId?: string;
-  customerEmail?: string;
-  paymentMethod?: string;
-}
+import type { CreatePaymentParams, PaymentIntent, PaymentMethod } from '@/types/payment';
 
 export const paymentService = {
   async createPaymentIntent({ amount, orderId, customerEmail, currency = 'usd' }: CreatePaymentParams): Promise<PaymentIntent> {
     try {
-      // In demo mode, always succeed after a short delay
-      await new Promise(resolve => setTimeout(resolve, 800));
+      const response = await fetch('/api/payment/process', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount,
+          orderId,
+          customerEmail,
+          currency
+        }),
+      });
 
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(errorData || 'Payment processing failed');
+      }
+
+      const data = await response.json();
       return {
-        clientSecret: `demo_${Date.now()}`,
-        id: `demo_${orderId || Date.now()}`,
-        status: 'succeeded'
+        clientSecret: data.clientSecret,
+        id: data.transactionId,
+        status: data.status
       };
     } catch (error) {
       console.error('Error creating payment intent:', error);
-      // In demo mode, still succeed even on error
-      return {
-        clientSecret: `demo_${Date.now()}`,
-        id: `demo_${orderId || Date.now()}`,
-        status: 'succeeded'
-      };
+      throw error;
     }
   },
 
-  // Get available payment methods
-  async getPaymentMethods(): Promise<SimulatedPaymentMethod[]> {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // Return simulated payment methods
-    return [
-      {
-        id: 'credit_card',
-        type: 'credit_card',
-        provider: 'stripe',
-        display_name: 'Credit Card',
-        enabled: true
-      },
-      {
-        id: 'apple_pay',
-        type: 'digital_wallet',
-        provider: 'apple',
-        display_name: 'Apple Pay',
-        enabled: true
-      },
-      {
-        id: 'google_pay',
-        type: 'digital_wallet',
-        provider: 'google',
-        display_name: 'Google Pay',
-        enabled: true
-      },
-      {
-        id: 'qr_code',
-        type: 'qr_code',
-        provider: 'custom',
-        display_name: 'QR Code Payment',
-        enabled: true
-      }
-    ];
+  async getPaymentMethods(): Promise<PaymentMethod[]> {
+    const response = await fetch('/api/payment-methods');
+    if (!response.ok) {
+      throw new Error('Failed to fetch payment methods');
+    }
+    return response.json();
   },
 
-  // Validate Stripe API key
-  async validateStripeKey(key: string): Promise<boolean> {
-    // In demo mode, always return true
-    return true;
-  },
-
-  // Simulate payment validation
   async validatePayment(paymentDetails: any): Promise<boolean> {
-    // In demo mode, always return true after a short delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return true;
+    const response = await fetch('/api/payment/validate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(paymentDetails),
+    });
+
+    if (!response.ok) {
+      throw new Error('Payment validation failed');
+    }
+
+    const result = await response.json();
+    return result.valid;
   },
 
-  // Simulate checking if payment features are available
   async isPaymentEnabled(): Promise<boolean> {
-    return true;
+    try {
+      const response = await fetch('/api/payment/status');
+      if (!response.ok) {
+        return false;
+      }
+      const data = await response.json();
+      return data.enabled;
+    } catch {
+      return false;
+    }
   }
 };
