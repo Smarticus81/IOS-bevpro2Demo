@@ -51,11 +51,33 @@ app.use((req, res, next) => {
   next();
 });
 
+// Function to test database connection
+async function testDatabaseConnection() {
+  try {
+    await db.execute(sql`SELECT NOW()`);
+    log('Database connection successful');
+    return true;
+  } catch (error) {
+    console.error('Database connection failed:', error);
+    return false;
+  }
+}
+
 (async () => {
   try {
-    // Test database connection first
-    await db.execute(sql`SELECT 1`);
-    log('Database connection successful');
+    // Test database connection with retries
+    let connected = false;
+    for (let i = 0; i < 3 && !connected; i++) {
+      connected = await testDatabaseConnection();
+      if (!connected && i < 2) {
+        log(`Retrying database connection... (attempt ${i + 2}/3)`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+
+    if (!connected) {
+      throw new Error('Failed to connect to database after 3 attempts');
+    }
 
     // Register API routes and get the server instance
     const server = registerRoutes(app);

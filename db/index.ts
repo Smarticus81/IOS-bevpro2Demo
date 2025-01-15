@@ -9,8 +9,14 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Create the neon connection
-const sql_connection = neon(process.env.DATABASE_URL);
+// Create the neon connection with pooling
+const sql_connection = neon(process.env.DATABASE_URL, { 
+  poolConfig: {
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 60000,
+    max: 10
+  }
+});
 
 // Create the drizzle db instance
 export const db = drizzle(sql_connection, { schema });
@@ -18,8 +24,9 @@ export const db = drizzle(sql_connection, { schema });
 // Export schema and sql for use in other files
 export { schema, sql };
 
-// Basic error handling for database operations
+// Add better error handling
 process.on('unhandledRejection', (error) => {
-  console.error('Database operation failed:', error);
-  process.exit(1);
+  console.error('Database error:', error);
+  // Don't exit the process, just log the error
+  // This allows the application to continue running and retry connections
 });
