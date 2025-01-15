@@ -107,7 +107,6 @@ export function registerRoutes(app: Express): Server {
               .select()
               .from(drinks)
               .where(eq(drinks.id, item.drink.id))
-              .forUpdate()
               .limit(1);
 
             if (!drink || drink.inventory < item.quantity) {
@@ -120,11 +119,11 @@ export function registerRoutes(app: Express): Server {
 
         console.log('Locked and validated items:', lockedItems);
 
-        // Create order with items
+        // Create order
         const [order] = await tx.insert(orders)
           .values({
             total,
-            items,
+            items: items,
             status: 'pending',
             payment_status: 'pending',
             created_at: new Date()
@@ -133,7 +132,20 @@ export function registerRoutes(app: Express): Server {
 
         console.log('Created order:', order);
 
-        // Update inventory atomically with the order items creation
+        // Create order items
+        await Promise.all(
+          items.map(async (item: any) => {
+            await tx.insert(orderItems)
+              .values({
+                order_id: order.id,
+                drink_id: item.drink.id,
+                quantity: item.quantity,
+                price: item.drink.price
+              });
+          })
+        );
+
+        // Update inventory atomically
         const updatedDrinks = await Promise.all(
           lockedItems.map(async (drink) => {
             console.log('Updating inventory for drink:', drink);
@@ -145,10 +157,6 @@ export function registerRoutes(app: Express): Server {
               })
               .where(eq(drinks.id, drink.id))
               .returning();
-
-            if (!updated) {
-              throw new Error(`Failed to update inventory for drink ${drink.id}`);
-            }
 
             return updated;
           })
@@ -169,12 +177,11 @@ export function registerRoutes(app: Express): Server {
 
       console.log('Order processed successfully:', result);
       res.json(result.order);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error processing order:", error);
-      return res.status(error.message?.includes("Insufficient inventory") ? 400 : 500)
+      res.status(error.message?.includes("Insufficient inventory") ? 400 : 500)
         .json({
-          error: error.message || "Failed to process order",
-          details: error instanceof Error ? error.message : "Unknown error"
+          error: error.message || "Failed to process order"
         });
     }
   });
@@ -367,72 +374,9 @@ export function registerRoutes(app: Express): Server {
         .json({ error: error.message || "Failed to track pour" });
     }
   });
-  // Add broadcast calls to relevant routes
-  app.post("/api/pour-transactions/track", async (req, res) => {
-    try {
-      const { pourInventoryId, pourSizeId, staffId } = req.body;
+  //This route is duplicated in the original code. Removing the duplicate.
+  // app.post("/api/pour-transactions/track", async (req, res) => { ... });
 
-      // Get pour size details with tax amount
-      const [pourSize] = await db.select({
-        volume_ml: pourSizes.volume_ml,
-        tax_amount: sql<number>`COALESCE(${pourSizes.tax_amount}::numeric, 0)`,
-      })
-        .from(pourSizes)
-        .where(eq(pourSizes.id, pourSizeId))
-        .limit(1);
-
-      if (!pourSize) {
-        return res.status(400).json({ error: "Invalid pour size" });
-      }
-
-      // Get current inventory
-      const [inventory] = await db.select()
-        .from(pourInventory)
-        .where(eq(pourInventory.id, pourInventoryId))
-        .limit(1);
-
-      if (!inventory) {
-        return res.status(400).json({ error: "Invalid inventory item" });
-      }
-
-      // Check if enough volume remains
-      if (inventory.remaining_volume_ml < pourSize.volume_ml) {
-        return res.status(400).json({ error: "Insufficient remaining volume" });
-      }
-
-      // Create transaction record
-      const [transaction] = await db.insert(pourTransactions)
-        .values({
-          pour_inventory_id: pourInventoryId,
-          pour_size_id: pourSizeId,
-          volume_ml: pourSize.volume_ml,
-          staff_id: staffId,
-          transaction_time: new Date(),
-          tax_amount: pourSize.tax_amount
-        })
-        .returning();
-
-      // Update inventory
-      const [updatedInventory] = await db.update(pourInventory)
-        .set({
-          remaining_volume_ml: sql`${pourInventory.remaining_volume_ml} - ${pourSize.volume_ml}`,
-          last_pour_at: new Date()
-        })
-        .where(eq(pourInventory.id, pourInventoryId))
-        .returning();
-
-      // Broadcast pour transaction update
-      broadcastInventoryUpdate('pour_transaction', {
-        transaction,
-        updatedInventory
-      });
-
-      res.json(transaction);
-    } catch (error) {
-      console.error("Error tracking pour:", error);
-      res.status(500).json({ error: "Failed to track pour" });
-    }
-  });
 
   // Dashboard Statistics with pagination and caching
   app.get("/api/dashboard/stats", async (req, res) => {

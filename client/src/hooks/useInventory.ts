@@ -45,9 +45,8 @@ export function useInventory() {
 
         // Handle inventory updates
         if (update.type === 'INVENTORY_UPDATE' && update.data) {
-          if (update.data.type === 'INVENTORY_CHANGE') {
+          if (update.data.type === 'INVENTORY_CHANGE' && update.data.drinkId) {
             console.log('Processing inventory change:', update.data);
-            // Update single drink inventory
             queryClient.setQueryData(['api/drinks'], (oldData: any) => {
               if (!oldData?.drinks) {
                 console.log('No existing drinks data found');
@@ -70,17 +69,11 @@ export function useInventory() {
                 return drink;
               });
 
-              return {
-                ...oldData,
-                drinks: updatedDrinks
-              };
+              return { ...oldData, drinks: updatedDrinks };
             });
           } else if (update.data.type === 'DRINKS_UPDATE' && update.data.items) {
             console.log('Processing full drinks update');
-            // Update all drinks
-            queryClient.setQueryData(['api/drinks'], {
-              drinks: update.data.items
-            });
+            queryClient.setQueryData(['api/drinks'], { drinks: update.data.items });
           }
         }
       } catch (error) {
