@@ -1,33 +1,121 @@
 import { db } from "@db";
-import { orders } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { orders, transactions, orderItems, drinks } from "@db/schema";
+import { eq, and, desc } from "drizzle-orm";
+import { sql } from 'drizzle-orm';
 
 export class PaymentService {
-  // Process a payment with demo mode always succeeding
-  static async processPayment(amount: number, orderId?: number) {
+  // Process a payment and record transaction
+  static async processPayment(amount: number, orderId: number) {
     try {
-      // Simulate payment processing delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Create transaction record
+      const [transaction] = await db
+        .insert(transactions)
+        .values({
+          order_id: orderId,
+          amount,
+          status: 'processing',
+          attempts: 1,
+          created_at: new Date(),
+          updated_at: new Date()
+        })
+        .returning();
 
-      // In demo mode, always succeed
-      if (orderId) {
+      // Update transaction record as completed
+      const [updatedTransaction] = await db
+        .update(transactions)
+        .set({
+          status: 'completed',
+          updated_at: new Date(),
+          metadata: {
+            completed_at: new Date().toISOString(),
+            success: true
+          }
+        })
+        .where(eq(transactions.id, transaction.id))
+        .returning();
+
+      // Update order status
+      const [updatedOrder] = await db
+        .update(orders)
+        .set({ 
+          status: 'completed', 
+          payment_status: 'completed',
+          completed_at: new Date()
+        })
+        .where(eq(orders.id, orderId))
+        .returning();
+
+      // Update drink inventory and sales
+      const orderDetails = await db
+        .select()
+        .from(orderItems)
+        .where(eq(orderItems.order_id, orderId));
+
+      for (const item of orderDetails) {
         await db
-          .update(orders)
-          .set({ status: 'paid' })
-          .where(eq(orders.id, orderId));
+          .update(drinks)
+          .set({
+            inventory: sql`${drinks.inventory} - ${item.quantity}`,
+            sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
+          })
+          .where(eq(drinks.id, item.drink_id));
       }
 
       return {
         success: true,
+        transaction: updatedTransaction,
+        order: updatedOrder,
         message: `Payment of $${(amount / 100).toFixed(2)} processed successfully`
       };
     } catch (error) {
       console.error('Payment processing error:', error);
-      // In demo mode, succeed even on error
+      throw error;
+    }
+  }
+
+  // Get transaction history with pagination
+  static async getTransactionHistory(page = 1, limit = 50) {
+    const offset = (page - 1) * limit;
+
+    try {
+      const transactions = await db
+        .select({
+          id: transactions.id,
+          order_id: transactions.order_id,
+          amount: transactions.amount,
+          status: transactions.status,
+          created_at: transactions.created_at,
+          updated_at: transactions.updated_at,
+          metadata: transactions.metadata,
+          order: {
+            id: orders.id,
+            items: orders.items,
+            total: orders.total,
+            created_at: orders.created_at
+          }
+        })
+        .from(transactions)
+        .leftJoin(orders, eq(transactions.order_id, orders.id))
+        .orderBy(desc(transactions.created_at))
+        .limit(limit)
+        .offset(offset);
+
+      const [count] = await db
+        .select({ count: sql`count(*)`.mapWith(Number) })
+        .from(transactions);
+
       return {
-        success: true,
-        message: `Payment of $${(amount / 100).toFixed(2)} processed successfully`
+        data: transactions,
+        pagination: {
+          currentPage: page,
+          limit,
+          totalItems: count.count,
+          totalPages: Math.ceil(count.count / limit)
+        }
       };
+    } catch (error) {
+      console.error('Error fetching transaction history:', error);
+      throw error;
     }
   }
 

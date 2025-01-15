@@ -18,6 +18,7 @@ import {
 } from "@db/schema";
 import { eq, sql, count, sum, desc, and } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
+import { PaymentService } from "./services/payments";
 
 // Cache duration constants
 const CACHE_DURATION = {
@@ -50,177 +51,53 @@ export function registerRoutes(app: Express): Server {
     }
   };
 
-  // Payment processing endpoint with error handling and transaction recording
-  app.post("/api/payment/process", async (req, res) => {
-    let transactionId: number | null = null;
-
-    try {
-      const { amount, orderId } = req.body;
-      console.log("Processing payment:", { amount, orderId });
-
-      if (typeof amount !== 'number' || amount <= 0) {
-        console.error("Invalid payment amount:", amount);
-        return res.status(400).json({
-          error: "Invalid payment amount"
-        });
-      }
-
-      if (!orderId || typeof orderId !== 'number') {
-        console.error("Invalid order ID:", orderId);
-        return res.status(400).json({
-          error: "Invalid order ID"
-        });
-      }
-
-      // Get order details for the transaction record
-      const [order] = await db
-        .select()
-        .from(orders)
-        .where(eq(orders.id, orderId))
-        .limit(1);
-
-      if (!order) {
-        return res.status(404).json({ error: "Order not found" });
-      }
-
-      // Create transaction record
-      const [transaction] = await db.insert(transactions)
-        .values({
-          order_id: orderId,
-          amount,
-          status: 'processing',
-          attempts: 1,
-          created_at: new Date(),
-          updated_at: new Date()
-        })
-        .returning();
-
-      transactionId = transaction.id;
-      console.log("Transaction created:", transactionId);
-
-      // Process the transaction
-      const [updatedTransaction] = await db.update(transactions)
-        .set({
-          status: 'completed',
-          updated_at: new Date(),
-          metadata: {
-            completed_at: new Date().toISOString(),
-            success: true,
-            items: order.items
-          }
-        })
-        .where(eq(transactions.id, transactionId))
-        .returning();
-
-      // Update order status and complete the transaction
-      const [updatedOrder] = await db
-        .update(orders)
-        .set({
-          status: 'completed',
-          payment_status: 'completed',
-          completed_at: new Date()
-        })
-        .where(eq(orders.id, orderId))
-        .returning();
-
-      // Update inventory for each item in the order
-      for (const item of order.items) {
-        await db
-          .update(drinks)
-          .set({
-            inventory: sql`${drinks.inventory} - ${item.quantity}`,
-            sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
-          })
-          .where(eq(drinks.id, item.drink.id));
-      }
-
-      // Broadcast transaction update for real-time updates
-      broadcastInventoryUpdate('TRANSACTION_UPDATE', {
-        type: 'payment_processed',
-        transaction: updatedTransaction,
-        order: updatedOrder,
-        items: order.items,
-        timestamp: new Date().toISOString()
-      });
-
-      console.log("Payment successful:", {
-        orderId,
-        transactionId,
-        amount: (amount / 100).toFixed(2)
-      });
-
-      res.json({
-        success: true,
-        message: `Payment of $${(amount / 100).toFixed(2)} processed successfully`,
-        orderId,
-        transactionId,
-        timestamp: new Date().toISOString()
-      });
-
-    } catch (error) {
-      console.error("Payment processing error:", error);
-
-      if (transactionId) {
-        const [failedTransaction] = await db.update(transactions)
-          .set({
-            status: 'failed',
-            last_error: error instanceof Error ? error.message : 'Payment processing failed',
-            updated_at: new Date()
-          })
-          .where(eq(transactions.id, transactionId))
-          .returning();
-
-        // Broadcast failed transaction
-        broadcastInventoryUpdate('TRANSACTION_UPDATE', {
-          type: 'payment_failed',
-          transaction: failedTransaction,
-          timestamp: new Date().toISOString()
-        });
-      }
-
-      res.status(500).json({
-        error: "Internal server error during payment processing",
-        transactionId
-      });
-    }
-  });
-
-  // Add transaction history endpoint
+  // Get transaction history
   app.get("/api/transactions", async (req, res) => {
     try {
-      const limit = parseInt(req.query.limit as string) || 50;
       const page = parseInt(req.query.page as string) || 1;
-      const offset = (page - 1) * limit;
+      const limit = parseInt(req.query.limit as string) || 50;
 
-      const transactions = await db.select({
-        id: transactions.id,
-        order_id: transactions.order_id,
-        amount: transactions.amount,
-        status: transactions.status,
-        created_at: transactions.created_at,
-        updated_at: transactions.updated_at,
-        metadata: transactions.metadata,
-        order: orders,
-      })
-        .from(transactions)
-        .leftJoin(orders, eq(transactions.order_id, orders.id))
-        .orderBy(desc(transactions.created_at))
-        .limit(limit)
-        .offset(offset);
-
-      res.json({
-        data: transactions,
-        pagination: {
-          currentPage: page,
-          limit,
-          totalItems: transactions.length
-        }
-      });
+      const result = await PaymentService.getTransactionHistory(page, limit);
+      res.json(result);
     } catch (error) {
       console.error("Error fetching transactions:", error);
       res.status(500).json({ error: "Failed to fetch transactions" });
     }
   });
+
+  // Process payment and record transaction
+  app.post("/api/payment/process", async (req, res) => {
+    try {
+      const { amount, orderId } = req.body;
+
+      if (typeof amount !== 'number' || amount <= 0) {
+        return res.status(400).json({ error: "Invalid payment amount" });
+      }
+
+      if (!orderId || typeof orderId !== 'number') {
+        return res.status(400).json({ error: "Invalid order ID" });
+      }
+
+      const result = await PaymentService.processPayment(amount, orderId);
+
+      // Broadcast transaction update
+      broadcastInventoryUpdate('TRANSACTION_UPDATE', {
+        type: 'payment_processed',
+        transaction: result.transaction,
+        order: result.order,
+        timestamp: new Date().toISOString()
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Payment processing error:", error);
+      res.status(500).json({
+        error: "Failed to process payment",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
 
   // Get drinks with real-time updates enabled
   app.get("/api/drinks", async (_req, res) => {
@@ -491,6 +368,7 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
+
 
 
   // Dashboard Statistics with pagination and caching
