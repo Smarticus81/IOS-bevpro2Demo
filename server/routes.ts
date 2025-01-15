@@ -962,7 +962,7 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "Invalid quantity" });
       }
 
-      // Process inventory update in aa transaction
+      // Process inventory update in a transaction
       const result = await db.transaction(async (tx) => {
         // Get current drink with locking
         const [drink] = await tx
@@ -996,13 +996,32 @@ export function registerRoutes(app: Express): Server {
           .where(eq(drinks.id, drinkId))
           .returning();
 
-        // Log the transaction -  This line was missing in the edited snippet.
+        // Create a demo order for inventory updates
+        const [order] = await tx
+          .insert(orders)
+          .values({
+            total: drink.price * quantity,
+            status: 'completed',
+            payment_status: 'completed',
+            created_at: new Date(),
+            completed_at: new Date(),
+            items: [{
+              drink_id: drinkId,
+              quantity: quantity,
+              price: drink.price
+            }]
+          })
+          .returning();
+
+        // Create transaction record linked to the order
         const [transaction] = await tx
           .insert(transactions)
           .values({
+            order_id: order.id,
             amount: drink.price * quantity,
             status: 'completed',
             created_at: new Date(),
+            updated_at: new Date(),
             metadata: {
               type: isIncrement ? 'inventory_increase' : 'inventory_decrease',
               drink_id: drinkId,
@@ -1013,7 +1032,7 @@ export function registerRoutes(app: Express): Server {
           })
           .returning();
 
-        return { updatedDrink, transaction };
+        return { updatedDrink, transaction, order };
       });
 
       // Broadcast inventory update
@@ -1021,7 +1040,7 @@ export function registerRoutes(app: Express): Server {
         drinkId: result.updatedDrink.id,
         newInventory: result.updatedDrink.inventory,
         sales: result.updatedDrink.sales,
-        transaction: result.transaction // Added transaction to broadcast
+        transaction: result.transaction
       });
 
       res.json(result);
