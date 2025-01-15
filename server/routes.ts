@@ -36,7 +36,7 @@ export function registerRoutes(app: Express): Server {
   // Setup realtime connection with enhanced event handling
   const realtimeProxy = setupRealtimeProxy(httpServer);
 
-  // Update the broadcast helper function to be more consistent
+  // Helper function to broadcast inventory updates
   const broadcastInventoryUpdate = (type: string, data: any) => {
     if (realtimeProxy) {
       console.log('Broadcasting inventory update:', { type, data });
@@ -95,31 +95,29 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
-      // Process order in a transaction with proper locking
+      // Process order in a transaction
       const result = await db.transaction(async (tx) => {
         console.log('Starting transaction for order processing');
 
-        // First, lock and validate all inventory items
-        const lockedItems = await Promise.all(
-          items.map(async (item: any) => {
-            console.log('Locking item:', item);
-            const [drink] = await tx
-              .select()
-              .from(drinks)
-              .where(eq(drinks.id, item.drink.id))
-              .limit(1);
+        // First, validate and lock inventory items
+        for (const item of items) {
+          const [drink] = await tx
+            .select()
+            .from(drinks)
+            .where(eq(drinks.id, item.drink.id))
+            .forUpdate()
+            .limit(1);
 
-            if (!drink || drink.inventory < item.quantity) {
-              throw new Error(`Insufficient inventory for drink ID ${item.drink.id}`);
-            }
+          if (!drink) {
+            throw new Error(`Drink not found: ${item.drink.id}`);
+          }
 
-            return { ...drink, requestedQuantity: item.quantity };
-          })
-        );
+          if (drink.inventory < item.quantity) {
+            throw new Error(`Insufficient inventory for ${drink.name}: ${drink.inventory} available, ${item.quantity} requested`);
+          }
+        }
 
-        console.log('Locked and validated items:', lockedItems);
-
-        // Create order
+        // Create order first
         const [order] = await tx.insert(orders)
           .values({
             total,
@@ -132,47 +130,51 @@ export function registerRoutes(app: Express): Server {
 
         console.log('Created order:', order);
 
-        // Create order items
-        await Promise.all(
-          items.map(async (item: any) => {
-            await tx.insert(orderItems)
-              .values({
-                order_id: order.id,
-                drink_id: item.drink.id,
-                quantity: item.quantity,
-                price: item.drink.price
-              });
-          })
-        );
+        // Create order items and update inventory atomically
+        const updatedDrinks = [];
+        for (const item of items) {
+          // Create order item
+          await tx.insert(orderItems)
+            .values({
+              order_id: order.id,
+              drink_id: item.drink.id,
+              quantity: item.quantity,
+              price: item.drink.price
+            });
 
-        // Update inventory atomically
-        const updatedDrinks = await Promise.all(
-          lockedItems.map(async (drink) => {
-            console.log('Updating inventory for drink:', drink);
-            const [updated] = await tx
-              .update(drinks)
-              .set({
-                inventory: sql`${drinks.inventory} - ${drink.requestedQuantity}`,
-                sales: sql`COALESCE(${drinks.sales}, 0) + ${drink.requestedQuantity}`
-              })
-              .where(eq(drinks.id, drink.id))
-              .returning();
+          // Update inventory
+          const [updatedDrink] = await tx
+            .update(drinks)
+            .set({
+              inventory: sql`${drinks.inventory} - ${item.quantity}`,
+              sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
+            })
+            .where(eq(drinks.id, item.drink.id))
+            .returning();
 
-            return updated;
-          })
-        );
+          updatedDrinks.push(updatedDrink);
+        }
 
-        console.log('Updated drinks inventory:', updatedDrinks);
         return { order, updatedDrinks };
       });
 
-      // Broadcast individual inventory updates after successful transaction
-      result.updatedDrinks.forEach(drink => {
+      // Broadcast updates after successful transaction
+      for (const drink of result.updatedDrinks) {
         broadcastInventoryUpdate('INVENTORY_CHANGE', {
           drinkId: drink.id,
           newInventory: drink.inventory,
           sales: drink.sales
         });
+      }
+
+      // Also broadcast a full refresh to ensure consistency
+      const allDrinks = await db
+        .select()
+        .from(drinks)
+        .orderBy(drinks.category);
+
+      broadcastInventoryUpdate('DRINKS_UPDATE', {
+        items: allDrinks
       });
 
       console.log('Order processed successfully:', result);

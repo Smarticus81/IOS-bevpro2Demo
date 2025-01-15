@@ -3,9 +3,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Drink } from '@db/schema';
 
 type InventoryUpdate = {
-  type: string;
-  data: {
-    type?: 'INVENTORY_CHANGE' | 'DRINKS_UPDATE';
+  type: 'INVENTORY_UPDATE' | 'status';
+  data?: {
+    type: 'INVENTORY_CHANGE' | 'DRINKS_UPDATE';
     drinkId?: number;
     newInventory?: number;
     sales?: number;
@@ -22,22 +22,22 @@ export function useInventory() {
 
   const connect = useCallback(() => {
     console.log('Attempting WebSocket connection...');
-    // Determine the WebSocket protocol based on the page protocol
     const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
     const ws = new WebSocket(`${protocol}${window.location.host}`);
 
     ws.onopen = () => {
       console.log('WebSocket connected successfully');
       setSocket(ws);
-      setRetryCount(0); // Reset retry count on successful connection
+      setRetryCount(0);
     };
 
     ws.onmessage = (event) => {
       try {
+        console.log('Raw WebSocket message:', event.data);
         const update: InventoryUpdate = JSON.parse(event.data);
-        console.log('Received WebSocket message:', update);
+        console.log('Parsed WebSocket message:', update);
 
-        // Handle status messages
+        // Handle connection status messages
         if (update.type === 'status') {
           console.log('WebSocket status:', update.status);
           return;
@@ -45,8 +45,9 @@ export function useInventory() {
 
         // Handle inventory updates
         if (update.type === 'INVENTORY_UPDATE' && update.data) {
-          if (update.data.type === 'INVENTORY_CHANGE' && update.data.drinkId) {
+          if (update.data.type === 'INVENTORY_CHANGE' && update.data.drinkId !== undefined) {
             console.log('Processing inventory change:', update.data);
+
             queryClient.setQueryData(['api/drinks'], (oldData: any) => {
               if (!oldData?.drinks) {
                 console.log('No existing drinks data found');
@@ -58,7 +59,8 @@ export function useInventory() {
                   console.log('Updating drink:', {
                     id: drink.id,
                     oldInventory: drink.inventory,
-                    newInventory: update.data.newInventory
+                    newInventory: update.data.newInventory,
+                    sales: update.data.sales
                   });
                   return {
                     ...drink,
@@ -69,10 +71,17 @@ export function useInventory() {
                 return drink;
               });
 
+              console.log('Updated drinks data:', {
+                oldCount: oldData.drinks.length,
+                newCount: updatedDrinks.length
+              });
+
               return { ...oldData, drinks: updatedDrinks };
             });
-          } else if (update.data.type === 'DRINKS_UPDATE' && update.data.items) {
-            console.log('Processing full drinks update');
+          } else if (update.data.type === 'DRINKS_UPDATE' && Array.isArray(update.data.items)) {
+            console.log('Processing full drinks update:', {
+              itemCount: update.data.items.length
+            });
             queryClient.setQueryData(['api/drinks'], { drinks: update.data.items });
           }
         }
@@ -90,7 +99,6 @@ export function useInventory() {
       console.log('WebSocket disconnected');
       setSocket(null);
 
-      // Implement exponential backoff for reconnection
       const maxRetries = 5;
       const backoffTime = Math.min(1000 * Math.pow(2, retryCount), 10000);
 
