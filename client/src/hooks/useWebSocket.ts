@@ -2,7 +2,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface WebSocketMessage {
-  type: 'INVENTORY_UPDATE' | 'POUR_UPDATE' | 'status';
+  type: 'INVENTORY_UPDATE' | 'POUR_UPDATE' | 'TRANSACTION_UPDATE' | 'status';
   data?: any;
   status?: string;
   timestamp: string;
@@ -38,6 +38,13 @@ export function useWebSocket() {
           case 'POUR_UPDATE':
             // Invalidate and refetch pour-related queries
             queryClient.invalidateQueries({ queryKey: ['/api/pour-inventory'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/pour-transactions'] });
+            break;
+
+          case 'TRANSACTION_UPDATE':
+            // Invalidate all relevant transaction and inventory queries
+            queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
             queryClient.invalidateQueries({ queryKey: ['/api/pour-transactions'] });
             break;
 
