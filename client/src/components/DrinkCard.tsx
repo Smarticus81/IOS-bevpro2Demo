@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import type { Drink } from "@db/schema";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Beer, Wine, GlassWater, Coffee, Droplet } from "lucide-react";
 import { useInventory } from "@/hooks/useInventory";
 
@@ -13,7 +13,20 @@ interface DrinkCardProps {
 
 export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [lastInventory, setLastInventory] = useState(drink.inventory);
   const { isConnected } = useInventory();
+
+  // Track inventory changes for animation
+  useEffect(() => {
+    if (drink.inventory !== lastInventory) {
+      console.log('Inventory changed:', {
+        drinkId: drink.id,
+        oldInventory: lastInventory,
+        newInventory: drink.inventory
+      });
+      setLastInventory(drink.inventory);
+    }
+  }, [drink.inventory, lastInventory]);
 
   const getCategoryIcon = (category: string) => {
     switch (category.toLowerCase()) {
@@ -94,7 +107,7 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
 
           {/* Drink Image */}
           <img
-            src={drink.image}
+            src={drink.image || ''}
             alt={drink.name}
             onLoad={() => setImageLoaded(true)}
             className={`h-full w-full object-cover transition-opacity duration-500
