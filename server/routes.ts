@@ -100,6 +100,7 @@ export function registerRoutes(app: Express): Server {
               .select()
               .from(drinks)
               .where(eq(drinks.id, item.drink.id))
+              .forUpdate() // Add FOR UPDATE lock
               .limit(1);
 
             if (!drink || drink.inventory < item.quantity) {
@@ -125,7 +126,7 @@ export function registerRoutes(app: Express): Server {
 
         console.log('Created order:', order);
 
-        // Create order items
+        // Update inventory atomically with the order items creation
         const orderItemsData = items.map((item: any) => ({
           order_id: order.id,
           drink_id: item.drink.id,
