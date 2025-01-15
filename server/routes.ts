@@ -36,7 +36,7 @@ export function registerRoutes(app: Express): Server {
   // Setup realtime connection with enhanced event handling
   const realtimeProxy = setupRealtimeProxy(httpServer);
 
-  // Helper function to broadcast inventory updates
+  // Update the broadcast helper function to be more consistent
   const broadcastInventoryUpdate = (type: string, data: any) => {
     if (realtimeProxy) {
       console.log('Broadcasting inventory update:', { type, data });
@@ -44,7 +44,8 @@ export function registerRoutes(app: Express): Server {
         type: 'INVENTORY_UPDATE',
         data: {
           type,
-          ...data
+          ...data,
+          timestamp: new Date().toISOString()
         }
       });
     }
@@ -62,10 +63,15 @@ export function registerRoutes(app: Express): Server {
         .from(drinks)
         .orderBy(drinks.category);
 
+      console.log('Fetched drinks:', allDrinks.map(d => ({ 
+        id: d.id, 
+        name: d.name, 
+        inventory: d.inventory 
+      })));
+
       // Broadcast drinks update
-      broadcastInventoryUpdate('drinks', {
+      broadcastInventoryUpdate('DRINKS_UPDATE', {
         items: allDrinks,
-        timestamp: new Date().toISOString()
       });
 
       res.json({
@@ -96,11 +102,12 @@ export function registerRoutes(app: Express): Server {
         // First, lock and validate all inventory items
         const lockedItems = await Promise.all(
           items.map(async (item: any) => {
+            console.log('Locking item:', item);
             const [drink] = await tx
               .select()
               .from(drinks)
               .where(eq(drinks.id, item.drink.id))
-              .forUpdate() // Add FOR UPDATE lock
+              .forUpdate()
               .limit(1);
 
             if (!drink || drink.inventory < item.quantity) {
@@ -113,7 +120,7 @@ export function registerRoutes(app: Express): Server {
 
         console.log('Locked and validated items:', lockedItems);
 
-        // Create order
+        // Create order with items
         const [order] = await tx.insert(orders)
           .values({
             total,
@@ -127,20 +134,11 @@ export function registerRoutes(app: Express): Server {
         console.log('Created order:', order);
 
         // Update inventory atomically with the order items creation
-        const orderItemsData = items.map((item: any) => ({
-          order_id: order.id,
-          drink_id: item.drink.id,
-          quantity: item.quantity,
-          price: item.drink.price
-        }));
-
-        await tx.insert(orderItems).values(orderItemsData);
-        console.log('Created order items');
-
-        // Update inventory atomically
         const updatedDrinks = await Promise.all(
           lockedItems.map(async (drink) => {
-            const [updated] = await tx.update(drinks)
+            console.log('Updating inventory for drink:', drink);
+            const [updated] = await tx
+              .update(drinks)
               .set({
                 inventory: sql`${drinks.inventory} - ${drink.requestedQuantity}`,
                 sales: sql`COALESCE(${drinks.sales}, 0) + ${drink.requestedQuantity}`
@@ -162,19 +160,14 @@ export function registerRoutes(app: Express): Server {
 
       // Broadcast individual inventory updates after successful transaction
       result.updatedDrinks.forEach(drink => {
-        broadcastInventoryUpdate('inventory_change', {
+        broadcastInventoryUpdate('INVENTORY_CHANGE', {
           drinkId: drink.id,
           newInventory: drink.inventory,
           sales: drink.sales
         });
       });
 
-      // Also broadcast full drinks update to ensure consistency
-      broadcastInventoryUpdate('drinks_refresh', {
-        timestamp: new Date().toISOString()
-      });
-
-      console.log('Order processed successfully');
+      console.log('Order processed successfully:', result);
       res.json(result.order);
     } catch (error) {
       console.error("Error processing order:", error);

@@ -3,13 +3,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Drink } from '@db/schema';
 
 type InventoryUpdate = {
-  type: 'inventory_change' | 'drinks_refresh';
+  type: string;
   data: {
+    type: 'INVENTORY_CHANGE' | 'DRINKS_UPDATE';
     drinkId?: number;
     newInventory?: number;
     sales?: number;
-    timestamp?: string;
     items?: Drink[];
+    timestamp: string;
   };
 };
 
@@ -31,26 +32,31 @@ export function useInventory() {
     ws.onmessage = (event) => {
       try {
         const update: InventoryUpdate = JSON.parse(event.data);
-        console.log('Received inventory update:', update);
+        console.log('Received WebSocket message:', update);
 
-        if (update.type === 'inventory_change') {
+        if (update.data.type === 'INVENTORY_CHANGE') {
+          console.log('Processing inventory change:', update.data);
           // Update single drink inventory
           queryClient.setQueryData(['api/drinks'], (oldData: any) => {
-            if (!oldData?.drinks) return oldData;
+            if (!oldData?.drinks) {
+              console.log('No existing drinks data found');
+              return oldData;
+            }
 
-            const updatedDrinks = oldData.drinks.map((drink: Drink) =>
-              drink.id === update.data.drinkId
-                ? {
-                    ...drink,
-                    inventory: update.data.newInventory,
-                    sales: update.data.sales
-                  }
-                : drink
-            );
-
-            console.log('Updated drink inventory:', {
-              drinkId: update.data.drinkId,
-              newInventory: update.data.newInventory
+            const updatedDrinks = oldData.drinks.map((drink: Drink) => {
+              if (drink.id === update.data.drinkId) {
+                console.log('Updating drink:', {
+                  id: drink.id,
+                  oldInventory: drink.inventory,
+                  newInventory: update.data.newInventory
+                });
+                return {
+                  ...drink,
+                  inventory: update.data.newInventory,
+                  sales: update.data.sales
+                };
+              }
+              return drink;
             });
 
             return {
@@ -58,12 +64,16 @@ export function useInventory() {
               drinks: updatedDrinks
             };
           });
-        } else if (update.type === 'drinks_refresh') {
-          console.log('Refreshing all drinks data');
-          queryClient.invalidateQueries({ queryKey: ['api/drinks'] });
+        } else if (update.data.type === 'DRINKS_UPDATE' && update.data.items) {
+          console.log('Processing full drinks update');
+          // Update all drinks
+          queryClient.setQueryData(['api/drinks'], {
+            drinks: update.data.items
+          });
         }
       } catch (error) {
         console.error('Error processing WebSocket message:', error);
+        console.error('Raw message:', event.data);
       }
     };
 
@@ -85,6 +95,8 @@ export function useInventory() {
           setRetryCount(prev => prev + 1);
           connect();
         }, backoffTime);
+      } else {
+        console.log('Max retry attempts reached, manual refresh required');
       }
     };
 
