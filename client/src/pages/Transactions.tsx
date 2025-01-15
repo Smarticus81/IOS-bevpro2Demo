@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavBar } from "@/components/NavBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search } from "lucide-react";
@@ -9,12 +9,32 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import type { Transaction } from "@db/schema";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useWebSocket } from "@/hooks/useWebSocket";
+
+interface ApiResponse {
+  data: Transaction[];
+  pagination: {
+    currentPage: number;
+    limit: number;
+    totalItems: number;
+  };
+}
 
 export function Transactions() {
   const [search, setSearch] = useState("");
+  const queryClient = useQueryClient();
 
-  const { data: transactions, isLoading } = useQuery<Transaction[]>({
-    queryKey: ["/api/transactions"],
+  // Use WebSocket to listen for real-time updates
+  useWebSocket({
+    onMessage: (data) => {
+      if (data.type === 'INVENTORY_UPDATE' && data.data.transaction) {
+        queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+      }
+    }
+  });
+
+  const { data: transactionsResponse, isLoading } = useQuery<ApiResponse>({
+    queryKey: ['/api/transactions'],
   });
 
   const getStatusColor = (status: string) => {
@@ -30,14 +50,16 @@ export function Transactions() {
     }
   };
 
-  const filteredTransactions = transactions?.filter(transaction => {
+  const transactions = transactionsResponse?.data || [];
+
+  const filteredTransactions = transactions.filter(transaction => {
     const searchLower = search.toLowerCase();
     return (
       transaction.provider_transaction_id?.toLowerCase().includes(searchLower) ||
       transaction.status.toLowerCase().includes(searchLower) ||
       transaction.amount.toString().includes(searchLower)
     );
-  }) || [];
+  });
 
   return (
     <div className="min-h-screen bg-white">
@@ -70,7 +92,7 @@ export function Transactions() {
                   <div>Transaction ID</div>
                   <div>Order ID</div>
                   <div>Amount</div>
-                  <div>Payment Method</div>
+                  <div>Type</div>
                   <div>Status</div>
                   <div>Date</div>
                 </div>
@@ -100,7 +122,7 @@ export function Transactions() {
                           ${(transaction.amount / 100).toFixed(2)}
                         </div>
                         <div className="text-gray-600">
-                          {transaction.payment_method_id ? `Method #${transaction.payment_method_id}` : 'Direct Payment'}
+                          {transaction.metadata?.type || 'sale'}
                         </div>
                         <div>
                           <Badge className={getStatusColor(transaction.status)}>

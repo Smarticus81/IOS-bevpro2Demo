@@ -105,8 +105,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       logger.info('Payment successful, clearing cart');
       dispatch({ type: 'CLEAR_CART' });
 
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
+      // Invalidate all relevant queries to refresh data
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['/api/drinks'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/transactions'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/pour-inventory'] })
+      ]);
 
       toast({
         title: 'Order Confirmed',
@@ -124,6 +128,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         description: error instanceof Error ? error.message : 'Failed to process order',
         variant: 'destructive',
       });
+
+      // Restore inventory counts on error
+      queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
     },
     onSettled: () => {
       logger.info('Payment processing complete');
@@ -276,8 +283,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           <div className="bg-white p-6 rounded-lg shadow-xl">
             <p className="text-lg font-medium">
               {state.items.length > 1 
-                ? `Preparing your ${state.items.length} drinks...`
-                : "Preparing your drink..."}
+                ? `Processing your ${state.items.length} drinks...`
+                : "Processing your drink..."}
             </p>
           </div>
         </div>
