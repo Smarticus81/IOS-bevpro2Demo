@@ -31,14 +31,18 @@ export function useWebSocket() {
         // Handle different types of updates
         switch (message.type) {
           case 'INVENTORY_UPDATE':
-            // Always invalidate drinks query to refresh inventory
-            queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
-
-            // If specific drink update, invalidate that drink's data
-            if (message.data?.drinkId) {
-              queryClient.invalidateQueries({ 
-                queryKey: [`/api/drinks/${message.data.drinkId}`]
-              });
+            // Handle different inventory update types
+            if (message.data?.type === 'drinks_refresh' || message.data?.type === 'drinks') {
+              // Full refresh of drinks data
+              queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
+            } else if (message.data?.type === 'inventory_change') {
+              // Individual drink update
+              queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
+              if (message.data?.drinkId) {
+                queryClient.invalidateQueries({ 
+                  queryKey: [`/api/drinks/${message.data.drinkId}`]
+                });
+              }
             }
             break;
 
