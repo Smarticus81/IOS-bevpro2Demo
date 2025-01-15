@@ -8,7 +8,6 @@ import { Package, AlertTriangle, Search, Plus, History, Beer, Wine, Coffee } fro
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Drink, PourInventory, TaxCategory, PourTransaction } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { InventoryAnalytics } from "@/components/InventoryAnalytics";
@@ -16,12 +15,48 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { AddInventoryItem } from "@/components/AddInventoryItem";
 
+// Define types based on our database schema
+interface Drink {
+  id: number;
+  name: string;
+  category: string;
+  subcategory: string | null;
+  price: number;
+  inventory: number;
+  sales: number;
+  image?: string;
+}
+
+interface PourInventory {
+  id: number;
+  drink_name: string;
+  drink_category: string;
+  bottle_id: string;
+  initial_volume_ml: number;
+  remaining_volume_ml: number;
+  is_active: boolean;
+  last_pour_at: string | null;
+  tax_category_name: string;
+}
+
+interface PourTransaction {
+  id: number;
+  drink_name: string;
+  drink_category: string;
+  volume_ml: number;
+  staff_id: number;
+  tax_amount: number;
+  transaction_time: string;
+  pour_size_id: number | null;
+}
+
 interface ApiResponse<T> {
   data: T[];
   pagination: {
     currentPage: number;
     limit: number;
     totalItems: number;
+    totalPages: number;
   };
 }
 
@@ -29,9 +64,9 @@ export function Inventory() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
-
   const socket = useWebSocket();
 
+  // WebSocket event handling for real-time updates
   useEffect(() => {
     if (!socket) return;
 
@@ -42,10 +77,10 @@ export function Inventory() {
         // Handle inventory updates from POS
         if (type === 'INVENTORY_UPDATE') {
           // Update drinks data
-          queryClient.setQueryData(['/api/drinks'], (old: any) => {
+          queryClient.setQueryData<{ drinks: Drink[] }>(['/api/drinks'], (old) => {
             if (!old?.drinks) return old;
 
-            const updatedDrinks = old.drinks.map((drink: Drink) => {
+            const updatedDrinks = old.drinks.map((drink) => {
               const update = data.updates?.find((u: any) => u.drinkId === drink.id);
               if (update) {
                 return {
@@ -71,10 +106,10 @@ export function Inventory() {
         // Handle pour tracking updates
         if (type === 'POUR_UPDATE') {
           // Update pour inventory data
-          queryClient.setQueryData(['/api/pour-inventory'], (old: any) => {
+          queryClient.setQueryData<ApiResponse<PourInventory>>(['/api/pour-inventory'], (old) => {
             if (!old?.data) return old;
 
-            const updatedInventory = old.data.map((item: PourInventory) => {
+            const updatedInventory = old.data.map((item) => {
               if (item.id === data.updatedInventory?.id) {
                 return {
                   ...item,
@@ -89,7 +124,7 @@ export function Inventory() {
 
           // Update pour transactions data
           if (data.transaction) {
-            queryClient.setQueryData(['/api/pour-transactions'], (old: any) => {
+            queryClient.setQueryData<ApiResponse<PourTransaction>>(['/api/pour-transactions'], (old) => {
               if (!old?.data) return old;
               return {
                 ...old,
@@ -116,35 +151,26 @@ export function Inventory() {
     };
   }, [socket, queryClient, toast]);
 
-  const { data: drinks, isLoading: isDrinksLoading } = useQuery<{ drinks: Drink[] }>({
+  // Data fetching using React Query
+  const { data: drinksData, isLoading: isDrinksLoading } = useQuery<{ drinks: Drink[] }>({
     queryKey: ["/api/drinks"]
   });
 
   const { 
-    data: pourInventoryResponse, 
+    data: pourInventoryData, 
     isLoading: isPourInventoryLoading 
-  } = useQuery<ApiResponse<PourInventory & { 
-    drink_name: string;
-    drink_category: string;
-    tax_category_name: string;
-  }>>({
+  } = useQuery<ApiResponse<PourInventory>>({
     queryKey: ["/api/pour-inventory"]
   });
 
-  const { data: taxCategoriesResponse } = useQuery<ApiResponse<TaxCategory>>({
-    queryKey: ["/api/tax-categories"]
-  });
-
   const { 
-    data: pourTransactionsResponse, 
+    data: pourTransactionsData, 
     isLoading: isTransactionsLoading 
-  } = useQuery<ApiResponse<PourTransaction & {
-    drink_name: string;
-    drink_category: string;
-  }>>({
+  } = useQuery<ApiResponse<PourTransaction>>({
     queryKey: ["/api/pour-transactions"]
   });
 
+  // Loading notification
   useEffect(() => {
     const isRefetching = isDrinksLoading || isPourInventoryLoading || isTransactionsLoading;
 
@@ -157,10 +183,9 @@ export function Inventory() {
     }
   }, [isDrinksLoading, isPourInventoryLoading, isTransactionsLoading, toast]);
 
-  const allDrinks = drinks?.drinks || [];
-  const pourInventory = pourInventoryResponse?.data || [];
-  const taxCategories = taxCategoriesResponse?.data || [];
-  const pourTransactions = pourTransactionsResponse?.data || [];
+  const allDrinks = drinksData?.drinks || [];
+  const pourInventory = pourInventoryData?.data || [];
+  const pourTransactions = pourTransactionsData?.data || [];
 
   const getBeverageIcon = (category: string) => {
     switch (category.toLowerCase()) {
@@ -189,26 +214,22 @@ export function Inventory() {
 
   const getLowStockBottles = () => 
     pourInventory.filter(item => {
-      const remainingRatio = item.remaining_volume_ml && item.initial_volume_ml
-        ? Number(item.remaining_volume_ml) / Number(item.initial_volume_ml)
-        : 1;
+      const remainingRatio = item.remaining_volume_ml / item.initial_volume_ml;
       return remainingRatio < 0.2 && item.is_active;
     });
 
   const getLowStockPackages = () =>
     allDrinks.filter(drink => 
       !needsPourTracking(drink.category) && 
-      typeof drink.inventory === 'number' && 
       drink.inventory < 10
     );
 
-  const getTotalTaxOwed = () => {
-    return pourTransactions.reduce((total, transaction) => {
-      const taxAmount = transaction.tax_amount 
-        ? Number(transaction.tax_amount) 
-        : 0;
-      return total + taxAmount;
-    }, 0);
+  const getTotalTransactions = () => {
+    const today = new Date().toDateString();
+    return pourTransactions.filter(t => {
+      const date = new Date(t.transaction_time).toDateString();
+      return date === today;
+    }).length;
   };
 
   const LoadingRow = () => (
@@ -272,10 +293,7 @@ export function Inventory() {
                   <div>
                     <p className="text-sm text-gray-600">Today's Activity</p>
                     <p className="text-xl font-semibold text-gray-900">
-                      {pourTransactions.filter(t => {
-                        const date = t.transaction_time ? new Date(t.transaction_time) : null;
-                        return date && date.toDateString() === new Date().toDateString();
-                      }).length}
+                      {getTotalTransactions()}
                     </p>
                   </div>
                 </div>
@@ -287,9 +305,9 @@ export function Inventory() {
                 <div className="flex items-center gap-3">
                   <AlertTriangle className="h-5 w-5 text-blue-500" />
                   <div>
-                    <p className="text-sm text-gray-600">Tax Owed</p>
+                    <p className="text-sm text-gray-600">Total Items</p>
                     <p className="text-xl font-semibold text-gray-900">
-                      ${getTotalTaxOwed().toFixed(2)}
+                      {allDrinks.length + pourInventory.length}
                     </p>
                   </div>
                 </div>
@@ -334,35 +352,107 @@ export function Inventory() {
                     value="pour" 
                     className="rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-500 px-4 py-2"
                   >
-                    Pour Tracked
+                    Pour Tracked ({filteredInventory.pourTracked.length})
                   </TabsTrigger>
                   <TabsTrigger 
                     value="package" 
                     className="rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-500 px-4 py-2"
                   >
-                    Package Tracked
+                    Package Tracked ({filteredInventory.packageTracked.length})
                   </TabsTrigger>
                   <TabsTrigger 
                     value="transactions" 
                     className="rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-500 px-4 py-2"
                   >
-                    Transactions
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="counting" 
-                    className="rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-500 px-4 py-2"
-                  >
-                    Counting Tool
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="insights" 
-                    className="rounded-none border-b-2 data-[state=active]:border-blue-500 data-[state=active]:text-blue-500 px-4 py-2"
-                  >
-                    Insights
+                    Transactions ({pourTransactions.length})
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="all" className="mt-0">All Content</TabsContent>
+                <TabsContent value="all" className="mt-0">
+                  <ScrollArea className="h-[calc(100vh-24rem)] scrollbar-hide">
+                    <div className="w-full">
+                      <div className="grid grid-cols-8 gap-4 p-3 text-sm font-medium text-gray-500 border-b border-gray-100">
+                        <div className="col-span-2">Item</div>
+                        <div>Category</div>
+                        <div>Type</div>
+                        <div>Current Stock</div>
+                        <div>Sales</div>
+                        <div>Last Update</div>
+                        <div>Status</div>
+                      </div>
+
+                      <div className="divide-y divide-gray-50">
+                        {isDrinksLoading ? (
+                          Array(5).fill(0).map((_, i) => <LoadingRow key={i} />)
+                        ) : (
+                          [...filteredInventory.packageTracked, ...filteredInventory.pourTracked].map((item) => {
+                            const isPourTracked = 'remaining_volume_ml' in item;
+                            const stockLevel = isPourTracked
+                              ? (item as PourInventory).remaining_volume_ml / (item as PourInventory).initial_volume_ml
+                              : (item as Drink).inventory;
+                            const isLowStock = isPourTracked
+                              ? stockLevel < 0.2
+                              : stockLevel < 10;
+
+                            return (
+                              <motion.div
+                                key={isPourTracked ? `pour-${item.id}` : `package-${item.id}`}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="grid grid-cols-8 gap-4 p-3 items-center hover:bg-gray-50/50"
+                              >
+                                <div className="col-span-2 font-medium text-gray-900 flex items-center gap-2">
+                                  {getBeverageIcon(isPourTracked ? (item as PourInventory).drink_category : (item as Drink).category)}
+                                  <div>
+                                    {isPourTracked ? (item as PourInventory).drink_name : (item as Drink).name}
+                                    <div className="text-xs text-gray-500">
+                                      {isPourTracked ? (item as PourInventory).drink_category : (item as Drink).subcategory}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-gray-600">
+                                  {isPourTracked ? (item as PourInventory).drink_category : (item as Drink).category}
+                                </div>
+                                <div className="text-gray-600">
+                                  {isPourTracked ? 'Pour Tracked' : 'Package'}
+                                </div>
+                                <div className="text-gray-600">
+                                  {isPourTracked
+                                    ? `${(item as PourInventory).remaining_volume_ml}ml`
+                                    : `${(item as Drink).inventory} units`
+                                  }
+                                </div>
+                                <div className="text-gray-600">
+                                  {isPourTracked ? '-' : (item as Drink).sales}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {isPourTracked
+                                    ? (item as PourInventory).last_pour_at
+                                      ? new Date((item as PourInventory).last_pour_at!).toLocaleDateString()
+                                      : 'Never'
+                                    : '-'
+                                  }
+                                </div>
+                                <div>
+                                  <Badge
+                                    variant={isLowStock ? "destructive" : "default"}
+                                    className={isLowStock
+                                      ? "bg-red-50 text-red-600 border border-red-200"
+                                      : "bg-green-50 text-green-600 border border-green-200"
+                                    }
+                                  >
+                                    {isLowStock ? "Low" : "OK"}
+                                  </Badge>
+                                </div>
+                              </motion.div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+
                 <TabsContent value="pour" className="mt-0">
                   <ScrollArea className="h-[calc(100vh-24rem)] scrollbar-hide">
                     <div className="w-full">
