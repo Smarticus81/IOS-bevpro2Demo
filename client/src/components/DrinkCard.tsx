@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { Drink } from "@db/schema";
 import { useState } from "react";
 import { Beer, Wine, GlassWater, Coffee, Droplet } from "lucide-react";
+import { useInventory } from "@/hooks/useInventory";
 
 interface DrinkCardProps {
   drink: Drink;
@@ -12,6 +13,7 @@ interface DrinkCardProps {
 
 export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const { isConnected } = useInventory();
 
   const getCategoryIcon = (category: string) => {
     switch (category.toLowerCase()) {
@@ -31,6 +33,29 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
 
   const { icon: Icon, color } = getCategoryIcon(drink.category);
 
+  const getInventoryStatus = (inventory: number) => {
+    if (inventory === 0) {
+      return {
+        color: 'bg-red-500',
+        text: 'text-red-500',
+        message: 'Out of Stock'
+      };
+    } else if (inventory < 10) {
+      return {
+        color: 'bg-yellow-500',
+        text: 'text-yellow-500',
+        message: 'Low Stock'
+      };
+    }
+    return {
+      color: 'bg-emerald-500',
+      text: 'text-emerald-500',
+      message: `${inventory} Available`
+    };
+  };
+
+  const inventoryStatus = getInventoryStatus(drink.inventory);
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -45,8 +70,8 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
         scale: 0.98,
         transition: { duration: 0.1, ease: "easeIn" }
       }}
-      onClick={onAdd}
-      className="group relative cursor-pointer select-none"
+      onClick={drink.inventory > 0 ? onAdd : undefined}
+      className={`group relative ${drink.inventory === 0 ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'} select-none`}
     >
       <div className="relative overflow-hidden rounded-2xl bg-white/95 backdrop-blur-md
                     shadow-[0_8px_16px_rgba(0,0,0,0.08)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.12)]
@@ -69,7 +94,7 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
 
           {/* Drink Image */}
           <img
-            src={`/static/images/${drink.image}`}
+            src={drink.image}
             alt={drink.name}
             onLoad={() => setImageLoaded(true)}
             className={`h-full w-full object-cover transition-opacity duration-500
@@ -84,6 +109,13 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
               ${drink.price}
             </span>
           </div>
+
+          {/* Real-time Connection Indicator */}
+          {!isConnected && (
+            <div className="absolute left-3 top-3 px-2 py-1 bg-yellow-100 rounded-md">
+              <span className="text-xs text-yellow-800">Syncing...</span>
+            </div>
+          )}
 
           {/* Quantity Badge */}
           <AnimatePresence>
@@ -119,26 +151,20 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
                     <p className="text-xs font-medium text-gray-500 tracking-wide uppercase">
                       {drink.category}
                     </p>
-                    <div className="flex items-center gap-1.5">
+                    <motion.div 
+                      className="flex items-center gap-1.5"
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.2 }}
+                    >
                       <motion.div
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        className={`h-2 w-2 rounded-full ${
-                          drink.inventory === 0 ? 'bg-red-500' :
-                          drink.inventory < 10 ? 'bg-yellow-500' :
-                          'bg-emerald-500'
-                        }`}
+                        className={`h-2 w-2 rounded-full ${inventoryStatus.color}`}
                       />
-                      <span className={`text-xs font-medium ${
-                        drink.inventory === 0 ? 'text-red-500' :
-                        drink.inventory < 10 ? 'text-yellow-500' :
-                        'text-emerald-500'
-                      }`}>
-                        {drink.inventory === 0 ? 'Out of Stock' :
-                         drink.inventory < 10 ? 'Low Stock' :
-                         `${drink.inventory} Available`}
+                      <span className={`text-xs font-medium ${inventoryStatus.text}`}>
+                        {inventoryStatus.message}
                       </span>
-                    </div>
+                    </motion.div>
                   </div>
                 </div>
               </div>

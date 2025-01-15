@@ -186,6 +186,78 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Cancel order and restore inventory
+  app.post("/api/orders/:id/cancel", async (req, res) => {
+    try {
+      const orderId = parseInt(req.params.id);
+
+      const result = await db.transaction(async (tx) => {
+        // Get order details with items
+        const [order] = await tx
+          .select()
+          .from(orders)
+          .where(eq(orders.id, orderId))
+          .limit(1);
+
+        if (!order) {
+          throw new Error("Order not found");
+        }
+
+        if (order.status === 'cancelled') {
+          throw new Error("Order already cancelled");
+        }
+
+        // Get order items
+        const orderItems = await tx
+          .select()
+          .from(orderItems)
+          .where(eq(orderItems.order_id, orderId));
+
+        // Restore inventory for each item
+        const updatedDrinks = await Promise.all(
+          orderItems.map(async (item) => {
+            const [updated] = await tx
+              .update(drinks)
+              .set({
+                inventory: sql`${drinks.inventory} + ${item.quantity}`,
+                sales: sql`COALESCE(${drinks.sales}, 0) - ${item.quantity}`
+              })
+              .where(eq(drinks.id, item.drink_id))
+              .returning();
+
+            return updated;
+          })
+        );
+
+        // Update order status
+        const [updatedOrder] = await tx
+          .update(orders)
+          .set({
+            status: 'cancelled',
+            completed_at: new Date()
+          })
+          .where(eq(orders.id, orderId))
+          .returning();
+
+        return { order: updatedOrder, updatedDrinks };
+      });
+
+      // Broadcast inventory updates
+      result.updatedDrinks.forEach(drink => {
+        broadcastInventoryUpdate('inventory_change', {
+          drinkId: drink.id,
+          newInventory: drink.inventory,
+          sales: drink.sales
+        });
+      });
+
+      res.json(result.order);
+    } catch (error) {
+      console.error("Error cancelling order:", error);
+      res.status(500).json({ error: "Failed to cancel order" });
+    }
+  });
+
   // Get pour inventory with real-time updates
   app.get("/api/pour-inventory", async (_req, res) => {
     try {
@@ -1054,8 +1126,6 @@ export function registerRoutes(app: Express): Server {
         });
     }
   });
-
-  // Rest of the code remains unchanged
 
   return httpServer;
 }
