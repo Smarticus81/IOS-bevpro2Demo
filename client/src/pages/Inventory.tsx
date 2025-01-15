@@ -35,47 +35,84 @@ export function Inventory() {
   useEffect(() => {
     if (!socket) return;
 
-    const handleInventoryUpdate = (data: any) => {
-      if (data.type === 'inventory_change') {
-        queryClient.setQueryData(['/api/drinks'], (old: any) => {
-          if (!old?.drinks) return old;
+    const handleWebSocketMessage = (event: MessageEvent) => {
+      try {
+        const { type, data } = JSON.parse(event.data);
 
-          const updatedDrinks = old.drinks.map((drink: Drink) => {
-            const update = data.updates.find((u: any) => u.drinkId === drink.id);
-            if (update) {
-              return {
-                ...drink,
-                inventory: update.newInventory,
-                sales: update.sales
-              };
-            }
-            return drink;
+        // Handle inventory updates from POS
+        if (type === 'INVENTORY_UPDATE') {
+          // Update drinks data
+          queryClient.setQueryData(['/api/drinks'], (old: any) => {
+            if (!old?.drinks) return old;
+
+            const updatedDrinks = old.drinks.map((drink: Drink) => {
+              const update = data.updates?.find((u: any) => u.drinkId === drink.id);
+              if (update) {
+                return {
+                  ...drink,
+                  inventory: update.newInventory,
+                  sales: update.sales
+                };
+              }
+              return drink;
+            });
+
+            return { ...old, drinks: updatedDrinks };
           });
 
-          return { ...old, drinks: updatedDrinks };
-        });
+          // Show notification
+          toast({
+            title: "Inventory Updated",
+            description: `Inventory changes from ${data.source || 'system'}`,
+            duration: 2000,
+          });
+        }
 
-        toast({
-          title: "Inventory Updated",
-          description: `Inventory changes from ${data.source || 'system'}`,
-          duration: 2000,
-        });
-      }
-    };
+        // Handle pour tracking updates
+        if (type === 'POUR_UPDATE') {
+          // Update pour inventory data
+          queryClient.setQueryData(['/api/pour-inventory'], (old: any) => {
+            if (!old?.data) return old;
 
-    socket.addEventListener('message', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'INVENTORY_UPDATE') {
-          handleInventoryUpdate(data.data);
+            const updatedInventory = old.data.map((item: PourInventory) => {
+              if (item.id === data.updatedInventory?.id) {
+                return {
+                  ...item,
+                  ...data.updatedInventory
+                };
+              }
+              return item;
+            });
+
+            return { ...old, data: updatedInventory };
+          });
+
+          // Update pour transactions data
+          if (data.transaction) {
+            queryClient.setQueryData(['/api/pour-transactions'], (old: any) => {
+              if (!old?.data) return old;
+              return {
+                ...old,
+                data: [data.transaction, ...old.data]
+              };
+            });
+          }
+
+          toast({
+            title: "Pour Updated",
+            description: "Pour inventory has been updated",
+            duration: 2000,
+          });
         }
       } catch (error) {
         console.error('Error handling WebSocket message:', error);
       }
-    });
+    };
+
+    socket.addEventListener('message', handleWebSocketMessage);
 
     return () => {
-      socket.removeEventListener('message', handleInventoryUpdate);
+      socket.removeEventListener('message', handleWebSocketMessage);
     };
   }, [socket, queryClient, toast]);
 

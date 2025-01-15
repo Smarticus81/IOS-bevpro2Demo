@@ -36,7 +36,6 @@ export function registerRoutes(app: Express): Server {
   // Setup realtime connection with enhanced event handling
   const wsServer = setupRealtimeProxy(httpServer);
 
-  // Helper function to broadcast inventory updates
   const broadcastInventoryUpdate = (type: string, data: any) => {
     if (wsServer) {
       wsServer.clients.forEach(client => {
@@ -297,22 +296,20 @@ export function registerRoutes(app: Express): Server {
           sales: updatedDrink.sales,
           name: item.drink.name
         });
-
-        // Enhanced real-time notification
-        broadcastInventoryUpdate('INVENTORY_UPDATE', {
-          type: 'inventory_change',
-          source: 'pos_order',
-          orderId: order.id,
-          updates: inventoryUpdates,
-          timestamp: new Date().toISOString()
-        });
-
-        console.log("Updated drink inventory:", updatedDrink);
       }
 
-      res.json({ 
+      // Broadcast inventory update with enhanced metadata
+      broadcastInventoryUpdate('INVENTORY_UPDATE', {
+        type: 'inventory_change',
+        source: 'pos_order',
+        orderId: order.id,
+        updates: inventoryUpdates,
+        timestamp: new Date().toISOString()
+      });
+
+      res.json({
         order,
-        inventoryUpdates 
+        inventoryUpdates
       });
     } catch (error) {
       console.error("Error creating order:", error);
