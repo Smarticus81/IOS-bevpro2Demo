@@ -8,10 +8,11 @@ import { AlertCircle } from "lucide-react";
 import { CartProvider } from "@/contexts/CartContext";
 import { OrderSummaryDrawer } from "@/components/OrderSummaryDrawer";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { StatusIndicator } from "@/components/StatusIndicator";
 
 function App() {
   // Initialize WebSocket connection for real-time updates
-  useWebSocket();
+  const { connectionStatus } = useWebSocket();
 
   return (
     <CartProvider>
@@ -24,6 +25,7 @@ function App() {
         <Route component={NotFound} />
       </Switch>
       <OrderSummaryDrawer />
+      <StatusIndicator status={connectionStatus} />
     </CartProvider>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface WebSocketMessage {
@@ -8,12 +8,15 @@ interface WebSocketMessage {
   timestamp: string;
 }
 
+export type ConnectionStatus = 'connected' | 'disconnected' | 'connecting';
+
 export function useWebSocket() {
   const queryClient = useQueryClient();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const reconnectAttemptsRef = useRef(0);
   const MAX_RECONNECT_ATTEMPTS = 5;
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -25,6 +28,7 @@ export function useWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const ws = new WebSocket(`${protocol}//${window.location.host}`);
     wsRef.current = ws;
+    setConnectionStatus('connecting');
 
     ws.onmessage = (event) => {
       try {
@@ -60,6 +64,7 @@ export function useWebSocket() {
             console.log('WebSocket status:', message.status);
             if (message.status === 'connected') {
               reconnectAttemptsRef.current = 0;
+              setConnectionStatus('connected');
             }
             break;
 
@@ -75,6 +80,7 @@ export function useWebSocket() {
     ws.onopen = () => {
       console.log('WebSocket connection established');
       reconnectAttemptsRef.current = 0;
+      setConnectionStatus('connected');
       // Clear any pending reconnection timeouts
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
@@ -85,12 +91,14 @@ export function useWebSocket() {
     // Connection error
     ws.onerror = (error) => {
       console.error('WebSocket error:', error);
+      setConnectionStatus('disconnected');
       reconnect();
     };
 
     // Connection closed
     ws.onclose = () => {
       console.log('WebSocket connection closed');
+      setConnectionStatus('disconnected');
       reconnect();
     };
   }, [queryClient]);
@@ -102,9 +110,11 @@ export function useWebSocket() {
 
     if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
       console.log('Max reconnection attempts reached');
+      setConnectionStatus('disconnected');
       return;
     }
 
+    setConnectionStatus('connecting');
     reconnectAttemptsRef.current++;
     const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 10000);
 
@@ -127,4 +137,6 @@ export function useWebSocket() {
       }
     };
   }, [connect]);
+
+  return { connectionStatus };
 }
