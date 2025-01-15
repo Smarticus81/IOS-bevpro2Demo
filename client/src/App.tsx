@@ -3,6 +3,7 @@ import { Home } from "@/pages/Home";
 import { Inventory } from "@/pages/Inventory";
 import { Transactions } from "@/pages/Transactions";
 import { PaymentConfirmation } from "@/pages/PaymentConfirmation";
+import { DatabaseView } from "@/pages/Database";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { CartProvider } from "@/contexts/CartContext";
@@ -21,6 +22,7 @@ function App() {
         <Route path="/inventory" component={Inventory} />
         <Route path="/transactions" component={Transactions} />
         <Route path="/payment-confirmation" component={PaymentConfirmation} />
+        <Route path="/database" component={DatabaseView} />
         <Route component={NotFound} />
       </Switch>
       <OrderSummaryDrawer />
