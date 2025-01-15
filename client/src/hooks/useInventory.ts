@@ -5,13 +5,14 @@ import { Drink } from '@db/schema';
 type InventoryUpdate = {
   type: string;
   data: {
-    type: 'INVENTORY_CHANGE' | 'DRINKS_UPDATE';
+    type?: 'INVENTORY_CHANGE' | 'DRINKS_UPDATE';
     drinkId?: number;
     newInventory?: number;
     sales?: number;
     items?: Drink[];
     timestamp: string;
   };
+  status?: string;
 };
 
 export function useInventory() {
@@ -36,42 +37,51 @@ export function useInventory() {
         const update: InventoryUpdate = JSON.parse(event.data);
         console.log('Received WebSocket message:', update);
 
-        if (update.data.type === 'INVENTORY_CHANGE') {
-          console.log('Processing inventory change:', update.data);
-          // Update single drink inventory
-          queryClient.setQueryData(['api/drinks'], (oldData: any) => {
-            if (!oldData?.drinks) {
-              console.log('No existing drinks data found');
-              return oldData;
-            }
+        // Handle status messages
+        if (update.type === 'status') {
+          console.log('WebSocket status:', update.status);
+          return;
+        }
 
-            const updatedDrinks = oldData.drinks.map((drink: Drink) => {
-              if (drink.id === update.data.drinkId) {
-                console.log('Updating drink:', {
-                  id: drink.id,
-                  oldInventory: drink.inventory,
-                  newInventory: update.data.newInventory
-                });
-                return {
-                  ...drink,
-                  inventory: update.data.newInventory,
-                  sales: update.data.sales
-                };
+        // Handle inventory updates
+        if (update.type === 'INVENTORY_UPDATE' && update.data) {
+          if (update.data.type === 'INVENTORY_CHANGE') {
+            console.log('Processing inventory change:', update.data);
+            // Update single drink inventory
+            queryClient.setQueryData(['api/drinks'], (oldData: any) => {
+              if (!oldData?.drinks) {
+                console.log('No existing drinks data found');
+                return oldData;
               }
-              return drink;
-            });
 
-            return {
-              ...oldData,
-              drinks: updatedDrinks
-            };
-          });
-        } else if (update.data.type === 'DRINKS_UPDATE' && update.data.items) {
-          console.log('Processing full drinks update');
-          // Update all drinks
-          queryClient.setQueryData(['api/drinks'], {
-            drinks: update.data.items
-          });
+              const updatedDrinks = oldData.drinks.map((drink: Drink) => {
+                if (drink.id === update.data.drinkId) {
+                  console.log('Updating drink:', {
+                    id: drink.id,
+                    oldInventory: drink.inventory,
+                    newInventory: update.data.newInventory
+                  });
+                  return {
+                    ...drink,
+                    inventory: update.data.newInventory,
+                    sales: update.data.sales
+                  };
+                }
+                return drink;
+              });
+
+              return {
+                ...oldData,
+                drinks: updatedDrinks
+              };
+            });
+          } else if (update.data.type === 'DRINKS_UPDATE' && update.data.items) {
+            console.log('Processing full drinks update');
+            // Update all drinks
+            queryClient.setQueryData(['api/drinks'], {
+              drinks: update.data.items
+            });
+          }
         }
       } catch (error) {
         console.error('Error processing WebSocket message:', error);
