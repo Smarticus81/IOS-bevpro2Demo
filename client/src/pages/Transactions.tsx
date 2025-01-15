@@ -9,6 +9,12 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import type { Transaction } from "@db/schema";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function Transactions() {
   const [search, setSearch] = useState("");
@@ -39,6 +45,27 @@ export function Transactions() {
     );
   }) || [];
 
+  const formatAmount = (amount: number) => {
+    return `$${(amount / 100).toFixed(2)}`;
+  };
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  };
+
+  const getOrderSummary = (items: any[]) => {
+    return items.map(item => 
+      `${item.quantity}x ${item.drink.name}`
+    ).join(", ");
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <NavBar />
@@ -66,20 +93,22 @@ export function Transactions() {
           <CardContent className="p-0">
             <ScrollArea className="h-[calc(100vh-16rem)] scrollbar-hide">
               <div className="w-full">
-                <div className="grid grid-cols-6 gap-4 p-3 text-sm font-medium text-gray-500 border-b border-gray-100">
+                <div className="grid grid-cols-9 gap-4 p-3 text-sm font-medium text-gray-500 border-b border-gray-100">
                   <div>Transaction ID</div>
                   <div>Order ID</div>
                   <div>Amount</div>
-                  <div>Payment Method</div>
                   <div>Status</div>
-                  <div>Date</div>
+                  <div>Date & Time</div>
+                  <div className="col-span-2">Items</div>
+                  <div>Count</div>
+                  <div>Details</div>
                 </div>
 
                 <div className="divide-y divide-gray-50">
                   {isLoading ? (
                     Array(5).fill(0).map((_, i) => (
-                      <div key={i} className="grid grid-cols-6 gap-4 p-3 items-center">
-                        {Array(6).fill(0).map((_, j) => (
+                      <div key={i} className="grid grid-cols-9 gap-4 p-3 items-center">
+                        {Array(9).fill(0).map((_, j) => (
                           <Skeleton key={j} className="h-8" />
                         ))}
                       </div>
@@ -90,17 +119,14 @@ export function Transactions() {
                         key={transaction.id}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="grid grid-cols-6 gap-4 p-3 items-center hover:bg-gray-50/50"
+                        className="grid grid-cols-9 gap-4 p-3 items-center hover:bg-gray-50/50"
                       >
                         <div className="font-mono text-sm text-gray-600">
-                          {transaction.provider_transaction_id || '-'}
+                          #{transaction.id}
                         </div>
                         <div className="text-gray-600">#{transaction.order_id}</div>
                         <div className="text-gray-900 font-medium">
-                          ${(transaction.amount / 100).toFixed(2)}
-                        </div>
-                        <div className="text-gray-600">
-                          {transaction.payment_method_id ? `Method #${transaction.payment_method_id}` : 'Direct Payment'}
+                          {formatAmount(transaction.amount)}
                         </div>
                         <div>
                           <Badge className={getStatusColor(transaction.status)}>
@@ -108,13 +134,36 @@ export function Transactions() {
                           </Badge>
                         </div>
                         <div className="text-sm text-gray-500">
-                          {transaction.created_at ? new Date(transaction.created_at).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          }) : '-'}
+                          {formatDate(transaction.created_at)}
+                        </div>
+                        <div className="col-span-2 text-sm text-gray-600">
+                          {getOrderSummary(transaction.order?.items || [])}
+                        </div>
+                        <div className="text-gray-600">
+                          {transaction.order?.items?.length || 0} items
+                        </div>
+                        <div>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Badge variant="outline" className="cursor-help">
+                                  View Details
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className="space-y-1">
+                                  {transaction.order?.items?.map((item: any, idx: number) => (
+                                    <div key={idx} className="text-sm">
+                                      {item.quantity}x {item.drink.name} ({item.drink.category})
+                                      <div className="text-xs text-gray-500">
+                                        Price: ${item.drink.price} each
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                       </motion.div>
                     ))
