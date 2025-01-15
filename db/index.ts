@@ -1,6 +1,6 @@
-import { drizzle } from "drizzle-orm/neon-serverless";
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from "drizzle-orm/neon-http";
 import { sql } from "drizzle-orm";
-import ws from "ws";
 import * as schema from "@db/schema";
 
 if (!process.env.DATABASE_URL) {
@@ -9,11 +9,11 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const db = drizzle({
-  connection: process.env.DATABASE_URL,
-  schema,
-  ws: ws,
-});
+// Create the neon connection
+const sql_connection = neon(process.env.DATABASE_URL);
+
+// Create the drizzle db instance
+export const db = drizzle(sql_connection, { schema });
 
 // Export schema and sql for use in other files
 export { schema, sql };
