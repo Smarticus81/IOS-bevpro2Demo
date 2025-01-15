@@ -7,7 +7,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import type { Transaction } from "@db/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
@@ -16,10 +15,42 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+interface Transaction {
+  id: number;
+  order_id: number;
+  amount: number;
+  status: string;
+  created_at: string;
+  metadata: any;
+  order: {
+    id: number;
+    items: Array<{
+      drink: {
+        id: number;
+        name: string;
+        category: string;
+        price: number;
+      };
+      quantity: number;
+    }>;
+    total: number;
+  };
+}
+
+interface TransactionResponse {
+  data: Transaction[];
+  pagination: {
+    currentPage: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+  };
+}
+
 export function Transactions() {
   const [search, setSearch] = useState("");
 
-  const { data: transactions, isLoading } = useQuery<Transaction[]>({
+  const { data: transactionResponse, isLoading } = useQuery<TransactionResponse>({
     queryKey: ["/api/transactions"],
   });
 
@@ -36,12 +67,15 @@ export function Transactions() {
     }
   };
 
-  const filteredTransactions = transactions?.filter(transaction => {
+  const filteredTransactions = transactionResponse?.data.filter(transaction => {
     const searchLower = search.toLowerCase();
     return (
-      transaction.provider_transaction_id?.toLowerCase().includes(searchLower) ||
+      transaction.id.toString().includes(searchLower) ||
       transaction.status.toLowerCase().includes(searchLower) ||
-      transaction.amount.toString().includes(searchLower)
+      transaction.amount.toString().includes(searchLower) ||
+      transaction.order?.items?.some(item => 
+        item.drink.name.toLowerCase().includes(searchLower)
+      )
     );
   }) || [];
 
@@ -51,19 +85,19 @@ export function Transactions() {
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleString('en-US', {
+      year: 'numeric',
       month: 'short',
       day: 'numeric',
-      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit'
     });
   };
 
-  const getOrderSummary = (items: any[]) => {
-    return items.map(item => 
+  const getOrderSummary = (items: Transaction['order']['items']) => {
+    return items?.map(item => 
       `${item.quantity}x ${item.drink.name}`
-    ).join(", ");
+    ).join(", ") || "No items";
   };
 
   return (
@@ -73,10 +107,10 @@ export function Transactions() {
       <div className="container mx-auto px-4 py-6">
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-gray-900">Transaction History</h1>
-          <p className="text-gray-500 mt-1">View and manage all payment transactions</p>
+          <p className="text-gray-500 mt-1">View and manage payment transactions</p>
         </div>
 
-        <Card className="border border-gray-100">
+        <Card className="bg-white border border-gray-100">
           <CardHeader className="px-4 py-3 flex flex-row items-center justify-between border-b border-gray-100">
             <CardTitle className="text-lg font-semibold">Recent Transactions</CardTitle>
             <div className="flex items-center gap-2 bg-gray-50 rounded-md px-3 py-1.5">
@@ -93,23 +127,22 @@ export function Transactions() {
           <CardContent className="p-0">
             <ScrollArea className="h-[calc(100vh-16rem)] scrollbar-hide">
               <div className="w-full">
-                <div className="grid grid-cols-9 gap-4 p-3 text-sm font-medium text-gray-500 border-b border-gray-100">
+                <div className="grid grid-cols-8 gap-4 p-3 text-sm font-medium text-gray-500 border-b border-gray-100">
                   <div>Transaction ID</div>
                   <div>Order ID</div>
                   <div>Amount</div>
                   <div>Status</div>
                   <div>Date & Time</div>
-                  <div className="col-span-2">Items</div>
-                  <div>Count</div>
+                  <div className="col-span-2">Order Summary</div>
                   <div>Details</div>
                 </div>
 
                 <div className="divide-y divide-gray-50">
                   {isLoading ? (
                     Array(5).fill(0).map((_, i) => (
-                      <div key={i} className="grid grid-cols-9 gap-4 p-3 items-center">
-                        {Array(9).fill(0).map((_, j) => (
-                          <Skeleton key={j} className="h-8" />
+                      <div key={i} className="grid grid-cols-8 gap-4 p-3 items-center">
+                        {Array(8).fill(0).map((_, j) => (
+                          <Skeleton key={j} className={`h-8 ${j === 5 ? 'col-span-2' : ''}`} />
                         ))}
                       </div>
                     ))
@@ -119,7 +152,7 @@ export function Transactions() {
                         key={transaction.id}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="grid grid-cols-9 gap-4 p-3 items-center hover:bg-gray-50/50"
+                        className="grid grid-cols-8 gap-4 p-3 items-center hover:bg-gray-50/50"
                       >
                         <div className="font-mono text-sm text-gray-600">
                           #{transaction.id}
@@ -137,10 +170,7 @@ export function Transactions() {
                           {formatDate(transaction.created_at)}
                         </div>
                         <div className="col-span-2 text-sm text-gray-600">
-                          {getOrderSummary(transaction.order?.items || [])}
-                        </div>
-                        <div className="text-gray-600">
-                          {transaction.order?.items?.length || 0} items
+                          {getOrderSummary(transaction.order?.items)}
                         </div>
                         <div>
                           <TooltipProvider>
@@ -152,14 +182,22 @@ export function Transactions() {
                               </TooltipTrigger>
                               <TooltipContent>
                                 <div className="space-y-1">
-                                  {transaction.order?.items?.map((item: any, idx: number) => (
+                                  <div className="text-sm font-medium">Order Details</div>
+                                  {transaction.order?.items?.map((item, idx) => (
                                     <div key={idx} className="text-sm">
-                                      {item.quantity}x {item.drink.name} ({item.drink.category})
+                                      <div>{item.quantity}x {item.drink.name}</div>
                                       <div className="text-xs text-gray-500">
+                                        Category: {item.drink.category}
+                                        <br />
                                         Price: ${item.drink.price} each
+                                        <br />
+                                        Subtotal: ${item.quantity * item.drink.price}
                                       </div>
                                     </div>
                                   ))}
+                                  <div className="text-sm font-medium pt-1 border-t">
+                                    Total: {formatAmount(transaction.amount)}
+                                  </div>
                                 </div>
                               </TooltipContent>
                             </Tooltip>

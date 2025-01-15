@@ -78,7 +78,7 @@ export class PaymentService {
     const offset = (page - 1) * limit;
 
     try {
-      const transactions = await db
+      const transactionData = await db
         .select({
           id: transactions.id,
           order_id: transactions.order_id,
@@ -105,7 +105,7 @@ export class PaymentService {
         .from(transactions);
 
       return {
-        data: transactions,
+        data: transactionData,
         pagination: {
           currentPage: page,
           limit,
