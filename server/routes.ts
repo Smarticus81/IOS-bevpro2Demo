@@ -221,20 +221,33 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
-      // Verify inventory levels before processing
-      for (const item of items) {
+      // Verify inventory levels before processing with enhanced error handling
+      const inventoryChecks = await Promise.all(items.map(async (item) => {
         const [drink] = await db
           .select({ inventory: drinks.inventory })
           .from(drinks)
           .where(eq(drinks.id, item.drink.id))
           .limit(1);
 
-        if (!drink || drink.inventory < item.quantity) {
-          return res.status(400).json({
-            error: `Insufficient inventory for ${item.drink.name}. Available: ${drink?.inventory || 0}`,
-            drinkId: item.drink.id
-          });
-        }
+        return {
+          drinkId: item.drink.id,
+          name: item.drink.name,
+          requested: item.quantity,
+          available: drink?.inventory || 0,
+          sufficient: drink && drink.inventory >= item.quantity
+        };
+      }));
+
+      const insufficientItems = inventoryChecks.filter(check => !check.sufficient);
+      if (insufficientItems.length > 0) {
+        return res.status(400).json({
+          error: "Insufficient inventory for some items",
+          items: insufficientItems.map(item => ({
+            name: item.name,
+            requested: item.requested,
+            available: item.available
+          }))
+        });
       }
 
       // Create order and update inventory atomically
@@ -262,7 +275,8 @@ export function registerRoutes(app: Express): Server {
       await db.insert(orderItems).values(orderItemsData);
       console.log("Order items created:", orderItemsData);
 
-      // Update inventory and sales with proper error handling
+      // Update inventory and sales with enhanced WebSocket notifications
+      const inventoryUpdates = [];
       for (const item of items) {
         const [updatedDrink] = await db
           .update(drinks)
@@ -277,17 +291,29 @@ export function registerRoutes(app: Express): Server {
           throw new Error(`Failed to update inventory for drink ${item.drink.id}`);
         }
 
-        // Broadcast inventory update
-        broadcastInventoryUpdate('INVENTORY_UPDATE', {
+        inventoryUpdates.push({
           drinkId: item.drink.id,
           newInventory: updatedDrink.inventory,
-          sales: updatedDrink.sales
+          sales: updatedDrink.sales,
+          name: item.drink.name
+        });
+
+        // Enhanced real-time notification
+        broadcastInventoryUpdate('INVENTORY_UPDATE', {
+          type: 'inventory_change',
+          source: 'pos_order',
+          orderId: order.id,
+          updates: inventoryUpdates,
+          timestamp: new Date().toISOString()
         });
 
         console.log("Updated drink inventory:", updatedDrink);
       }
 
-      res.json(order);
+      res.json({ 
+        order,
+        inventoryUpdates 
+      });
     } catch (error) {
       console.error("Error creating order:", error);
       res.status(500).json({

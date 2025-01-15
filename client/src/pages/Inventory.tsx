@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavBar } from "@/components/NavBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Drink, PourInventory, TaxCategory, PourTransaction } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { InventoryAnalytics } from "@/components/InventoryAnalytics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -26,9 +26,58 @@ interface ApiResponse<T> {
 }
 
 export function Inventory() {
-  useWebSocket();
-  const [search, setSearch] = useState("");
+  const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [search, setSearch] = useState("");
+
+  const socket = useWebSocket();
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleInventoryUpdate = (data: any) => {
+      if (data.type === 'inventory_change') {
+        queryClient.setQueryData(['/api/drinks'], (old: any) => {
+          if (!old?.drinks) return old;
+
+          const updatedDrinks = old.drinks.map((drink: Drink) => {
+            const update = data.updates.find((u: any) => u.drinkId === drink.id);
+            if (update) {
+              return {
+                ...drink,
+                inventory: update.newInventory,
+                sales: update.sales
+              };
+            }
+            return drink;
+          });
+
+          return { ...old, drinks: updatedDrinks };
+        });
+
+        toast({
+          title: "Inventory Updated",
+          description: `Inventory changes from ${data.source || 'system'}`,
+          duration: 2000,
+        });
+      }
+    };
+
+    socket.addEventListener('message', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'INVENTORY_UPDATE') {
+          handleInventoryUpdate(data.data);
+        }
+      } catch (error) {
+        console.error('Error handling WebSocket message:', error);
+      }
+    });
+
+    return () => {
+      socket.removeEventListener('message', handleInventoryUpdate);
+    };
+  }, [socket, queryClient, toast]);
 
   const { data: drinks, isLoading: isDrinksLoading } = useQuery<{ drinks: Drink[] }>({
     queryKey: ["/api/drinks"]
@@ -472,7 +521,6 @@ export function Inventory() {
                     </div>
                   </ScrollArea>
                 </TabsContent>
-                {/* Placeholder for "Counting Tool" and "Insights" content */}
                 <TabsContent value="counting" className="mt-0">Counting Tool Content</TabsContent>
                 <TabsContent value="insights" className="mt-0">Insights Content</TabsContent>
               </Tabs>
