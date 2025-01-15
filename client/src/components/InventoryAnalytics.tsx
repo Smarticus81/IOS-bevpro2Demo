@@ -2,13 +2,14 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package } from "lucide-react";
-import type { Drink } from "@db/schema";
+import type { Drink, PourTransaction } from "@db/schema";
 
 interface InventoryAnalyticsProps {
   drinks: Drink[];
+  inventoryHistory?: PourTransaction[];
 }
 
-export function InventoryAnalytics({ drinks }: InventoryAnalyticsProps) {
+export function InventoryAnalytics({ drinks, inventoryHistory = [] }: InventoryAnalyticsProps) {
   // Transform data for the inventory levels chart
   const inventoryData = drinks.reduce((acc, drink) => {
     const category = drink.category;
