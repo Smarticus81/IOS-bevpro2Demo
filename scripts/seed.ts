@@ -1,13 +1,10 @@
-import { getDb } from "@db";
+import { db } from "@db";
 import { drinks } from "@db/schema";
 import drinksData from "../drinks.json";
 
 async function seed() {
   try {
     console.log("Starting to seed drinks...");
-
-    // Get database instance
-    const db = await getDb();
 
     // Clear existing drinks
     await db.delete(drinks);

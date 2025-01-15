@@ -9,16 +9,10 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Create the neon connection with pooling
-const sql_connection = neon(process.env.DATABASE_URL, { 
-  poolConfig: {
-    connectionTimeoutMillis: 10000,
-    idleTimeoutMillis: 60000,
-    max: 10
-  }
-});
+// Create the neon connection
+const sql_connection = neon(process.env.DATABASE_URL);
 
-// Create the drizzle db instance
+// Create the drizzle db instance with better error handling
 export const db = drizzle(sql_connection, { schema });
 
 // Export schema and sql for use in other files
