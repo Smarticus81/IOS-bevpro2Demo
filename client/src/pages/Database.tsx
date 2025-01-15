@@ -3,25 +3,72 @@ import { NavBar } from "@/components/NavBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DatabaseIcon, Table } from "lucide-react";
+import { DatabaseIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Rename component to DatabaseView to avoid conflict with Database icon
+// Define types for API responses
+interface DrinkResponse {
+  drinks: Array<{
+    id: number;
+    name: string;
+    category: string;
+    subcategory: string | null;
+    price: number;
+    inventory: number;
+    sales: number;
+  }>;
+}
+
+interface PourInventoryResponse {
+  data: Array<{
+    id: number;
+    drink_name: string;
+    drink_category: string;
+    bottle_id: string;
+    initial_volume_ml: number;
+    remaining_volume_ml: number;
+    is_active: boolean;
+    last_pour_at: string;
+  }>;
+}
+
+interface PourTransactionResponse {
+  data: Array<{
+    id: number;
+    drink_name: string;
+    drink_category: string;
+    volume_ml: number;
+    staff_id: number;
+    tax_amount: number;
+    transaction_time: string;
+    pour_size_id: number;
+  }>;
+}
+
+interface TaxCategoryResponse {
+  data: Array<{
+    id: number;
+    name: string;
+    rate: number;
+    description: string | null;
+  }>;
+}
+
 export function DatabaseView() {
-  const { data: drinks } = useQuery({
+  const { data: drinksData, isLoading: isDrinksLoading } = useQuery<DrinkResponse>({
     queryKey: ["/api/drinks"],
   });
 
-  const { data: pourInventory } = useQuery({
+  const { data: pourInventoryData, isLoading: isPourInventoryLoading } = useQuery<PourInventoryResponse>({
     queryKey: ["/api/pour-inventory"],
   });
 
-  const { data: pourTransactions } = useQuery({
+  const { data: pourTransactionsData, isLoading: isPourTransactionsLoading } = useQuery<PourTransactionResponse>({
     queryKey: ["/api/pour-transactions"],
   });
 
-  const { data: taxCategories } = useQuery({
+  const { data: taxCategoriesData, isLoading: isTaxCategoriesLoading } = useQuery<TaxCategoryResponse>({
     queryKey: ["/api/tax-categories"],
   });
 
@@ -85,7 +132,7 @@ export function DatabaseView() {
                         <div>ID</div>
                       </div>
                       <div className="divide-y divide-gray-50">
-                        {!drinks?.drinks ? (
+                        {isDrinksLoading ? (
                           Array(5).fill(0).map((_, i) => (
                             <div key={i} className="grid grid-cols-8 gap-4 p-3 items-center">
                               {Array(8).fill(0).map((_, j) => (
@@ -93,8 +140,8 @@ export function DatabaseView() {
                               ))}
                             </div>
                           ))
-                        ) : (
-                          drinks.drinks.map((drink) => (
+                        ) : drinksData?.drinks ? (
+                          drinksData.drinks.map((drink) => (
                             <div key={drink.id} className="grid grid-cols-8 gap-4 p-3 items-center hover:bg-gray-50/50">
                               <div className="col-span-2 font-medium text-gray-900">{drink.name}</div>
                               <div className="text-gray-600">{drink.category}</div>
@@ -105,11 +152,14 @@ export function DatabaseView() {
                               <div className="font-mono text-sm text-gray-500">{drink.id}</div>
                             </div>
                           ))
+                        ) : (
+                          <div className="p-4 text-center text-gray-500">No drinks data available</div>
                         )}
                       </div>
                     </div>
                   </ScrollArea>
                 </TabsContent>
+
                 <TabsContent value="pour_inventory" className="mt-0">
                   <ScrollArea className="h-[calc(100vh-24rem)] scrollbar-hide">
                     <div className="w-full">
@@ -123,7 +173,7 @@ export function DatabaseView() {
                         <div>ID</div>
                       </div>
                       <div className="divide-y divide-gray-50">
-                        {!pourInventory?.data ? (
+                        {isPourInventoryLoading ? (
                           Array(5).fill(0).map((_, i) => (
                             <div key={i} className="grid grid-cols-8 gap-4 p-3 items-center">
                               {Array(8).fill(0).map((_, j) => (
@@ -131,8 +181,8 @@ export function DatabaseView() {
                               ))}
                             </div>
                           ))
-                        ) : (
-                          pourInventory.data.map((item) => (
+                        ) : pourInventoryData?.data ? (
+                          pourInventoryData.data.map((item) => (
                             <div key={item.id} className="grid grid-cols-8 gap-4 p-3 items-center hover:bg-gray-50/50">
                               <div className="col-span-2 font-medium text-gray-900">
                                 {item.drink_name}
@@ -160,11 +210,14 @@ export function DatabaseView() {
                               <div className="font-mono text-sm text-gray-500">{item.id}</div>
                             </div>
                           ))
+                        ) : (
+                          <div className="p-4 text-center text-gray-500">No pour inventory data available</div>
                         )}
                       </div>
                     </div>
                   </ScrollArea>
                 </TabsContent>
+
                 <TabsContent value="pour_transactions" className="mt-0">
                   <ScrollArea className="h-[calc(100vh-24rem)] scrollbar-hide">
                     <div className="w-full">
@@ -178,7 +231,7 @@ export function DatabaseView() {
                         <div>ID</div>
                       </div>
                       <div className="divide-y divide-gray-50">
-                        {!pourTransactions?.data ? (
+                        {isPourTransactionsLoading ? (
                           Array(5).fill(0).map((_, i) => (
                             <div key={i} className="grid grid-cols-8 gap-4 p-3 items-center">
                               {Array(8).fill(0).map((_, j) => (
@@ -186,8 +239,8 @@ export function DatabaseView() {
                               ))}
                             </div>
                           ))
-                        ) : (
-                          pourTransactions.data.map((transaction) => (
+                        ) : pourTransactionsData?.data ? (
+                          pourTransactionsData.data.map((transaction) => (
                             <div key={transaction.id} className="grid grid-cols-8 gap-4 p-3 items-center hover:bg-gray-50/50">
                               <div className="col-span-2 font-medium text-gray-900">
                                 {transaction.drink_name}
@@ -206,11 +259,14 @@ export function DatabaseView() {
                               <div className="font-mono text-sm text-gray-500">{transaction.id}</div>
                             </div>
                           ))
+                        ) : (
+                          <div className="p-4 text-center text-gray-500">No pour transactions data available</div>
                         )}
                       </div>
                     </div>
                   </ScrollArea>
                 </TabsContent>
+
                 <TabsContent value="tax_categories" className="mt-0">
                   <ScrollArea className="h-[calc(100vh-24rem)] scrollbar-hide">
                     <div className="w-full">
@@ -221,7 +277,7 @@ export function DatabaseView() {
                         <div>ID</div>
                       </div>
                       <div className="divide-y divide-gray-50">
-                        {!taxCategories?.data ? (
+                        {isTaxCategoriesLoading ? (
                           Array(5).fill(0).map((_, i) => (
                             <div key={i} className="grid grid-cols-4 gap-4 p-3 items-center">
                               {Array(4).fill(0).map((_, j) => (
@@ -229,8 +285,8 @@ export function DatabaseView() {
                               ))}
                             </div>
                           ))
-                        ) : (
-                          taxCategories.data.map((category) => (
+                        ) : taxCategoriesData?.data ? (
+                          taxCategoriesData.data.map((category) => (
                             <div key={category.id} className="grid grid-cols-4 gap-4 p-3 items-center hover:bg-gray-50/50">
                               <div className="font-medium text-gray-900">{category.name}</div>
                               <div className="text-gray-600">{category.rate}%</div>
@@ -238,6 +294,8 @@ export function DatabaseView() {
                               <div className="font-mono text-sm text-gray-500">{category.id}</div>
                             </div>
                           ))
+                        ) : (
+                          <div className="p-4 text-center text-gray-500">No tax categories data available</div>
                         )}
                       </div>
                     </div>
