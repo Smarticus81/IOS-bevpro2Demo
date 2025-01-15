@@ -22,11 +22,12 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
       console.log('Inventory changed:', {
         drinkId: drink.id,
         oldInventory: lastInventory,
-        newInventory: drink.inventory
+        newInventory: drink.inventory,
+        timestamp: new Date().toISOString()
       });
       setLastInventory(drink.inventory);
     }
-  }, [drink.inventory, lastInventory]);
+  }, [drink.inventory, lastInventory, drink.id]);
 
   const getCategoryIcon = (category: string) => {
     switch (category.toLowerCase()) {
@@ -146,6 +147,24 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
             )}
           </AnimatePresence>
 
+          {/* Inventory Update Animation */}
+          <AnimatePresence>
+            {drink.inventory !== lastInventory && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className={`absolute right-3 bottom-3 px-2 py-1 rounded-md
+                          ${drink.inventory > lastInventory ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
+              >
+                <span className="text-xs font-medium">
+                  {drink.inventory > lastInventory ? '+' : '-'}
+                  {Math.abs(drink.inventory - lastInventory)}
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Info Panel */}
           <div className="absolute inset-x-0 bottom-0 p-4 bg-white/95 backdrop-blur-md
                        border-t border-white/10">
@@ -174,9 +193,15 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
                         animate={{ scale: 1, opacity: 1 }}
                         className={`h-2 w-2 rounded-full ${inventoryStatus.color}`}
                       />
-                      <span className={`text-xs font-medium ${inventoryStatus.text}`}>
+                      <motion.span 
+                        className={`text-xs font-medium ${inventoryStatus.text}`}
+                        key={drink.inventory} // Force animation on inventory change
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
                         {inventoryStatus.message}
-                      </span>
+                      </motion.span>
                     </motion.div>
                   </div>
                 </div>

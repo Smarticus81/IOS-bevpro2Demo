@@ -19,6 +19,7 @@ type InventoryUpdate = {
 export function useInventory() {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [lastUpdate, setLastUpdate] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const connect = useCallback(() => {
@@ -45,10 +46,11 @@ export function useInventory() {
 
         // Handle inventory updates
         if (update.type === 'INVENTORY_UPDATE' && update.data) {
+          setLastUpdate(update.data.timestamp);
+
           if (update.data.type === 'INVENTORY_CHANGE' && typeof update.data.drinkId === 'number') {
             console.log('Processing inventory change:', update.data);
 
-            // Update single drink inventory
             queryClient.setQueryData(['api/drinks'], (oldData: any) => {
               if (!oldData?.drinks) {
                 console.log('No existing drinks data found');
@@ -57,21 +59,35 @@ export function useInventory() {
 
               const updatedDrinks = oldData.drinks.map((drink: Drink) => {
                 if (drink.id === update.data!.drinkId) {
-                  return {
+                  const newDrink = {
                     ...drink,
                     inventory: update.data!.newInventory,
-                    sales: update.data!.sales
+                    sales: update.data!.sales,
+                    lastUpdated: update.data!.timestamp
                   };
+                  console.log(`Updated drink ${drink.id} inventory:`, {
+                    old: drink.inventory,
+                    new: newDrink.inventory
+                  });
+                  return newDrink;
                 }
                 return drink;
               });
 
               return { drinks: updatedDrinks };
             });
+
+            // Invalidate queries that might depend on inventory
+            queryClient.invalidateQueries(['api/drinks']);
           } else if (update.data.type === 'DRINKS_UPDATE' && Array.isArray(update.data.items)) {
             console.log('Processing full drinks update');
-            // Replace entire drinks data
-            queryClient.setQueryData(['api/drinks'], { drinks: update.data.items });
+            queryClient.setQueryData(['api/drinks'], { 
+              drinks: update.data.items.map(drink => ({
+                ...drink,
+                lastUpdated: update.data!.timestamp
+              }))
+            });
+            queryClient.invalidateQueries(['api/drinks']);
           }
         }
       } catch (error) {
@@ -117,5 +133,6 @@ export function useInventory() {
 
   return {
     isConnected: socket?.readyState === WebSocket.OPEN,
+    lastUpdate
   };
 }

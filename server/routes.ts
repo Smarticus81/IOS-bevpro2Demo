@@ -61,10 +61,9 @@ export function registerRoutes(app: Express): Server {
       const allDrinks = await db
         .select()
         .from(drinks)
-        .orderBy(drinks.category);
+        .orderBy(desc(drinks.category));
 
       console.log('Fetched drinks:', allDrinks.length);
-
       res.json({ drinks: allDrinks });
     } catch (error) {
       console.error("Error fetching drinks:", error);
@@ -86,11 +85,27 @@ export function registerRoutes(app: Express): Server {
       console.log('Processing order:', { itemCount: items.length, total });
 
       const result = await db.transaction(async (tx) => {
-        // First create the order
+        // First validate all inventory levels
+        for (const item of items) {
+          const [drink] = await tx
+            .select()
+            .from(drinks)
+            .where(eq(drinks.id, item.drink.id))
+            .limit(1);
+
+          if (!drink) {
+            throw new Error(`Drink not found: ${item.drink.id}`);
+          }
+
+          if (drink.inventory < item.quantity) {
+            throw new Error(`Insufficient inventory for ${drink.name}: ${drink.inventory} available, ${item.quantity} requested`);
+          }
+        }
+
+        // Create the order first
         const [order] = await tx.insert(orders)
           .values({
             total,
-            items: items,
             status: 'pending',
             payment_status: 'pending',
             created_at: new Date()
@@ -99,25 +114,10 @@ export function registerRoutes(app: Express): Server {
 
         console.log('Created order:', order.id);
 
+        // Process items and update inventory atomically
         const updatedDrinks = [];
 
-        // Process each item
         for (const item of items) {
-          // Get current drink state
-          const [currentDrink] = await tx
-            .select()
-            .from(drinks)
-            .where(eq(drinks.id, item.drink.id))
-            .limit(1);
-
-          if (!currentDrink) {
-            throw new Error(`Drink not found: ${item.drink.id}`);
-          }
-
-          if (currentDrink.inventory < item.quantity) {
-            throw new Error(`Insufficient inventory for ${currentDrink.name}`);
-          }
-
           // Create order item
           await tx.insert(orderItems)
             .values({
@@ -131,8 +131,8 @@ export function registerRoutes(app: Express): Server {
           const [updatedDrink] = await tx
             .update(drinks)
             .set({
-              inventory: currentDrink.inventory - item.quantity,
-              sales: (currentDrink.sales || 0) + item.quantity
+              inventory: sql`${drinks.inventory} - ${item.quantity}`,
+              sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
             })
             .where(eq(drinks.id, item.drink.id))
             .returning();
@@ -152,11 +152,11 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
-      // Also send a full refresh
+      // Also send a full refresh to ensure consistency
       const allDrinks = await db
         .select()
         .from(drinks)
-        .orderBy(drinks.category);
+        .orderBy(desc(drinks.category));
 
       await broadcastInventoryUpdate('DRINKS_UPDATE', {
         items: allDrinks
@@ -177,7 +177,7 @@ export function registerRoutes(app: Express): Server {
       const orderId = parseInt(req.params.id);
 
       const result = await db.transaction(async (tx) => {
-        // Get order details with items
+        // Get order details
         const [order] = await tx
           .select()
           .from(orders)
@@ -193,26 +193,25 @@ export function registerRoutes(app: Express): Server {
         }
 
         // Get order items
-        const orderItems = await tx
+        const items = await tx
           .select()
           .from(orderItems)
           .where(eq(orderItems.order_id, orderId));
 
         // Restore inventory for each item
-        const updatedDrinks = await Promise.all(
-          orderItems.map(async (item) => {
-            const [updated] = await tx
-              .update(drinks)
-              .set({
-                inventory: sql`${drinks.inventory} + ${item.quantity}`,
-                sales: sql`COALESCE(${drinks.sales}, 0) - ${item.quantity}`
-              })
-              .where(eq(drinks.id, item.drink_id))
-              .returning();
+        const updatedDrinks = [];
+        for (const item of items) {
+          const [updatedDrink] = await tx
+            .update(drinks)
+            .set({
+              inventory: sql`${drinks.inventory} + ${item.quantity}`,
+              sales: sql`GREATEST(COALESCE(${drinks.sales}, 0) - ${item.quantity}, 0)`
+            })
+            .where(eq(drinks.id, item.drink_id))
+            .returning();
 
-            return updated;
-          })
-        );
+          updatedDrinks.push(updatedDrink);
+        }
 
         // Update order status
         const [updatedOrder] = await tx
@@ -227,13 +226,23 @@ export function registerRoutes(app: Express): Server {
         return { order: updatedOrder, updatedDrinks };
       });
 
-      // Broadcast inventory updates
-      result.updatedDrinks.forEach(drink => {
-        broadcastInventoryUpdate('inventory_change', {
+      // Broadcast individual updates
+      for (const drink of result.updatedDrinks) {
+        await broadcastInventoryUpdate('INVENTORY_CHANGE', {
           drinkId: drink.id,
           newInventory: drink.inventory,
           sales: drink.sales
         });
+      }
+
+      // Send full refresh to ensure consistency
+      const allDrinks = await db
+        .select()
+        .from(drinks)
+        .orderBy(desc(drinks.category));
+
+      await broadcastInventoryUpdate('DRINKS_UPDATE', {
+        items: allDrinks
       });
 
       res.json(result.order);
@@ -359,10 +368,6 @@ export function registerRoutes(app: Express): Server {
         .json({ error: error.message || "Failed to track pour" });
     }
   });
-  //This route is duplicated in the original code. Removing the duplicate.
-  // app.post("/api/pour-transactions/track", async (req, res) => { ... });
-
-
   // Dashboard Statistics with pagination and caching
   app.get("/api/dashboard/stats", async (req, res) => {
     try {
@@ -998,7 +1003,7 @@ export function registerRoutes(app: Express): Server {
             total: drink.price * quantity,
             status: 'completed',
             payment_status: 'completed',
-            created_at: newDate(),
+            created_at: new Date(),
             completed_at: new Date(),
             items: [{
               drink_id: drinkId,
