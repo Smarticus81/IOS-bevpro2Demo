@@ -26,17 +26,24 @@ export function useWebSocket() {
     ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data) as WebSocketMessage;
-        console.log('WebSocket message received:', message.type);
+        console.log('WebSocket message received:', message);
 
         // Handle different types of updates
         switch (message.type) {
           case 'INVENTORY_UPDATE':
-            // Invalidate and refetch inventory-related queries
+            // Always invalidate drinks query to refresh inventory
             queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
+
+            // If specific drink update, invalidate that drink's data
+            if (message.data?.drinkId) {
+              queryClient.invalidateQueries({ 
+                queryKey: [`/api/drinks/${message.data.drinkId}`]
+              });
+            }
             break;
 
           case 'POUR_UPDATE':
-            // Invalidate and refetch pour-related queries
+            // Invalidate pour-related queries
             queryClient.invalidateQueries({ queryKey: ['/api/pour-inventory'] });
             queryClient.invalidateQueries({ queryKey: ['/api/pour-transactions'] });
             break;
@@ -84,7 +91,7 @@ export function useWebSocket() {
     reconnectTimeoutRef.current = setTimeout(() => {
       console.log('Attempting to reconnect...');
       connect();
-    }, 5000);
+    }, 5000); // 5 second delay before reconnecting
   }, [connect]);
 
   useEffect(() => {
