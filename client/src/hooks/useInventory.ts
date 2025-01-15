@@ -21,7 +21,9 @@ export function useInventory() {
 
   const connect = useCallback(() => {
     console.log('Attempting WebSocket connection...');
-    const ws = new WebSocket(`ws://${window.location.host}`);
+    // Determine the WebSocket protocol based on the page protocol
+    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    const ws = new WebSocket(`${protocol}${window.location.host}`);
 
     ws.onopen = () => {
       console.log('WebSocket connected successfully');
