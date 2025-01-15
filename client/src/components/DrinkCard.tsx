@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import type { Drink } from "@db/schema";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Beer, Wine, GlassWater, Coffee, Droplet } from "lucide-react";
 import { useInventory } from "@/hooks/useInventory";
 
@@ -13,21 +13,20 @@ interface DrinkCardProps {
 
 export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [lastInventory, setLastInventory] = useState(drink.inventory);
-  const { isConnected } = useInventory();
+  const { isConnected, localInventory, updateLocalInventory } = useInventory();
 
-  // Track inventory changes for animation
-  useEffect(() => {
-    if (drink.inventory !== lastInventory) {
-      console.log('Inventory changed:', {
-        drinkId: drink.id,
-        oldInventory: lastInventory,
-        newInventory: drink.inventory,
-        timestamp: new Date().toISOString()
-      });
-      setLastInventory(drink.inventory);
+  // Calculate effective inventory including cart items
+  const effectiveInventory = useMemo(() => {
+    const localAdjustment = localInventory[drink.id] || 0;
+    return drink.inventory - localAdjustment;
+  }, [drink.inventory, localInventory, drink.id]);
+
+  const handleAdd = () => {
+    if (effectiveInventory > 0) {
+      updateLocalInventory(drink.id, 1);
+      onAdd();
     }
-  }, [drink.inventory, lastInventory, drink.id]);
+  };
 
   const getCategoryIcon = (category: string) => {
     switch (category.toLowerCase()) {
@@ -68,7 +67,7 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
     };
   };
 
-  const inventoryStatus = getInventoryStatus(drink.inventory);
+  const inventoryStatus = getInventoryStatus(effectiveInventory);
 
   return (
     <motion.div
@@ -84,8 +83,8 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
         scale: 0.98,
         transition: { duration: 0.1, ease: "easeIn" }
       }}
-      onClick={drink.inventory > 0 ? onAdd : undefined}
-      className={`group relative ${drink.inventory === 0 ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'} select-none`}
+      onClick={effectiveInventory > 0 ? handleAdd : undefined}
+      className={`group relative ${effectiveInventory === 0 ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'} select-none`}
     >
       <div className="relative overflow-hidden rounded-2xl bg-white/95 backdrop-blur-md
                     shadow-[0_8px_16px_rgba(0,0,0,0.08)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.12)]
@@ -147,24 +146,6 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
             )}
           </AnimatePresence>
 
-          {/* Inventory Update Animation */}
-          <AnimatePresence>
-            {drink.inventory !== lastInventory && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className={`absolute right-3 bottom-3 px-2 py-1 rounded-md
-                          ${drink.inventory > lastInventory ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
-              >
-                <span className="text-xs font-medium">
-                  {drink.inventory > lastInventory ? '+' : '-'}
-                  {Math.abs(drink.inventory - lastInventory)}
-                </span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           {/* Info Panel */}
           <div className="absolute inset-x-0 bottom-0 p-4 bg-white/95 backdrop-blur-md
                        border-t border-white/10">
@@ -176,7 +157,7 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="font-medium text-sm leading-5 text-gray-900 line-clamp-2
-                             tracking-tight">
+                              tracking-tight">
                     {drink.name}
                   </h3>
                   <div className="flex items-center justify-between mt-1.5">
@@ -195,7 +176,7 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
                       />
                       <motion.span 
                         className={`text-xs font-medium ${inventoryStatus.text}`}
-                        key={drink.inventory} // Force animation on inventory change
+                        key={effectiveInventory}
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.2 }}

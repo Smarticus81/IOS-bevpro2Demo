@@ -85,24 +85,7 @@ export function registerRoutes(app: Express): Server {
       console.log('Processing order:', { itemCount: items.length, total });
 
       const result = await db.transaction(async (tx) => {
-        // First validate all inventory levels
-        for (const item of items) {
-          const [drink] = await tx
-            .select()
-            .from(drinks)
-            .where(eq(drinks.id, item.drink.id))
-            .limit(1);
-
-          if (!drink) {
-            throw new Error(`Drink not found: ${item.drink.id}`);
-          }
-
-          if (drink.inventory < item.quantity) {
-            throw new Error(`Insufficient inventory for ${drink.name}: ${drink.inventory} available, ${item.quantity} requested`);
-          }
-        }
-
-        // Create the order first
+        // First create the order
         const [order] = await tx.insert(orders)
           .values({
             total,
@@ -971,7 +954,7 @@ export function registerRoutes(app: Express): Server {
           .where(eq(drinks.id, drinkId))
           .limit(1);
 
-        if(!drink) {
+        if (!drink) {
           throw new Error("Drink not found");
         }
 
@@ -1013,7 +996,7 @@ export function registerRoutes(app: Express): Server {
           })
           .returning();
 
-        // Create transaction record linked to the order
+        //        // Create transaction record linked to the order
         const [transaction] = await tx
           .insert(transactions)
           .values({

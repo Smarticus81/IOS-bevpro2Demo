@@ -20,7 +20,38 @@ export function useInventory() {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
+  const [localInventory, setLocalInventory] = useState<Record<number, number>>({});
   const queryClient = useQueryClient();
+
+  const updateLocalInventory = useCallback((drinkId: number, quantity: number) => {
+    setLocalInventory(prev => ({
+      ...prev,
+      [drinkId]: (prev[drinkId] || 0) - quantity
+    }));
+
+    // Update React Query cache immediately
+    queryClient.setQueryData(['api/drinks'], (oldData: any) => {
+      if (!oldData?.drinks) return oldData;
+
+      const updatedDrinks = oldData.drinks.map((drink: Drink) => {
+        if (drink.id === drinkId) {
+          const currentLocalCount = localInventory[drinkId] || drink.inventory;
+          return {
+            ...drink,
+            inventory: currentLocalCount - quantity
+          };
+        }
+        return drink;
+      });
+
+      return { drinks: updatedDrinks };
+    });
+  }, [queryClient, localInventory]);
+
+  const resetLocalInventory = useCallback(() => {
+    setLocalInventory({});
+    queryClient.invalidateQueries(['api/drinks']);
+  }, [queryClient]);
 
   const connect = useCallback(() => {
     console.log('Attempting WebSocket connection...');
@@ -35,69 +66,34 @@ export function useInventory() {
 
     ws.onmessage = (event) => {
       try {
-        console.log('Received WebSocket message:', event.data);
         const update: InventoryUpdate = JSON.parse(event.data);
 
-        // Handle status messages
         if (update.type === 'status') {
           console.log('WebSocket status:', update.status);
           return;
         }
 
-        // Handle inventory updates
+        // Only process database updates after order completion
         if (update.type === 'INVENTORY_UPDATE' && update.data) {
           setLastUpdate(update.data.timestamp);
 
-          if (update.data.type === 'INVENTORY_CHANGE' && typeof update.data.drinkId === 'number') {
-            console.log('Processing inventory change:', update.data);
-
-            queryClient.setQueryData(['api/drinks'], (oldData: any) => {
-              if (!oldData?.drinks) {
-                console.log('No existing drinks data found');
-                return oldData;
-              }
-
-              const updatedDrinks = oldData.drinks.map((drink: Drink) => {
-                if (drink.id === update.data!.drinkId) {
-                  const newDrink = {
-                    ...drink,
-                    inventory: update.data!.newInventory,
-                    sales: update.data!.sales,
-                    lastUpdated: update.data!.timestamp
-                  };
-                  console.log(`Updated drink ${drink.id} inventory:`, {
-                    old: drink.inventory,
-                    new: newDrink.inventory
-                  });
-                  return newDrink;
-                }
-                return drink;
-              });
-
-              return { drinks: updatedDrinks };
+          if (update.data.type === 'INVENTORY_CHANGE') {
+            // Reset local inventory for this drink after order completion
+            setLocalInventory(prev => {
+              const { [update.data!.drinkId!]: _, ...rest } = prev;
+              return rest;
             });
-
-            // Invalidate queries that might depend on inventory
-            queryClient.invalidateQueries(['api/drinks']);
-          } else if (update.data.type === 'DRINKS_UPDATE' && Array.isArray(update.data.items)) {
-            console.log('Processing full drinks update');
-            queryClient.setQueryData(['api/drinks'], { 
-              drinks: update.data.items.map(drink => ({
-                ...drink,
-                lastUpdated: update.data!.timestamp
-              }))
-            });
-            queryClient.invalidateQueries(['api/drinks']);
+          } else if (update.data.type === 'DRINKS_UPDATE') {
+            // Reset all local inventory after full refresh
+            setLocalInventory({});
           }
+
+          // Always invalidate queries to get fresh data
+          queryClient.invalidateQueries(['api/drinks']);
         }
       } catch (error) {
         console.error('Error processing WebSocket message:', error);
-        console.error('Raw message:', event.data);
       }
-    };
-
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
     };
 
     ws.onclose = () => {
@@ -113,8 +109,6 @@ export function useInventory() {
           setRetryCount(prev => prev + 1);
           connect();
         }, backoffTime);
-      } else {
-        console.log('Max retry attempts reached');
       }
     };
 
@@ -133,6 +127,9 @@ export function useInventory() {
 
   return {
     isConnected: socket?.readyState === WebSocket.OPEN,
-    lastUpdate
+    lastUpdate,
+    updateLocalInventory,
+    resetLocalInventory,
+    localInventory
   };
 }
