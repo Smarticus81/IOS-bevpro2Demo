@@ -240,26 +240,25 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
-      // Validate all items have required fields
-      const invalidItems = items.filter((item: any) => {
-        return !(item.drink?.id && typeof item.quantity === 'number' && item.quantity > 0);
-      });
-
-      if (invalidItems.length > 0) {
-        return res.status(400).json({
-          error: "Invalid items in order. Each item must have a valid drink ID and quantity.",
-          invalidItems
-        });
-      }
-
-      // Process order in a transaction
+      // Process order in a transaction with proper locking
       const result = await db.transaction(async (tx) => {
-        // Check inventory levels with locking
-        const insufficientItems = await validateInventoryLevels(tx, items);
+        // First, lock and validate all inventory items
+        const lockedItems = await Promise.all(
+          items.map(async (item: any) => {
+            const [drink] = await tx
+              .select()
+              .from(drinks)
+              .where(eq(drinks.id, item.drink.id))
+              .forUpdate()
+              .limit(1);
 
-        if (insufficientItems.length > 0) {
-          throw new Error("Insufficient inventory for items: " + JSON.stringify(insufficientItems));
-        }
+            if (!drink || drink.inventory < item.quantity) {
+              throw new Error(`Insufficient inventory for drink ID ${item.drink.id}`);
+            }
+
+            return { ...drink, requestedQuantity: item.quantity };
+          })
+        );
 
         // Create order
         const [order] = await tx.insert(orders)
@@ -282,19 +281,27 @@ export function registerRoutes(app: Express): Server {
 
         await tx.insert(orderItems).values(orderItemsData);
 
-        // Update inventory atomically
-        const updatedDrinks = [];
-        for (const item of items) {
-          const [updatedDrink] = await tx.update(drinks)
-            .set({
-              inventory: sql`${drinks.inventory} - ${item.quantity}`,
-              sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
-            })
-            .where(eq(drinks.id, item.drink.id))
-            .returning();
+        // Update inventory with optimistic locking
+        const updatedDrinks = await Promise.all(
+          lockedItems.map(async (drink) => {
+            const [updated] = await tx.update(drinks)
+              .set({
+                inventory: sql`${drinks.inventory} - ${drink.requestedQuantity}`,
+                sales: sql`COALESCE(${drinks.sales}, 0) + ${drink.requestedQuantity}`
+              })
+              .where(and(
+                eq(drinks.id, drink.id),
+                sql`inventory >= ${drink.requestedQuantity}`
+              ))
+              .returning();
 
-          updatedDrinks.push(updatedDrink);
-        }
+            if (!updated) {
+              throw new Error(`Failed to update inventory for drink ${drink.id}`);
+            }
+
+            return updated;
+          })
+        );
 
         return { order, updatedDrinks };
       });
@@ -312,10 +319,12 @@ export function registerRoutes(app: Express): Server {
 
       res.json(result.order);
     } catch (error) {
-      if (error.message.includes("Insufficient inventory")) {
-        return res.status(400).json({ error: error.message });
-      }
-      return handleDatabaseError(error, res);
+      console.error("Error processing order:", error);
+      return res.status(error.message.includes("Insufficient inventory") ? 400 : 500)
+        .json({ 
+          error: error.message || "Failed to process order",
+          details: error instanceof Error ? error.message : "Unknown error"
+        });
     }
   });
 
