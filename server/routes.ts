@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { db, sql } from "@db";
+import { db } from "@db";
 import compression from 'compression';
 import {
   drinks,
@@ -16,222 +16,66 @@ import {
   pourSizes,
   taxCategories,
 } from "@db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, sql, count, sum, desc, and } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
 
 // Cache duration constants
 const CACHE_DURATION = {
-  SHORT: 60,
-  MEDIUM: 300,
-  LONG: 3600,
+  SHORT: 60, // 1 minute
+  MEDIUM: 300, // 5 minutes
+  LONG: 3600, // 1 hour
 };
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
+  console.log('Setting up routes and realtime proxy...');
 
-  // Enable compression
+  // Enable compression for all routes
   app.use(compression());
 
-  // Setup realtime proxy
-  const realtimeProxy = setupRealtimeProxy(httpServer);
+  // Setup realtime connection with enhanced event handling
+  const wsServer = setupRealtimeProxy(httpServer);
 
   // Helper function to broadcast inventory updates
-  const broadcastInventoryUpdate = async (type: string, data: any) => {
-    try {
-      if (realtimeProxy) {
-        const message = {
-          type: 'INVENTORY_UPDATE',
-          data: {
-            type,
-            ...data,
+  const broadcastInventoryUpdate = (type: string, data: any) => {
+    if (wsServer) {
+      wsServer.clients.forEach(client => {
+        if (client.readyState === 1) { // WebSocket.OPEN
+          client.send(JSON.stringify({
+            type: type,
+            data: data,
             timestamp: new Date().toISOString()
-          }
-        };
-        console.log('Broadcasting inventory update:', message);
-        await realtimeProxy.broadcast(message);
-      }
-    } catch (error) {
-      console.error('Error broadcasting update:', error);
+          }));
+        }
+      });
     }
   };
 
-  // Get drinks with inventory status
+  // Get drinks with real-time updates enabled
   app.get("/api/drinks", async (_req, res) => {
     try {
+      // Add cache control headers for short-term caching
+      res.set('Cache-Control', `public, max-age=${CACHE_DURATION.SHORT}`);
+
+      // Get all drinks without pagination
       const allDrinks = await db
         .select()
         .from(drinks)
-        .orderBy(desc(drinks.category));
+        .orderBy(drinks.category);
 
-      console.log('Fetched drinks:', allDrinks.length);
-      res.json({ drinks: allDrinks });
+      // Broadcast drinks update
+      broadcastInventoryUpdate('INVENTORY_UPDATE', {
+        type: 'drinks',
+        items: allDrinks,
+        timestamp: new Date().toISOString()
+      });
+
+      res.json({
+        drinks: allDrinks
+      });
     } catch (error) {
       console.error("Error fetching drinks:", error);
       res.status(500).json({ error: "Failed to fetch drinks" });
-    }
-  });
-
-  // Process order with atomic updates
-  app.post("/api/orders", async (req, res) => {
-    try {
-      const { items, total } = req.body;
-
-      if (!Array.isArray(items) || typeof total !== 'number' || total <= 0) {
-        return res.status(400).json({
-          error: "Invalid order data"
-        });
-      }
-
-      console.log('Processing order:', { itemCount: items.length, total });
-
-      const result = await db.transaction(async (tx) => {
-        // First create the order
-        const [order] = await tx.insert(orders)
-          .values({
-            total,
-            status: 'pending',
-            payment_status: 'pending',
-            created_at: new Date()
-          })
-          .returning();
-
-        console.log('Created order:', order.id);
-
-        // Process items and update inventory atomically
-        const updatedDrinks = [];
-
-        for (const item of items) {
-          // Create order item
-          await tx.insert(orderItems)
-            .values({
-              order_id: order.id,
-              drink_id: item.drink.id,
-              quantity: item.quantity,
-              price: item.drink.price
-            });
-
-          // Update inventory
-          const [updatedDrink] = await tx
-            .update(drinks)
-            .set({
-              inventory: sql`${drinks.inventory} - ${item.quantity}`,
-              sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
-            })
-            .where(eq(drinks.id, item.drink.id))
-            .returning();
-
-          updatedDrinks.push(updatedDrink);
-        }
-
-        return { order, updatedDrinks };
-      });
-
-      // After successful transaction, broadcast updates
-      for (const drink of result.updatedDrinks) {
-        await broadcastInventoryUpdate('INVENTORY_CHANGE', {
-          drinkId: drink.id,
-          newInventory: drink.inventory,
-          sales: drink.sales
-        });
-      }
-
-      // Also send a full refresh to ensure consistency
-      const allDrinks = await db
-        .select()
-        .from(drinks)
-        .orderBy(desc(drinks.category));
-
-      await broadcastInventoryUpdate('DRINKS_UPDATE', {
-        items: allDrinks
-      });
-
-      res.json(result.order);
-    } catch (error: any) {
-      console.error("Order processing error:", error);
-      res.status(400).json({
-        error: error.message || "Failed to process order"
-      });
-    }
-  });
-
-  // Cancel order and restore inventory
-  app.post("/api/orders/:id/cancel", async (req, res) => {
-    try {
-      const orderId = parseInt(req.params.id);
-
-      const result = await db.transaction(async (tx) => {
-        // Get order details
-        const [order] = await tx
-          .select()
-          .from(orders)
-          .where(eq(orders.id, orderId))
-          .limit(1);
-
-        if (!order) {
-          throw new Error("Order not found");
-        }
-
-        if (order.status === 'cancelled') {
-          throw new Error("Order already cancelled");
-        }
-
-        // Get order items
-        const items = await tx
-          .select()
-          .from(orderItems)
-          .where(eq(orderItems.order_id, orderId));
-
-        // Restore inventory for each item
-        const updatedDrinks = [];
-        for (const item of items) {
-          const [updatedDrink] = await tx
-            .update(drinks)
-            .set({
-              inventory: sql`${drinks.inventory} + ${item.quantity}`,
-              sales: sql`GREATEST(COALESCE(${drinks.sales}, 0) - ${item.quantity}, 0)`
-            })
-            .where(eq(drinks.id, item.drink_id))
-            .returning();
-
-          updatedDrinks.push(updatedDrink);
-        }
-
-        // Update order status
-        const [updatedOrder] = await tx
-          .update(orders)
-          .set({
-            status: 'cancelled',
-            completed_at: new Date()
-          })
-          .where(eq(orders.id, orderId))
-          .returning();
-
-        return { order: updatedOrder, updatedDrinks };
-      });
-
-      // Broadcast individual updates
-      for (const drink of result.updatedDrinks) {
-        await broadcastInventoryUpdate('INVENTORY_CHANGE', {
-          drinkId: drink.id,
-          newInventory: drink.inventory,
-          sales: drink.sales
-        });
-      }
-
-      // Send full refresh to ensure consistency
-      const allDrinks = await db
-        .select()
-        .from(drinks)
-        .orderBy(desc(drinks.category));
-
-      await broadcastInventoryUpdate('DRINKS_UPDATE', {
-        items: allDrinks
-      });
-
-      res.json(result.order);
-    } catch (error) {
-      console.error("Error cancelling order:", error);
-      res.status(500).json({ error: "Failed to cancel order" });
     }
   });
 
@@ -260,7 +104,8 @@ export function registerRoutes(app: Express): Server {
         .orderBy(desc(pourInventory.last_pour_at));
 
       // Broadcast pour inventory update
-      broadcastInventoryUpdate('inventory', {
+      broadcastInventoryUpdate('POUR_UPDATE', {
+        type: 'inventory',
         items: inventory,
         timestamp: new Date().toISOString()
       });
@@ -279,78 +124,180 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Update the pour transaction endpoint with better atomic handling
+  // Add broadcast calls to relevant routes
   app.post("/api/pour-transactions/track", async (req, res) => {
     try {
       const { pourInventoryId, pourSizeId, staffId } = req.body;
 
-      // Start a database transaction
-      const result = await db.transaction(async (tx) => {
-        // Get pour size details
-        const [pourSize] = await tx.select({
-          volume_ml: pourSizes.volume_ml,
-          tax_amount: sql<number>`COALESCE(${pourSizes.tax_amount}::numeric, 0)`,
+      // Get pour size details with tax amount
+      const [pourSize] = await db.select({
+        volume_ml: pourSizes.volume_ml,
+        tax_amount: sql<number>`COALESCE(${pourSizes.tax_amount}::numeric, 0)`,
+      })
+        .from(pourSizes)
+        .where(eq(pourSizes.id, pourSizeId))
+        .limit(1);
+
+      if (!pourSize) {
+        return res.status(400).json({ error: "Invalid pour size" });
+      }
+
+      // Get current inventory
+      const [inventory] = await db.select()
+        .from(pourInventory)
+        .where(eq(pourInventory.id, pourInventoryId))
+        .limit(1);
+
+      if (!inventory) {
+        return res.status(400).json({ error: "Invalid inventory item" });
+      }
+
+      // Check if enough volume remains
+      if (inventory.remaining_volume_ml < pourSize.volume_ml) {
+        return res.status(400).json({ error: "Insufficient remaining volume" });
+      }
+
+      // Create transaction record
+      const [transaction] = await db.insert(pourTransactions)
+        .values({
+          pour_inventory_id: pourInventoryId,
+          pour_size_id: pourSizeId,
+          volume_ml: pourSize.volume_ml,
+          staff_id: staffId,
+          transaction_time: new Date(),
+          tax_amount: pourSize.tax_amount
         })
-          .from(pourSizes)
-          .where(eq(pourSizes.id, pourSizeId))
-          .limit(1);
+        .returning();
 
-        if (!pourSize) {
-          throw new Error("Invalid pour size");
-        }
+      // Update inventory
+      const [updatedInventory] = await db.update(pourInventory)
+        .set({
+          remaining_volume_ml: sql`${pourInventory.remaining_volume_ml} - ${pourSize.volume_ml}`,
+          last_pour_at: new Date()
+        })
+        .where(eq(pourInventory.id, pourInventoryId))
+        .returning();
 
-        // Get current inventory with locking
-        const [inventory] = await tx.select()
-          .from(pourInventory)
-          .where(eq(pourInventory.id, pourInventoryId))
-          .forUpdate()
-          .limit(1);
-
-        if (!inventory) {
-          throw new Error("Invalid inventory item");
-        }
-
-        if (inventory.remaining_volume_ml < pourSize.volume_ml) {
-          throw new Error(`Insufficient volume: ${inventory.remaining_volume_ml}ml remaining, ${pourSize.volume_ml}ml requested`);
-        }
-
-        // Create transaction record
-        const [transaction] = await tx.insert(pourTransactions)
-          .values({
-            pour_inventory_id: pourInventoryId,
-            pour_size_id: pourSizeId,
-            volume_ml: pourSize.volume_ml,
-            staff_id: staffId,
-            transaction_time: new Date(),
-            tax_amount: pourSize.tax_amount
-          })
-          .returning();
-
-        // Update inventory atomically
-        const [updatedInventory] = await tx.update(pourInventory)
-          .set({
-            remaining_volume_ml: sql`${pourInventory.remaining_volume_ml} - ${pourSize.volume_ml}`,
-            last_pour_at: new Date()
-          })
-          .where(eq(pourInventory.id, pourInventoryId))
-          .returning();
-
-        return { transaction, updatedInventory };
+      // Broadcast pour transaction update
+      broadcastInventoryUpdate('POUR_UPDATE', {
+        transaction,
+        updatedInventory
       });
 
-      // Broadcast update after successful transaction
-      broadcastInventoryUpdate('pour_transaction', {
-        data: result,
-        timestamp: new Date().toISOString()
-      });
-
-      res.json(result);
+      res.json(transaction);
     } catch (error) {
       console.error("Error tracking pour:", error);
-      res.status(error.message.includes("Insufficient volume") ? 400 : 500)
-        .json({ error: error.message || "Failed to track pour" });
+      res.status(500).json({ error: "Failed to track pour" });
     }
   });
+
+  // Create new order with real-time inventory updates
+  app.post("/api/orders", async (req, res) => {
+    try {
+      const { items, total } = req.body;
+
+      if (!items?.length || typeof total !== 'number' || total <= 0) {
+        console.error("Invalid order data:", { items, total });
+        return res.status(400).json({
+          error: "Invalid order data. Must include items array and valid total."
+        });
+      }
+
+      // Validate all items have required fields
+      const invalidItems = items.filter((item: any) => {
+        const isValid = item.drink?.id &&
+          typeof item.quantity === 'number' &&
+          item.quantity > 0;
+        if (!isValid) {
+          console.error("Invalid item in order:", item);
+        }
+        return !isValid;
+      });
+
+      if (invalidItems.length > 0) {
+        return res.status(400).json({
+          error: "Invalid items in order. Each item must have a valid drink ID and quantity.",
+          invalidItems
+        });
+      }
+
+      // Verify inventory levels before processing
+      for (const item of items) {
+        const [drink] = await db
+          .select({ inventory: drinks.inventory })
+          .from(drinks)
+          .where(eq(drinks.id, item.drink.id))
+          .limit(1);
+
+        if (!drink || drink.inventory < item.quantity) {
+          return res.status(400).json({
+            error: `Insufficient inventory for ${item.drink.name}. Available: ${drink?.inventory || 0}`,
+            drinkId: item.drink.id
+          });
+        }
+      }
+
+      // Create order and update inventory atomically
+      const [order] = await db
+        .insert(orders)
+        .values({
+          total,
+          items,
+          status: 'pending',
+          payment_status: 'pending',
+          created_at: new Date()
+        })
+        .returning();
+
+      console.log("Order created successfully:", order);
+
+      // Create order items with validation
+      const orderItemsData = items.map((item: any) => ({
+        order_id: order.id,
+        drink_id: item.drink.id,
+        quantity: item.quantity,
+        price: item.drink.price
+      }));
+
+      await db.insert(orderItems).values(orderItemsData);
+      console.log("Order items created:", orderItemsData);
+
+      // Update inventory and sales with proper error handling
+      for (const item of items) {
+        const [updatedDrink] = await db
+          .update(drinks)
+          .set({
+            inventory: sql`${drinks.inventory} - ${item.quantity}`,
+            sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
+          })
+          .where(eq(drinks.id, item.drink.id))
+          .returning();
+
+        if (!updatedDrink) {
+          throw new Error(`Failed to update inventory for drink ${item.drink.id}`);
+        }
+
+        // Broadcast inventory update
+        broadcastInventoryUpdate('INVENTORY_UPDATE', {
+          drinkId: item.drink.id,
+          newInventory: updatedDrink.inventory,
+          sales: updatedDrink.sales
+        });
+
+        console.log("Updated drink inventory:", updatedDrink);
+      }
+
+      res.json(order);
+    } catch (error) {
+      console.error("Error creating order:", error);
+      res.status(500).json({
+        error: "Failed to create order",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+
   // Dashboard Statistics with pagination and caching
   app.get("/api/dashboard/stats", async (req, res) => {
     try {
@@ -900,7 +847,8 @@ export function registerRoutes(app: Express): Server {
           console.log("Created pour inventory item:", pourInventoryItem);
 
           // Broadcast inventory update
-          broadcastInventoryUpdate('new_item', {
+          broadcastInventoryUpdate('INVENTORY_UPDATE', {
+            type: 'new_item',
             item: {
               ...newDrink,
               pour_inventory: pourInventoryItem
@@ -914,7 +862,8 @@ export function registerRoutes(app: Express): Server {
         }
 
         // Broadcast inventory update for non-pour items
-        broadcastInventoryUpdate('new_item', {
+        broadcastInventoryUpdate('INVENTORY_UPDATE', {
+          type: 'new_item',
           item: newDrink
         });
 
@@ -932,108 +881,6 @@ export function registerRoutes(app: Express): Server {
         error: "Failed to add new drink",
         details: error instanceof Error ? error.message : "Unknown error"
       });
-    }
-  });
-
-  // Add inventory update endpoint with transaction logging
-  app.post("/api/drinks/:id/inventory", async (req, res) => {
-    try {
-      const drinkId = parseInt(req.params.id);
-      const { quantity, isIncrement } = req.body;
-
-      if (typeof quantity !== 'number' || quantity <= 0) {
-        return res.status(400).json({ error: "Invalid quantity" });
-      }
-
-      // Process inventory update in a transaction
-      const result = await db.transaction(async (tx) => {
-        // Get current drink with locking
-        const [drink] = await tx
-          .select()
-          .from(drinks)
-          .where(eq(drinks.id, drinkId))
-          .limit(1);
-
-        if (!drink) {
-          throw new Error("Drink not found");
-        }
-
-        // Calculate new inventory
-        const newInventory = isIncrement
-          ? drink.inventory + quantity
-          : drink.inventory - quantity;
-
-        if (newInventory < 0) {
-          throw new Error("Insufficient inventory");
-        }
-
-        // Update drink inventory
-        const [updatedDrink] = await tx
-          .update(drinks)
-          .set({
-            inventory: newInventory,
-            ...(isIncrement ? {} : {
-              sales: sql`COALESCE(${drinks.sales}, 0) + ${quantity}`
-            })
-          })
-          .where(eq(drinks.id, drinkId))
-          .returning();
-
-        // Create a demo order for inventory updates
-        const [order] = await tx
-          .insert(orders)
-          .values({
-            total: drink.price * quantity,
-            status: 'completed',
-            payment_status: 'completed',
-            created_at: new Date(),
-            completed_at: new Date(),
-            items: [{
-              drink_id: drinkId,
-              quantity: quantity,
-              price: drink.price
-            }]
-          })
-          .returning();
-
-        //        // Create transaction record linked to the order
-        const [transaction] = await tx
-          .insert(transactions)
-          .values({
-            order_id: order.id,
-            amount: drink.price * quantity,
-            status: 'completed',
-            created_at: new Date(),
-            updated_at: new Date(),
-            metadata: {
-              type: isIncrement ? 'inventory_increase' : 'inventory_decrease',
-              drink_id: drinkId,
-              quantity,
-              previous_inventory: drink.inventory,
-              new_inventory: newInventory
-            }
-          })
-          .returning();
-
-        return { updatedDrink, transaction, order };
-      });
-
-      // Broadcast inventory update
-      broadcastInventoryUpdate('inventory_change', {
-        drinkId: result.updatedDrink.id,
-        newInventory: result.updatedDrink.inventory,
-        sales: result.updatedDrink.sales,
-        transaction: result.transaction
-      });
-
-      res.json(result);
-    } catch (error) {
-      console.error("Error updating inventory:", error);
-      res.status(error.message?.includes("Insufficient inventory") ? 400 : 500)
-        .json({
-          error: error.message || "Failed to update inventory",
-          details: error instanceof Error ? error.message : "Unknown error"
-        });
     }
   });
 

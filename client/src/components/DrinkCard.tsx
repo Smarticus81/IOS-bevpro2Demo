@@ -1,8 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import type { Drink } from "@db/schema";
-import { useState, useEffect, useMemo } from "react";
+import { useState } from "react";
 import { Beer, Wine, GlassWater, Coffee, Droplet } from "lucide-react";
-import { useInventory } from "@/hooks/useInventory";
 
 interface DrinkCardProps {
   drink: Drink;
@@ -13,20 +12,6 @@ interface DrinkCardProps {
 
 export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
-  const { isConnected, localInventory, updateLocalInventory } = useInventory();
-
-  // Calculate effective inventory including cart items
-  const effectiveInventory = useMemo(() => {
-    const localAdjustment = localInventory[drink.id] || 0;
-    return drink.inventory - localAdjustment;
-  }, [drink.inventory, localInventory, drink.id]);
-
-  const handleAdd = () => {
-    if (effectiveInventory > 0) {
-      updateLocalInventory(drink.id, 1);
-      onAdd();
-    }
-  };
 
   const getCategoryIcon = (category: string) => {
     switch (category.toLowerCase()) {
@@ -46,29 +31,6 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
 
   const { icon: Icon, color } = getCategoryIcon(drink.category);
 
-  const getInventoryStatus = (inventory: number) => {
-    if (inventory === 0) {
-      return {
-        color: 'bg-red-500',
-        text: 'text-red-500',
-        message: 'Out of Stock'
-      };
-    } else if (inventory < 10) {
-      return {
-        color: 'bg-yellow-500',
-        text: 'text-yellow-500',
-        message: 'Low Stock'
-      };
-    }
-    return {
-      color: 'bg-emerald-500',
-      text: 'text-emerald-500',
-      message: `${inventory} Available`
-    };
-  };
-
-  const inventoryStatus = getInventoryStatus(effectiveInventory);
-
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -83,8 +45,8 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
         scale: 0.98,
         transition: { duration: 0.1, ease: "easeIn" }
       }}
-      onClick={effectiveInventory > 0 ? handleAdd : undefined}
-      className={`group relative ${effectiveInventory === 0 ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'} select-none`}
+      onClick={onAdd}
+      className="group relative cursor-pointer select-none"
     >
       <div className="relative overflow-hidden rounded-2xl bg-white/95 backdrop-blur-md
                     shadow-[0_8px_16px_rgba(0,0,0,0.08)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.12)]
@@ -107,7 +69,7 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
 
           {/* Drink Image */}
           <img
-            src={drink.image || ''}
+            src={`/static/images/${drink.image}`}
             alt={drink.name}
             onLoad={() => setImageLoaded(true)}
             className={`h-full w-full object-cover transition-opacity duration-500
@@ -122,13 +84,6 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
               ${drink.price}
             </span>
           </div>
-
-          {/* Real-time Connection Indicator */}
-          {!isConnected && (
-            <div className="absolute left-3 top-3 px-2 py-1 bg-yellow-100 rounded-md">
-              <span className="text-xs text-yellow-800">Syncing...</span>
-            </div>
-          )}
 
           {/* Quantity Badge */}
           <AnimatePresence>
@@ -157,33 +112,33 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="font-medium text-sm leading-5 text-gray-900 line-clamp-2
-                              tracking-tight">
+                             tracking-tight">
                     {drink.name}
                   </h3>
                   <div className="flex items-center justify-between mt-1.5">
                     <p className="text-xs font-medium text-gray-500 tracking-wide uppercase">
                       {drink.category}
                     </p>
-                    <motion.div 
-                      className="flex items-center gap-1.5"
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.2 }}
-                    >
+                    <div className="flex items-center gap-1.5">
                       <motion.div
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        className={`h-2 w-2 rounded-full ${inventoryStatus.color}`}
+                        className={`h-2 w-2 rounded-full ${
+                          drink.inventory === 0 ? 'bg-red-500' :
+                          drink.inventory < 10 ? 'bg-yellow-500' :
+                          'bg-emerald-500'
+                        }`}
                       />
-                      <motion.span 
-                        className={`text-xs font-medium ${inventoryStatus.text}`}
-                        key={effectiveInventory}
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        {inventoryStatus.message}
-                      </motion.span>
-                    </motion.div>
+                      <span className={`text-xs font-medium ${
+                        drink.inventory === 0 ? 'text-red-500' :
+                        drink.inventory < 10 ? 'text-yellow-500' :
+                        'text-emerald-500'
+                      }`}>
+                        {drink.inventory === 0 ? 'Out of Stock' :
+                         drink.inventory < 10 ? 'Low Stock' :
+                         `${drink.inventory} Available`}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>

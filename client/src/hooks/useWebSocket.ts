@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef, useState } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface WebSocketMessage {
@@ -8,19 +8,13 @@ interface WebSocketMessage {
   timestamp: string;
 }
 
-export type ConnectionStatus = 'connected' | 'disconnected' | 'connecting';
-
 export function useWebSocket() {
   const queryClient = useQueryClient();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
-  const reconnectAttemptsRef = useRef(0);
-  const MAX_RECONNECT_ATTEMPTS = 5;
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      console.log('WebSocket already connected');
       return;
     }
 
@@ -28,44 +22,27 @@ export function useWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const ws = new WebSocket(`${protocol}//${window.location.host}`);
     wsRef.current = ws;
-    setConnectionStatus('connecting');
 
     ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data) as WebSocketMessage;
-        console.log('WebSocket message received:', message);
+        console.log('WebSocket message received:', message.type);
 
         // Handle different types of updates
         switch (message.type) {
           case 'INVENTORY_UPDATE':
-            // Handle different inventory update types
-            if (message.data?.type === 'drinks_refresh' || message.data?.type === 'drinks') {
-              console.log('Refreshing all drinks data');
-              queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
-            } else if (message.data?.type === 'inventory_change') {
-              console.log('Updating specific drink:', message.data);
-              // Always refresh the full drinks list to ensure consistency
-              queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
-              if (message.data?.drinkId) {
-                queryClient.invalidateQueries({ 
-                  queryKey: [`/api/drinks/${message.data.drinkId}`]
-                });
-              }
-            }
+            // Invalidate and refetch inventory-related queries
+            queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
             break;
 
           case 'POUR_UPDATE':
-            console.log('Updating pour-related data');
+            // Invalidate and refetch pour-related queries
             queryClient.invalidateQueries({ queryKey: ['/api/pour-inventory'] });
             queryClient.invalidateQueries({ queryKey: ['/api/pour-transactions'] });
             break;
 
           case 'status':
             console.log('WebSocket status:', message.status);
-            if (message.status === 'connected') {
-              reconnectAttemptsRef.current = 0;
-              setConnectionStatus('connected');
-            }
             break;
 
           default:
@@ -79,8 +56,6 @@ export function useWebSocket() {
     // Connection opened
     ws.onopen = () => {
       console.log('WebSocket connection established');
-      reconnectAttemptsRef.current = 0;
-      setConnectionStatus('connected');
       // Clear any pending reconnection timeouts
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
@@ -91,14 +66,12 @@ export function useWebSocket() {
     // Connection error
     ws.onerror = (error) => {
       console.error('WebSocket error:', error);
-      setConnectionStatus('disconnected');
       reconnect();
     };
 
     // Connection closed
     ws.onclose = () => {
       console.log('WebSocket connection closed');
-      setConnectionStatus('disconnected');
       reconnect();
     };
   }, [queryClient]);
@@ -108,20 +81,10 @@ export function useWebSocket() {
       clearTimeout(reconnectTimeoutRef.current);
     }
 
-    if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
-      console.log('Max reconnection attempts reached');
-      setConnectionStatus('disconnected');
-      return;
-    }
-
-    setConnectionStatus('connecting');
-    reconnectAttemptsRef.current++;
-    const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 10000);
-
     reconnectTimeoutRef.current = setTimeout(() => {
-      console.log(`Attempting to reconnect (attempt ${reconnectAttemptsRef.current})...`);
+      console.log('Attempting to reconnect...');
       connect();
-    }, delay);
+    }, 5000);
   }, [connect]);
 
   useEffect(() => {
@@ -137,6 +100,4 @@ export function useWebSocket() {
       }
     };
   }, [connect]);
-
-  return { connectionStatus };
 }
