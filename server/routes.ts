@@ -35,7 +35,7 @@ export function registerRoutes(app: Express): Server {
   // Setup realtime proxy
   const realtimeProxy = setupRealtimeProxy(httpServer);
 
-  // Broadcast helper with better error handling
+  // Helper function to broadcast inventory updates
   const broadcastInventoryUpdate = async (type: string, data: any) => {
     try {
       if (realtimeProxy) {
@@ -86,25 +86,7 @@ export function registerRoutes(app: Express): Server {
       console.log('Processing order:', { itemCount: items.length, total });
 
       const result = await db.transaction(async (tx) => {
-        // Validate inventory first
-        for (const item of items) {
-          const drink = await tx
-            .select()
-            .from(drinks)
-            .where(eq(drinks.id, item.drink.id))
-            .limit(1)
-            .then(rows => rows[0]);
-
-          if (!drink) {
-            throw new Error(`Drink not found: ${item.drink.id}`);
-          }
-
-          if (drink.inventory < item.quantity) {
-            throw new Error(`Insufficient inventory for ${drink.name}`);
-          }
-        }
-
-        // Create order
+        // First create the order
         const [order] = await tx.insert(orders)
           .values({
             total,
@@ -117,10 +99,25 @@ export function registerRoutes(app: Express): Server {
 
         console.log('Created order:', order.id);
 
-        // Process items and update inventory
         const updatedDrinks = [];
 
+        // Process each item
         for (const item of items) {
+          // Get current drink state
+          const [currentDrink] = await tx
+            .select()
+            .from(drinks)
+            .where(eq(drinks.id, item.drink.id))
+            .limit(1);
+
+          if (!currentDrink) {
+            throw new Error(`Drink not found: ${item.drink.id}`);
+          }
+
+          if (currentDrink.inventory < item.quantity) {
+            throw new Error(`Insufficient inventory for ${currentDrink.name}`);
+          }
+
           // Create order item
           await tx.insert(orderItems)
             .values({
@@ -134,8 +131,8 @@ export function registerRoutes(app: Express): Server {
           const [updatedDrink] = await tx
             .update(drinks)
             .set({
-              inventory: sql`${drinks.inventory} - ${item.quantity}`,
-              sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
+              inventory: currentDrink.inventory - item.quantity,
+              sales: (currentDrink.sales || 0) + item.quantity
             })
             .where(eq(drinks.id, item.drink.id))
             .returning();
@@ -146,7 +143,7 @@ export function registerRoutes(app: Express): Server {
         return { order, updatedDrinks };
       });
 
-      // Broadcast updates
+      // After successful transaction, broadcast updates
       for (const drink of result.updatedDrinks) {
         await broadcastInventoryUpdate('INVENTORY_CHANGE', {
           drinkId: drink.id,
@@ -155,7 +152,7 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
-      // Send full refresh
+      // Also send a full refresh
       const allDrinks = await db
         .select()
         .from(drinks)
@@ -1001,7 +998,7 @@ export function registerRoutes(app: Express): Server {
             total: drink.price * quantity,
             status: 'completed',
             payment_status: 'completed',
-            created_at: new Date(),
+            created_at: newDate(),
             completed_at: new Date(),
             items: [{
               drink_id: drinkId,

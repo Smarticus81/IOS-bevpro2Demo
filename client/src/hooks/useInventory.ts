@@ -34,11 +34,10 @@ export function useInventory() {
 
     ws.onmessage = (event) => {
       try {
-        console.log('Raw WebSocket message:', event.data);
+        console.log('Received WebSocket message:', event.data);
         const update: InventoryUpdate = JSON.parse(event.data);
-        console.log('Parsed WebSocket message:', update);
 
-        // Handle connection status
+        // Handle status messages
         if (update.type === 'status') {
           console.log('WebSocket status:', update.status);
           return;
@@ -49,28 +48,19 @@ export function useInventory() {
           if (update.data.type === 'INVENTORY_CHANGE' && typeof update.data.drinkId === 'number') {
             console.log('Processing inventory change:', update.data);
 
+            // Update single drink inventory
             queryClient.setQueryData(['api/drinks'], (oldData: any) => {
               if (!oldData?.drinks) {
                 console.log('No existing drinks data found');
                 return oldData;
               }
 
-              console.log('Updating drink inventory:', {
-                drinkId: update.data.drinkId,
-                newInventory: update.data.newInventory
-              });
-
               const updatedDrinks = oldData.drinks.map((drink: Drink) => {
-                if (drink.id === update.data.drinkId) {
-                  console.log('Found drink to update:', {
-                    id: drink.id,
-                    oldInventory: drink.inventory,
-                    newInventory: update.data.newInventory
-                  });
+                if (drink.id === update.data!.drinkId) {
                   return {
                     ...drink,
-                    inventory: update.data.newInventory,
-                    sales: update.data.sales
+                    inventory: update.data!.newInventory,
+                    sales: update.data!.sales
                   };
                 }
                 return drink;
@@ -79,9 +69,8 @@ export function useInventory() {
               return { drinks: updatedDrinks };
             });
           } else if (update.data.type === 'DRINKS_UPDATE' && Array.isArray(update.data.items)) {
-            console.log('Processing full drinks update:', {
-              itemCount: update.data.items.length
-            });
+            console.log('Processing full drinks update');
+            // Replace entire drinks data
             queryClient.setQueryData(['api/drinks'], { drinks: update.data.items });
           }
         }

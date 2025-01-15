@@ -27,11 +27,17 @@ export function setupRealtimeProxy(server: Server) {
     console.log('Client connected to realtime proxy');
 
     // Send initial connection status
-    ws.send(JSON.stringify({
+    const statusMessage = JSON.stringify({
       type: 'status',
       status: 'connected',
       timestamp: new Date().toISOString()
-    }));
+    });
+
+    try {
+      ws.send(statusMessage);
+    } catch (error) {
+      console.error('Error sending initial status:', error);
+    }
 
     // Handle incoming messages
     ws.on('message', (data) => {
@@ -39,63 +45,100 @@ export function setupRealtimeProxy(server: Server) {
         const message = JSON.parse(data.toString());
         console.log('Received message:', message);
 
-        // Broadcast message to all connected clients except sender
-        const broadcastData = JSON.stringify({
+        // Add timestamp if not present
+        const broadcastMessage = {
           ...message,
-          timestamp: new Date().toISOString()
-        });
+          timestamp: message.timestamp || new Date().toISOString()
+        };
 
+        // Broadcast to all other clients
         wss.clients.forEach(client => {
           if (client !== ws && client.readyState === WebSocket.OPEN) {
-            client.send(broadcastData);
+            try {
+              client.send(JSON.stringify(broadcastMessage));
+            } catch (error) {
+              console.error('Error broadcasting to client:', error);
+            }
           }
         });
       } catch (error) {
         console.error('Failed to process message:', error);
-
-        // Send error back to client
-        ws.send(JSON.stringify({
-          type: 'error',
-          error: 'Failed to process message',
-          timestamp: new Date().toISOString()
-        }));
+        try {
+          ws.send(JSON.stringify({
+            type: 'error',
+            error: 'Failed to process message',
+            timestamp: new Date().toISOString()
+          }));
+        } catch (sendError) {
+          console.error('Error sending error message:', sendError);
+        }
       }
     });
 
-    // Handle client disconnection
     ws.on('close', () => {
       console.log('Client disconnected from realtime proxy');
     });
 
-    // Handle connection errors
     ws.on('error', (error) => {
       console.error('WebSocket error:', error);
     });
   });
 
-  const broadcast = (message: any) => {
-    // Add timestamp if not present
-    const finalMessage = {
-      ...message,
-      timestamp: message.timestamp || new Date().toISOString()
-    };
+  const broadcast = async (message: any): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      try {
+        // Ensure message has required fields
+        const broadcastMessage = {
+          ...message,
+          timestamp: message.timestamp || new Date().toISOString()
+        };
 
-    const broadcastData = JSON.stringify(finalMessage);
-    console.log('Broadcasting message:', finalMessage);
+        const messageStr = JSON.stringify(broadcastMessage);
+        console.log('Broadcasting message:', broadcastMessage);
 
-    let successfulBroadcasts = 0;
-    wss.clients.forEach(client => {
-      if (client.readyState === WebSocket.OPEN) {
-        try {
-          client.send(broadcastData);
-          successfulBroadcasts++;
-        } catch (error) {
-          console.error('Failed to send message to client:', error);
+        // Track successful broadcasts
+        let successCount = 0;
+        const totalClients = wss.clients.size;
+
+        if (totalClients === 0) {
+          console.log('No connected clients to broadcast to');
+          resolve();
+          return;
         }
+
+        wss.clients.forEach(client => {
+          if (client.readyState === WebSocket.OPEN) {
+            try {
+              client.send(messageStr, (error) => {
+                if (error) {
+                  console.error('Error sending to client:', error);
+                } else {
+                  successCount++;
+                }
+
+                // Resolve when all messages have been attempted
+                if (successCount === totalClients) {
+                  console.log(`Successfully broadcast to ${successCount}/${totalClients} clients`);
+                  resolve();
+                }
+              });
+            } catch (error) {
+              console.error('Failed to send message to client:', error);
+              if (successCount === totalClients) {
+                resolve();
+              }
+            }
+          } else {
+            if (successCount === totalClients) {
+              resolve();
+            }
+          }
+        });
+      } catch (error) {
+        console.error('Broadcast error:', error);
+        reject(error);
       }
     });
-
-    console.log(`Successfully broadcasted to ${successfulBroadcasts} clients`);
   };
 
   return {
