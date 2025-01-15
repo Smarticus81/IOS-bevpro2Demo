@@ -13,6 +13,7 @@ type InventoryUpdate = {
     timestamp: string;
   };
   status?: string;
+  timestamp: string;
 };
 
 export function useInventory() {
@@ -37,7 +38,7 @@ export function useInventory() {
         const update: InventoryUpdate = JSON.parse(event.data);
         console.log('Parsed WebSocket message:', update);
 
-        // Handle connection status messages
+        // Handle connection status
         if (update.type === 'status') {
           console.log('WebSocket status:', update.status);
           return;
@@ -45,7 +46,7 @@ export function useInventory() {
 
         // Handle inventory updates
         if (update.type === 'INVENTORY_UPDATE' && update.data) {
-          if (update.data.type === 'INVENTORY_CHANGE' && update.data.drinkId !== undefined) {
+          if (update.data.type === 'INVENTORY_CHANGE' && typeof update.data.drinkId === 'number') {
             console.log('Processing inventory change:', update.data);
 
             queryClient.setQueryData(['api/drinks'], (oldData: any) => {
@@ -54,13 +55,17 @@ export function useInventory() {
                 return oldData;
               }
 
+              console.log('Updating drink inventory:', {
+                drinkId: update.data.drinkId,
+                newInventory: update.data.newInventory
+              });
+
               const updatedDrinks = oldData.drinks.map((drink: Drink) => {
                 if (drink.id === update.data.drinkId) {
-                  console.log('Updating drink:', {
+                  console.log('Found drink to update:', {
                     id: drink.id,
                     oldInventory: drink.inventory,
-                    newInventory: update.data.newInventory,
-                    sales: update.data.sales
+                    newInventory: update.data.newInventory
                   });
                   return {
                     ...drink,
@@ -71,12 +76,7 @@ export function useInventory() {
                 return drink;
               });
 
-              console.log('Updated drinks data:', {
-                oldCount: oldData.drinks.length,
-                newCount: updatedDrinks.length
-              });
-
-              return { ...oldData, drinks: updatedDrinks };
+              return { drinks: updatedDrinks };
             });
           } else if (update.data.type === 'DRINKS_UPDATE' && Array.isArray(update.data.items)) {
             console.log('Processing full drinks update:', {
@@ -109,7 +109,7 @@ export function useInventory() {
           connect();
         }, backoffTime);
       } else {
-        console.log('Max retry attempts reached, manual refresh required');
+        console.log('Max retry attempts reached');
       }
     };
 
@@ -118,7 +118,6 @@ export function useInventory() {
 
   useEffect(() => {
     const ws = connect();
-
     return () => {
       if (ws.readyState === WebSocket.OPEN) {
         console.log('Cleaning up WebSocket connection');

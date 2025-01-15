@@ -1,6 +1,6 @@
-import type { Express, Response } from "express";
+import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { db } from "@db";
+import { db, sql } from "@db";
 import compression from 'compression';
 import {
   drinks,
@@ -16,108 +16,95 @@ import {
   pourSizes,
   taxCategories,
 } from "@db/schema";
-import { eq, sql, count, sum, desc, and } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
 
 // Cache duration constants
 const CACHE_DURATION = {
-  SHORT: 60, // 1 minute
-  MEDIUM: 300, // 5 minutes
-  LONG: 3600, // 1 hour
+  SHORT: 60,
+  MEDIUM: 300,
+  LONG: 3600,
 };
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
-  console.log('Setting up routes and realtime proxy...');
 
-  // Enable compression for all routes
+  // Enable compression
   app.use(compression());
 
-  // Setup realtime connection with enhanced event handling
+  // Setup realtime proxy
   const realtimeProxy = setupRealtimeProxy(httpServer);
 
-  // Helper function to broadcast inventory updates
-  const broadcastInventoryUpdate = (type: string, data: any) => {
-    if (realtimeProxy) {
-      console.log('Broadcasting inventory update:', { type, data });
-      realtimeProxy.broadcast({
-        type: 'INVENTORY_UPDATE',
-        data: {
-          type,
-          ...data,
-          timestamp: new Date().toISOString()
-        }
-      });
+  // Broadcast helper with better error handling
+  const broadcastInventoryUpdate = async (type: string, data: any) => {
+    try {
+      if (realtimeProxy) {
+        const message = {
+          type: 'INVENTORY_UPDATE',
+          data: {
+            type,
+            ...data,
+            timestamp: new Date().toISOString()
+          }
+        };
+        console.log('Broadcasting inventory update:', message);
+        await realtimeProxy.broadcast(message);
+      }
+    } catch (error) {
+      console.error('Error broadcasting update:', error);
     }
   };
 
-  // Get drinks with real-time updates enabled
+  // Get drinks with inventory status
   app.get("/api/drinks", async (_req, res) => {
     try {
-      // Add cache control headers for short-term caching
-      res.set('Cache-Control', `public, max-age=${CACHE_DURATION.SHORT}`);
-
-      // Get all drinks without pagination
       const allDrinks = await db
         .select()
         .from(drinks)
         .orderBy(drinks.category);
 
-      console.log('Fetched drinks:', allDrinks.map(d => ({ 
-        id: d.id, 
-        name: d.name, 
-        inventory: d.inventory 
-      })));
+      console.log('Fetched drinks:', allDrinks.length);
 
-      // Broadcast drinks update
-      broadcastInventoryUpdate('DRINKS_UPDATE', {
-        items: allDrinks,
-      });
-
-      res.json({
-        drinks: allDrinks
-      });
+      res.json({ drinks: allDrinks });
     } catch (error) {
       console.error("Error fetching drinks:", error);
       res.status(500).json({ error: "Failed to fetch drinks" });
     }
   });
 
-  // Create new order with real-time inventory updates
+  // Process order with atomic updates
   app.post("/api/orders", async (req, res) => {
     try {
       const { items, total } = req.body;
-      console.log('Processing order:', { items, total });
 
-      if (!items?.length || typeof total !== 'number' || total <= 0) {
+      if (!Array.isArray(items) || typeof total !== 'number' || total <= 0) {
         return res.status(400).json({
-          error: "Invalid order data. Must include items array and valid total."
+          error: "Invalid order data"
         });
       }
 
-      // Process order in a transaction
-      const result = await db.transaction(async (tx) => {
-        console.log('Starting transaction for order processing');
+      console.log('Processing order:', { itemCount: items.length, total });
 
-        // First, validate and lock inventory items
+      const result = await db.transaction(async (tx) => {
+        // Validate inventory first
         for (const item of items) {
-          const [drink] = await tx
+          const drink = await tx
             .select()
             .from(drinks)
             .where(eq(drinks.id, item.drink.id))
-            .forUpdate()
-            .limit(1);
+            .limit(1)
+            .then(rows => rows[0]);
 
           if (!drink) {
             throw new Error(`Drink not found: ${item.drink.id}`);
           }
 
           if (drink.inventory < item.quantity) {
-            throw new Error(`Insufficient inventory for ${drink.name}: ${drink.inventory} available, ${item.quantity} requested`);
+            throw new Error(`Insufficient inventory for ${drink.name}`);
           }
         }
 
-        // Create order first
+        // Create order
         const [order] = await tx.insert(orders)
           .values({
             total,
@@ -128,10 +115,11 @@ export function registerRoutes(app: Express): Server {
           })
           .returning();
 
-        console.log('Created order:', order);
+        console.log('Created order:', order.id);
 
-        // Create order items and update inventory atomically
+        // Process items and update inventory
         const updatedDrinks = [];
+
         for (const item of items) {
           // Create order item
           await tx.insert(orderItems)
@@ -158,33 +146,31 @@ export function registerRoutes(app: Express): Server {
         return { order, updatedDrinks };
       });
 
-      // Broadcast updates after successful transaction
+      // Broadcast updates
       for (const drink of result.updatedDrinks) {
-        broadcastInventoryUpdate('INVENTORY_CHANGE', {
+        await broadcastInventoryUpdate('INVENTORY_CHANGE', {
           drinkId: drink.id,
           newInventory: drink.inventory,
           sales: drink.sales
         });
       }
 
-      // Also broadcast a full refresh to ensure consistency
+      // Send full refresh
       const allDrinks = await db
         .select()
         .from(drinks)
         .orderBy(drinks.category);
 
-      broadcastInventoryUpdate('DRINKS_UPDATE', {
+      await broadcastInventoryUpdate('DRINKS_UPDATE', {
         items: allDrinks
       });
 
-      console.log('Order processed successfully:', result);
       res.json(result.order);
     } catch (error: any) {
-      console.error("Error processing order:", error);
-      res.status(error.message?.includes("Insufficient inventory") ? 400 : 500)
-        .json({
-          error: error.message || "Failed to process order"
-        });
+      console.error("Order processing error:", error);
+      res.status(400).json({
+        error: error.message || "Failed to process order"
+      });
     }
   });
 
