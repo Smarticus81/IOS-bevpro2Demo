@@ -16,7 +16,7 @@ import {
   pourSizes,
   taxCategories,
 } from "@db/schema";
-import { eq, sql, count, sum, desc, and } from "drizzle-orm";
+import { eq, sql, count, sum, desc } from "drizzle-orm";
 import { setupRealtimeProxy } from "./realtime-proxy";
 import { PaymentService } from "./services/payments";
 
@@ -50,6 +50,44 @@ export function registerRoutes(app: Express): Server {
       });
     }
   };
+
+  // Get drinks with real-time updates enabled
+  app.get("/api/drinks", async (_req, res) => {
+    try {
+      // Add cache control headers for short-term caching
+      res.set('Cache-Control', `public, max-age=${CACHE_DURATION.SHORT}`);
+
+      // Get all drinks without pagination, temporarily excluding tax_category_id
+      const allDrinks = await db
+        .select({
+          id: drinks.id,
+          name: drinks.name,
+          category: drinks.category,
+          subcategory: drinks.subcategory,
+          price: drinks.price,
+          inventory: drinks.inventory,
+          image: drinks.image,
+          sales: drinks.sales,
+          is_cocktail: drinks.is_cocktail
+        })
+        .from(drinks)
+        .orderBy(drinks.category);
+
+      // Broadcast drinks update
+      broadcastInventoryUpdate('INVENTORY_UPDATE', {
+        type: 'drinks',
+        items: allDrinks,
+        timestamp: new Date().toISOString()
+      });
+
+      res.json({
+        drinks: allDrinks
+      });
+    } catch (error) {
+      console.error("Error fetching drinks:", error);
+      res.status(500).json({ error: "Failed to fetch drinks" });
+    }
+  });
 
   // Get transaction history
   app.get("/api/transactions", async (req, res) => {
@@ -98,34 +136,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-
-  // Get drinks with real-time updates enabled
-  app.get("/api/drinks", async (_req, res) => {
-    try {
-      // Add cache control headers for short-term caching
-      res.set('Cache-Control', `public, max-age=${CACHE_DURATION.SHORT}`);
-
-      // Get all drinks without pagination
-      const allDrinks = await db
-        .select()
-        .from(drinks)
-        .orderBy(drinks.category);
-
-      // Broadcast drinks update
-      broadcastInventoryUpdate('INVENTORY_UPDATE', {
-        type: 'drinks',
-        items: allDrinks,
-        timestamp: new Date().toISOString()
-      });
-
-      res.json({
-        drinks: allDrinks
-      });
-    } catch (error) {
-      console.error("Error fetching drinks:", error);
-      res.status(500).json({ error: "Failed to fetch drinks" });
-    }
-  });
 
   // Get pour inventory with real-time updates
   app.get("/api/pour-inventory", async (_req, res) => {
@@ -368,7 +378,6 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
-
 
 
   // Dashboard Statistics with pagination and caching
