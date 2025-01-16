@@ -79,16 +79,6 @@ export function Transactions() {
     );
   }) || [];
 
-  // Format amount from cents to dollars
-  const formatAmount = (amountInCents: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amountInCents / 100);
-  };
-
   const formatDate = (date: string) => {
     return new Date(date).toLocaleString('en-US', {
       year: 'numeric',
@@ -102,6 +92,16 @@ export function Transactions() {
   const getOrderSummary = (items: Transaction['order']['items']) => {
     if (!items?.length) return "No items";
     return items.map(item => `${item.quantity}x ${item.drink.name}`).join(", ");
+  };
+
+  // All amounts are in cents, format them to dollars
+  const formatAmount = (cents: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(cents / 100);
   };
 
   return (
