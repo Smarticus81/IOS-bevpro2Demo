@@ -15,10 +15,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+// All monetary amounts are in cents
 interface Transaction {
   id: number;
   order_id: number;
-  amount: number;  // Always in cents
+  amount: number;  // in cents
   status: string;
   created_at: string;
   metadata: any;
@@ -29,11 +30,11 @@ interface Transaction {
         id: number;
         name: string;
         category: string;
-        price: number;  // Always in cents
+        price: number;  // in cents
       };
       quantity: number;
     }>;
-    total: number;  // Always in cents
+    total: number;  // in cents
   };
 }
 
@@ -94,9 +95,14 @@ export function Transactions() {
     return items.map(item => `${item.quantity}x ${item.drink.name}`).join(", ");
   };
 
-  // Direct conversion from cents to dollars with proper formatting
-  const formatCurrency = (cents: number) => {
-    return `$${(cents / 100).toFixed(2)}`;
+  // Convert cents to dollars, ensuring decimal precision
+  const centsToDollars = (cents: number): string => {
+    return (cents / 100).toFixed(2);
+  };
+
+  // Format amount for display
+  const formatAmount = (cents: number): string => {
+    return `$${centsToDollars(cents)}`;
   };
 
   return (
@@ -158,7 +164,7 @@ export function Transactions() {
                         </div>
                         <div className="text-gray-600">#{transaction.order_id}</div>
                         <div className="text-gray-900 font-medium">
-                          {formatCurrency(transaction.amount)}
+                          {formatAmount(transaction.amount)}
                         </div>
                         <div>
                           <Badge className={getStatusColor(transaction.status)}>
@@ -190,14 +196,14 @@ export function Transactions() {
                                       <div className="text-xs text-gray-500">
                                         Category: {item.drink.category}
                                         <br />
-                                        Unit Price: {formatCurrency(item.drink.price)}
+                                        Unit Price: {formatAmount(item.drink.price)}
                                         <br />
-                                        Subtotal: {formatCurrency(item.drink.price * item.quantity)}
+                                        Subtotal: {formatAmount(item.drink.price * item.quantity)}
                                       </div>
                                     </div>
                                   ))}
                                   <div className="text-sm font-medium pt-1 border-t">
-                                    Total: {formatCurrency(transaction.amount)}
+                                    Total: {formatAmount(transaction.amount)}
                                   </div>
                                 </div>
                               </TooltipContent>
