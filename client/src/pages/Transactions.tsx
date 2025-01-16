@@ -94,15 +94,9 @@ export function Transactions() {
     return items.map(item => `${item.quantity}x ${item.drink.name}`).join(", ");
   };
 
-  // Format monetary values from cents to dollars
-  const formatMoney = (cents: number) => {
-    const dollars = cents / 100;
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(dollars);
+  // Direct conversion from cents to dollars with proper formatting
+  const formatCurrency = (cents: number) => {
+    return `$${(cents / 100).toFixed(2)}`;
   };
 
   return (
@@ -164,7 +158,7 @@ export function Transactions() {
                         </div>
                         <div className="text-gray-600">#{transaction.order_id}</div>
                         <div className="text-gray-900 font-medium">
-                          {formatMoney(transaction.amount)}
+                          {formatCurrency(transaction.amount)}
                         </div>
                         <div>
                           <Badge className={getStatusColor(transaction.status)}>
@@ -196,14 +190,14 @@ export function Transactions() {
                                       <div className="text-xs text-gray-500">
                                         Category: {item.drink.category}
                                         <br />
-                                        Unit Price: {formatMoney(item.drink.price)}
+                                        Unit Price: {formatCurrency(item.drink.price)}
                                         <br />
-                                        Subtotal: {formatMoney(item.drink.price * item.quantity)}
+                                        Subtotal: {formatCurrency(item.drink.price * item.quantity)}
                                       </div>
                                     </div>
                                   ))}
                                   <div className="text-sm font-medium pt-1 border-t">
-                                    Total: {formatMoney(transaction.order.total)}
+                                    Total: {formatCurrency(transaction.amount)}
                                   </div>
                                 </div>
                               </TooltipContent>
