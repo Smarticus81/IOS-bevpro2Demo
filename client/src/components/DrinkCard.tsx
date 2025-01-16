@@ -4,7 +4,15 @@ import { useState } from "react";
 import { Beer, Wine, GlassWater, Coffee, Droplet } from "lucide-react";
 
 interface DrinkCardProps {
-  drink: Drink;
+  drink: {
+    id: number;
+    name: string;
+    category: string;
+    price: number;
+    inventory: number;
+    image?: string;
+    sales?: number;
+  };
   onAdd: () => void;
   onRemove: () => void;
   quantity: number;
@@ -68,20 +76,22 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
           </motion.div>
 
           {/* Drink Image */}
-          <img
-            src={`/static/images/${drink.image}`}
-            alt={drink.name}
-            onLoad={() => setImageLoaded(true)}
-            className={`h-full w-full object-cover transition-opacity duration-500
-                     ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-          />
+          {drink.image && (
+            <img
+              src={drink.image}
+              alt={drink.name}
+              onLoad={() => setImageLoaded(true)}
+              className={`h-full w-full object-cover transition-opacity duration-500
+                      ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+            />
+          )}
 
           {/* Price Tag */}
           <div className="absolute right-3 top-3 px-2.5 py-1.5
                        bg-white/95 backdrop-blur-sm rounded-lg
                        shadow-sm border border-gray-100">
             <span className="text-sm font-semibold text-gray-900">
-              ${drink.price}
+              ${(drink.price / 100).toFixed(2)}
             </span>
           </div>
 
@@ -112,7 +122,7 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="font-medium text-sm leading-5 text-gray-900 line-clamp-2
-                             tracking-tight">
+                              tracking-tight">
                     {drink.name}
                   </h3>
                   <div className="flex items-center justify-between mt-1.5">

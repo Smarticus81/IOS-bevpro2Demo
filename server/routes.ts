@@ -57,7 +57,7 @@ export function registerRoutes(app: Express): Server {
       // Add cache control headers for short-term caching
       res.set('Cache-Control', `public, max-age=${CACHE_DURATION.SHORT}`);
 
-      // Get all drinks without pagination, temporarily excluding tax_category_id
+      // Get all drinks with only existing columns
       const allDrinks = await db
         .select({
           id: drinks.id,
@@ -67,21 +67,29 @@ export function registerRoutes(app: Express): Server {
           price: drinks.price,
           inventory: drinks.inventory,
           image: drinks.image,
-          sales: drinks.sales,
-          is_cocktail: drinks.is_cocktail
+          sales: drinks.sales
         })
         .from(drinks)
         .orderBy(drinks.category);
 
+      // Transform the data to match the frontend expectations
+      const transformedDrinks = allDrinks.map(drink => ({
+        ...drink,
+        price: typeof drink.price === 'number' ? drink.price : 0,
+        inventory: typeof drink.inventory === 'number' ? drink.inventory : 0,
+        sales: typeof drink.sales === 'number' ? drink.sales : 0,
+        image: drink.image || undefined
+      }));
+
       // Broadcast drinks update
       broadcastInventoryUpdate('INVENTORY_UPDATE', {
         type: 'drinks',
-        items: allDrinks,
+        items: transformedDrinks,
         timestamp: new Date().toISOString()
       });
 
       res.json({
-        drinks: allDrinks
+        drinks: transformedDrinks
       });
     } catch (error) {
       console.error("Error fetching drinks:", error);
