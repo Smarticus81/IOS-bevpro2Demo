@@ -79,12 +79,14 @@ export function Transactions() {
     );
   }) || [];
 
-  // Convert cents to dollars with proper formatting
-  const formatAmount = (amount: number) => {
+  // Format amount for display (assumes input is in cents)
+  const formatAmount = (amountInCents: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD'
-    }).format(amount / 100);
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amountInCents / 100);
   };
 
   const formatDate = (date: string) => {
@@ -99,15 +101,12 @@ export function Transactions() {
 
   const getOrderSummary = (items: Transaction['order']['items']) => {
     if (!items?.length) return "No items";
-
-    return items.map(item => 
-      `${item.quantity}x ${item.drink.name}`
-    ).join(", ");
+    return items.map(item => `${item.quantity}x ${item.drink.name}`).join(", ");
   };
 
+  // Calculate total for an order item (converts dollar price to cents)
   const calculateOrderItemTotal = (item: Transaction['order']['items'][0]) => {
-    // Convert item price from dollars to cents for consistency
-    return (item.drink.price * 100) * item.quantity;
+    return Math.round(item.drink.price * 100) * item.quantity;
   };
 
   return (
@@ -207,14 +206,14 @@ export function Transactions() {
                                         <div className="text-xs text-gray-500">
                                           Category: {item.drink.category}
                                           <br />
-                                          Unit Price: {formatAmount(item.drink.price * 100)}
+                                          Unit Price: {formatAmount(Math.round(item.drink.price * 100))}
                                           <br />
                                           Subtotal: {formatAmount(calculateOrderItemTotal(item))}
                                         </div>
                                       </div>
                                     ))}
                                     <div className="text-sm font-medium pt-1 border-t">
-                                      Total: {formatAmount(orderTotal)}
+                                      Total: {formatAmount(transaction.order.total)}
                                     </div>
                                   </div>
                                 </TooltipContent>
