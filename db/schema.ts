@@ -26,9 +26,9 @@ export const drinks = pgTable("drinks", {
 // Pour size definitions (e.g., single, double, half)
 export const pourSizes = pgTable("pour_sizes", {
   id: serial("id").primaryKey(),
-  name: text("name", { length: 50 }).notNull(),
-  volume_ml: decimal("volume_ml", { precision: 10, scale: 2 }).notNull(),
-  volume_oz: decimal("volume_oz", { precision: 10, scale: 2 }).notNull(),
+  name: text("name").notNull(),
+  volume_ml: decimal("volume_ml").notNull(),
+  volume_oz: decimal("volume_oz").notNull(),
   is_default: boolean("is_default").default(false),
   created_at: timestamp("created_at").defaultNow(),
 });
@@ -36,8 +36,8 @@ export const pourSizes = pgTable("pour_sizes", {
 // Tax categories for different types of alcohol
 export const taxCategories = pgTable("tax_categories", {
   id: serial("id").primaryKey(),
-  name: text("name", { length: 100 }).notNull(),
-  rate: decimal("rate", { precision: 5, scale: 2 }).notNull(),
+  name: text("name").notNull(),
+  rate: decimal("rate").notNull(),
   description: text("description"),
   created_at: timestamp("created_at").defaultNow(),
 });
