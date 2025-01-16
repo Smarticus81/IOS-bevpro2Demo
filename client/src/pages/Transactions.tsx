@@ -18,7 +18,7 @@ import {
 interface Transaction {
   id: number;
   order_id: number;
-  amount: number;  // Stored in cents
+  amount: number;  // Always in cents
   status: string;
   created_at: string;
   metadata: any;
@@ -29,11 +29,11 @@ interface Transaction {
         id: number;
         name: string;
         category: string;
-        price: number;  // Stored in dollars
+        price: number;  // Always in cents
       };
       quantity: number;
     }>;
-    total: number;  // Stored in cents
+    total: number;  // Always in cents
   };
 }
 
@@ -79,7 +79,7 @@ export function Transactions() {
     );
   }) || [];
 
-  // Format amount for display (assumes input is in cents)
+  // Format amount from cents to dollars
   const formatAmount = (amountInCents: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -102,11 +102,6 @@ export function Transactions() {
   const getOrderSummary = (items: Transaction['order']['items']) => {
     if (!items?.length) return "No items";
     return items.map(item => `${item.quantity}x ${item.drink.name}`).join(", ");
-  };
-
-  // Calculate total for an order item (converts dollar price to cents)
-  const calculateOrderItemTotal = (item: Transaction['order']['items'][0]) => {
-    return Math.round(item.drink.price * 100) * item.quantity;
   };
 
   return (
@@ -156,73 +151,66 @@ export function Transactions() {
                       </div>
                     ))
                   ) : (
-                    filteredTransactions.map((transaction) => {
-                      const orderTotal = transaction.order?.items?.reduce(
-                        (sum, item) => sum + calculateOrderItemTotal(item),
-                        0
-                      ) || 0;
-
-                      return (
-                        <motion.div
-                          key={transaction.id}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="grid grid-cols-8 gap-4 p-3 items-center hover:bg-gray-50/50"
-                        >
-                          <div className="font-mono text-sm text-gray-600">
-                            #{transaction.id}
-                          </div>
-                          <div className="text-gray-600">#{transaction.order_id}</div>
-                          <div className="text-gray-900 font-medium">
-                            {formatAmount(transaction.amount)}
-                          </div>
-                          <div>
-                            <Badge className={getStatusColor(transaction.status)}>
-                              {transaction.status}
-                            </Badge>
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {formatDate(transaction.created_at)}
-                          </div>
-                          <div className="col-span-2 text-sm text-gray-600">
-                            {getOrderSummary(transaction.order?.items)}
-                          </div>
-                          <div>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger>
-                                  <Badge variant="outline" className="cursor-help">
-                                    View Details
-                                  </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <div className="space-y-2 p-1">
-                                    <div className="text-sm font-medium border-b pb-1">Order Details</div>
-                                    {transaction.order?.items?.map((item, idx) => (
-                                      <div key={idx} className="space-y-1">
-                                        <div className="text-sm font-medium">
-                                          {item.quantity}x {item.drink.name}
-                                        </div>
-                                        <div className="text-xs text-gray-500">
-                                          Category: {item.drink.category}
-                                          <br />
-                                          Unit Price: {formatAmount(Math.round(item.drink.price * 100))}
-                                          <br />
-                                          Subtotal: {formatAmount(calculateOrderItemTotal(item))}
-                                        </div>
+                    filteredTransactions.map((transaction) => (
+                      <motion.div
+                        key={transaction.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="grid grid-cols-8 gap-4 p-3 items-center hover:bg-gray-50/50"
+                      >
+                        <div className="font-mono text-sm text-gray-600">
+                          #{transaction.id}
+                        </div>
+                        <div className="text-gray-600">#{transaction.order_id}</div>
+                        <div className="text-gray-900 font-medium">
+                          {formatAmount(transaction.amount)}
+                        </div>
+                        <div>
+                          <Badge className={getStatusColor(transaction.status)}>
+                            {transaction.status}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {formatDate(transaction.created_at)}
+                        </div>
+                        <div className="col-span-2 text-sm text-gray-600">
+                          {getOrderSummary(transaction.order?.items)}
+                        </div>
+                        <div>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Badge variant="outline" className="cursor-help">
+                                  View Details
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className="space-y-2 p-1">
+                                  <div className="text-sm font-medium border-b pb-1">Order Details</div>
+                                  {transaction.order?.items?.map((item, idx) => (
+                                    <div key={idx} className="space-y-1">
+                                      <div className="text-sm font-medium">
+                                        {item.quantity}x {item.drink.name}
                                       </div>
-                                    ))}
-                                    <div className="text-sm font-medium pt-1 border-t">
-                                      Total: {formatAmount(transaction.order.total)}
+                                      <div className="text-xs text-gray-500">
+                                        Category: {item.drink.category}
+                                        <br />
+                                        Unit Price: {formatAmount(item.drink.price)}
+                                        <br />
+                                        Subtotal: {formatAmount(item.drink.price * item.quantity)}
+                                      </div>
                                     </div>
+                                  ))}
+                                  <div className="text-sm font-medium pt-1 border-t">
+                                    Total: {formatAmount(transaction.amount)}
                                   </div>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </div>
-                        </motion.div>
-                      );
-                    })
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </motion.div>
+                    ))
                   )}
                 </div>
               </div>
