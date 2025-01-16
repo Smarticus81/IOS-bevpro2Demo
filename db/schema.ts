@@ -6,11 +6,21 @@ export const drinks = pgTable("drinks", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   category: text("category").notNull(),
-  subcategory: text("subcategory"),  
+  subcategory: text("subcategory"),
   price: integer("price").notNull(),
   inventory: integer("inventory").notNull().default(0),
   image: text("image"),
   sales: integer("sales").default(0),
+  tax_category_id: integer("tax_category_id").references(() => taxCategories.id),
+  is_cocktail: boolean("is_cocktail").default(false),
+  recipe: jsonb("recipe").$type<{
+    ingredients: Array<{
+      drink_id: number;
+      pour_size_id: number;
+      quantity: number;
+    }>;
+    instructions?: string;
+  }>(),
 });
 
 // Pour size definitions (e.g., single, double, half)
@@ -137,6 +147,18 @@ export const eventPackages = pgTable("event_packages", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
+// Enhanced recipe tracking for cocktails
+export const cocktailRecipes = pgTable("cocktail_recipes", {
+  id: serial("id").primaryKey(),
+  drink_id: integer("drink_id").notNull().references(() => drinks.id),
+  ingredient_drink_id: integer("ingredient_drink_id").notNull().references(() => drinks.id),
+  pour_size_id: integer("pour_size_id").notNull().references(() => pourSizes.id),
+  quantity: decimal("quantity", { precision: 5, scale: 2 }).notNull(),
+  notes: text("notes"),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+
 export const transactionRelations = relations(transactions, ({ one }) => ({
   order: one(orders, {
     fields: [transactions.order_id],
@@ -158,8 +180,13 @@ export const orderRelations = relations(orders, ({ many, one }) => ({
   splitPayments: many(splitPayments),
 }));
 
-export const drinkRelations = relations(drinks, ({ many }) => ({
+export const drinkRelations = relations(drinks, ({ many, one }) => ({
   orderItems: many(orderItems),
+  taxCategory: one(taxCategories, {
+    fields: [drinks.tax_category_id],
+    references: [taxCategories.id],
+  }),
+  recipes: many(cocktailRecipes),
 }));
 
 export const tabRelations = relations(tabs, ({ many, one }) => ({
@@ -197,6 +224,21 @@ export const pourTransactionRelations = relations(pourTransactions, ({ one }) =>
   }),
 }));
 
+export const cocktailRecipeRelations = relations(cocktailRecipes, ({ one }) => ({
+  drink: one(drinks, {
+    fields: [cocktailRecipes.drink_id],
+    references: [drinks.id],
+  }),
+  ingredient: one(drinks, {
+    fields: [cocktailRecipes.ingredient_drink_id],
+    references: [drinks.id],
+  }),
+  pourSize: one(pourSizes, {
+    fields: [cocktailRecipes.pour_size_id],
+    references: [pourSizes.id],
+  }),
+}));
+
 // Types
 export type Drink = typeof drinks.$inferSelect;
 export type Order = typeof orders.$inferSelect;
@@ -210,6 +252,10 @@ export type PourSize = typeof pourSizes.$inferSelect;
 export type TaxCategory = typeof taxCategories.$inferSelect;
 export type PourInventory = typeof pourInventory.$inferSelect;
 export type PourTransaction = typeof pourTransactions.$inferSelect;
+export type InsertDrink = typeof drinks.$inferInsert;
+export type CocktailRecipe = typeof cocktailRecipes.$inferSelect;
+export type InsertCocktailRecipe = typeof cocktailRecipes.$inferInsert;
+
 
 // Schemas
 export const insertDrinkSchema = createInsertSchema(drinks);
@@ -234,3 +280,5 @@ export const insertPourInventorySchema = createInsertSchema(pourInventory);
 export const selectPourInventorySchema = createSelectSchema(pourInventory);
 export const insertPourTransactionSchema = createInsertSchema(pourTransactions);
 export const selectPourTransactionSchema = createSelectSchema(pourTransactions);
+export const insertCocktailRecipeSchema = createInsertSchema(cocktailRecipes);
+export const selectCocktailRecipeSchema = createSelectSchema(cocktailRecipes);
