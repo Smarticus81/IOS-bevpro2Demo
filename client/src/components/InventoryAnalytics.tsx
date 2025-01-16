@@ -2,7 +2,28 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package } from "lucide-react";
-import type { Drink, PourTransaction } from "@db/schema";
+
+interface Drink {
+  id: number;
+  name: string;
+  category: string;
+  subcategory: string | null;
+  price: number;
+  inventory: number;
+  sales: number;
+  image?: string;
+}
+
+interface PourTransaction {
+  id: number;
+  drink_name: string;
+  drink_category: string;
+  volume_ml: number;
+  staff_id: number;
+  tax_amount: number;
+  transaction_time: string;
+  pour_size_id: number | null;
+}
 
 interface InventoryAnalyticsProps {
   drinks: Drink[];
@@ -91,14 +112,13 @@ export function InventoryAnalytics({ drinks, inventoryHistory = [] }: InventoryA
                     borderRadius: '8px',
                     padding: '8px 12px',
                   }}
-                  formatter={(value: number, name: string, props: any) => {
-                    const data = props.payload;
+                  formatter={(value: number, name: string) => {
                     return [
-                      <>
+                      <div key={name}>
                         <div>Average Inventory: {value}</div>
-                        <div>Total Items: {data.totalItems}</div>
-                        <div>Low Stock Items: {data.lowStock}</div>
-                      </>,
+                        <div>Total Items: {inventoryData[name].totalItems}</div>
+                        <div>Low Stock Items: {inventoryData[name].lowStock}</div>
+                      </div>,
                       'Inventory Status'
                     ];
                   }}

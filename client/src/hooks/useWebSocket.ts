@@ -8,7 +8,7 @@ interface WebSocketMessage {
   timestamp: string;
 }
 
-export function useWebSocket() {
+export function useWebSocket(): WebSocket | null {
   const queryClient = useQueryClient();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
@@ -107,4 +107,6 @@ export function useWebSocket() {
       }
     };
   }, [connect]);
+
+  return wsRef.current;
 }
