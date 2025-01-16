@@ -30,6 +30,14 @@ interface InventoryAnalyticsProps {
   inventoryHistory?: PourTransaction[];
 }
 
+interface ChartData {
+  category: string;
+  totalItems: number;
+  lowStock: number;
+  averageInventory: number;
+  items: Drink[];
+}
+
 export function InventoryAnalytics({ drinks, inventoryHistory = [] }: InventoryAnalyticsProps) {
   // Transform data for the inventory levels chart
   const inventoryData = drinks.reduce((acc, drink) => {
@@ -52,13 +60,7 @@ export function InventoryAnalytics({ drinks, inventoryHistory = [] }: InventoryA
     acc[category].averageInventory += drink.inventory;
 
     return acc;
-  }, {} as Record<string, {
-    category: string;
-    totalItems: number;
-    lowStock: number;
-    averageInventory: number;
-    items: Drink[];
-  }>);
+  }, {} as Record<string, ChartData>);
 
   const chartData = Object.values(inventoryData).map(data => ({
     ...data,
@@ -72,6 +74,20 @@ export function InventoryAnalytics({ drinks, inventoryHistory = [] }: InventoryA
       grid: '#E5E5EA',
       text: '#8E8E93',
     }
+  };
+
+  const formatTooltipContent = (value: number, name: string) => {
+    const data = inventoryData[name];
+    if (!data) return null;
+
+    return [
+      <div key={name} className="space-y-1 text-sm">
+        <div>Average Inventory: {value}</div>
+        <div>Total Items: {data.totalItems}</div>
+        <div>Low Stock Items: {data.lowStock}</div>
+      </div>,
+      'Inventory Status'
+    ];
   };
 
   return (
@@ -112,16 +128,7 @@ export function InventoryAnalytics({ drinks, inventoryHistory = [] }: InventoryA
                     borderRadius: '8px',
                     padding: '8px 12px',
                   }}
-                  formatter={(value: number, name: string) => {
-                    return [
-                      <div key={name}>
-                        <div>Average Inventory: {value}</div>
-                        <div>Total Items: {inventoryData[name].totalItems}</div>
-                        <div>Low Stock Items: {inventoryData[name].lowStock}</div>
-                      </div>,
-                      'Inventory Status'
-                    ];
-                  }}
+                  formatter={formatTooltipContent}
                 />
                 <Bar
                   dataKey="averageInventory"
