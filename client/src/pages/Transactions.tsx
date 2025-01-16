@@ -95,14 +95,9 @@ export function Transactions() {
     return items.map(item => `${item.quantity}x ${item.drink.name}`).join(", ");
   };
 
-  // Convert cents to dollars, ensuring decimal precision
-  const centsToDollars = (cents: number): string => {
-    return (cents / 100).toFixed(2);
-  };
-
-  // Format amount for display
+  // Format amount from cents to dollars with proper decimal places
   const formatAmount = (cents: number): string => {
-    return `$${centsToDollars(cents)}`;
+    return `$${(Math.round(cents) / 100).toFixed(2)}`;
   };
 
   return (
