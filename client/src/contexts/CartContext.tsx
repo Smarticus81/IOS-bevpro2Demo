@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useCallback } from 'react';
+import { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
@@ -72,6 +72,51 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
+  // Setup WebSocket connection for real-time updates
+  useEffect(() => {
+    const ws = new WebSocket(`ws://${window.location.host}`);
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'ORDER_UPDATE') {
+          logger.info('Received order update', data);
+
+          if (data.type === 'order_completed') {
+            // Clear cart on successful order
+            dispatch({ type: 'CLEAR_CART' });
+            queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
+
+            toast({
+              title: 'Order Completed',
+              description: 'Your order has been processed successfully!',
+              variant: 'default',
+            });
+          } else if (data.type === 'order_failed') {
+            dispatch({ type: 'SET_PROCESSING', isProcessing: false });
+
+            toast({
+              title: 'Order Failed',
+              description: data.error || 'Failed to process order',
+              variant: 'destructive',
+            });
+          }
+        }
+      } catch (error) {
+        logger.error('Error processing WebSocket message:', error);
+      }
+    };
+
+    ws.onerror = (error) => {
+      logger.error('WebSocket error:', error);
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [toast, queryClient]);
+
   const orderMutation = useMutation({
     mutationFn: async (cartItems: CartItem[]) => {
       logger.info('Initiating order placement', {
@@ -79,86 +124,47 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         total: cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0)
       });
 
-      // First create the order
+      dispatch({ type: 'SET_PROCESSING', isProcessing: true });
+
+      // Create the order
       const orderResponse = await fetch('/api/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          items: cartItems,
+          items: cartItems.map(item => ({
+            drink_id: item.drink.id,
+            quantity: item.quantity,
+            price: item.drink.price
+          })),
           total: cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0)
         }),
       });
 
       if (!orderResponse.ok) {
-        throw new Error('Failed to create order');
+        const errorData = await orderResponse.json();
+        throw new Error(errorData.message || 'Failed to create order');
       }
 
       const orderData = await orderResponse.json();
 
-      try {
-        // Process payment through payment service
-        const paymentResponse = await paymentService.createPaymentIntent({
-          amount: Math.round(orderData.order.total * 100), // Convert to cents
-          orderId: orderData.order.id,
-          customerEmail: undefined, // Add customer email if available
-          currency: 'usd'
-        });
-
-        if (!paymentResponse || !paymentResponse.id) {
-          logger.error('Invalid payment response', { response: paymentResponse });
-          throw new Error('Invalid payment response');
-        }
-
-        if (paymentResponse.status !== 'succeeded') {
-          logger.error('Payment failed', { 
-            status: paymentResponse.status,
-            transactionId: paymentResponse.id 
-          });
-          throw new Error(`Payment failed with status: ${paymentResponse.status}`);
-        }
-
-        return {
-          transactionId: paymentResponse.id,
-          success: true,
-          orderId: orderData.order.id
-        };
-      } catch (error) {
-        logger.error('Payment processing error', { 
-          error: error instanceof Error ? error.message : 'Unknown error',
-          orderId: orderData.order.id
-        });
-        throw new Error(error instanceof Error ? error.message : 'Payment processing failed');
+      if (!orderData.success) {
+        throw new Error(orderData.message || 'Order processing failed');
       }
-    },
-    onSuccess: async (data) => {
-      logger.info('Payment successful, clearing cart');
-      dispatch({ type: 'CLEAR_CART' });
-      queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
 
-      toast({
-        title: 'Order Confirmed',
-        description: 'Your order has been processed successfully!',
-        variant: 'default',
-      });
-
-      // Navigate to confirmation page
-      setLocation(`/payment-confirmation?transaction=${data.transactionId}`);
+      return orderData;
     },
     onError: async (error: Error) => {
-      logger.error('Payment processing failed:', error);
+      logger.error('Order placement failed:', error);
+      dispatch({ type: 'SET_PROCESSING', isProcessing: false });
 
       toast({
-        title: 'Payment Failed',
-        description: error.message || 'Failed to process payment. Please try again.',
+        title: 'Order Failed',
+        description: error.message || 'Failed to process order. Please try again.',
         variant: 'destructive',
       });
-    },
-    onSettled: () => {
-      logger.info('Payment processing complete');
-      dispatch({ type: 'SET_PROCESSING', isProcessing: false });
-    },
+    }
   });
 
   // Place Order with validation and retry logic
@@ -187,11 +193,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      logger.info('Initiating order placement', {
-        cartSize: state.items.length,
-        isProcessing: state.isProcessing
-      });
-
       await orderMutation.mutateAsync(state.items);
     } catch (error) {
       logger.error('Error during order placement:', error);
@@ -267,12 +268,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     >
       {children}
       {state.isProcessing && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-xl">
             <p className="text-lg font-medium">
               {state.items.length > 1
-                ? `Preparing your ${state.items.length} drinks...`
-                : "Preparing your drink..."}
+                ? `Processing your ${state.items.length} drinks...`
+                : "Processing your drink..."}
             </p>
           </div>
         </div>
