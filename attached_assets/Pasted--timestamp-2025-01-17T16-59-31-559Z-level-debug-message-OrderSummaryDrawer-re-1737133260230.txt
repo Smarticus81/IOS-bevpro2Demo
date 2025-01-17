@@ -1,0 +1,99 @@
+{
+  "timestamp": "2025-01-17T16:59:31.559Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": true
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:59:31.559Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": true
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:59:31.562Z",
+  "level": "info",
+  "message": "Starting order placement:",
+  "context": {
+    "cartItems": 1,
+    "total": 13
+  }
+}
+CartContext.tsx:201 
+        
+        
+       POST https://1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/api/orders 500 (Internal Server Error)
+window.fetch @ Network.js:219
+mutationFn @ CartContext.tsx:201
+fn @ @tanstack_react-query.js?v=ea8f73c5:1188
+run @ @tanstack_react-query.js?v=ea8f73c5:493
+start @ @tanstack_react-query.js?v=ea8f73c5:535
+execute @ @tanstack_react-query.js?v=ea8f73c5:1224
+await in execute
+mutate @ @tanstack_react-query.js?v=ea8f73c5:2649
+(anonymous) @ CartContext.tsx:256
+callCallback2 @ chunk-RPCDYKBN.js?v=ea8f73c5:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=ea8f73c5:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=ea8f73c5:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=ea8f73c5:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=ea8f73c5:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=ea8f73c5:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=ea8f73c5:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=ea8f73c5:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=ea8f73c5:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=ea8f73c5:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=ea8f73c5:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=ea8f73c5:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=ea8f73c5:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=ea8f73c5:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=ea8f73c5:5449Understand this errorAI
+Console.js:61 {
+  "timestamp": "2025-01-17T16:59:31.688Z",
+  "level": "info",
+  "message": "Order response received:",
+  "context": {
+    "success": false,
+    "error": "Failed to create order",
+    "details": "null value in column \"drink_name\" of relation \"order_items\" violates not-null constraint"
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:59:31.689Z",
+  "level": "error",
+  "message": "Order placement failed:",
+  "context": {}
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:59:31.689Z",
+  "level": "error",
+  "message": "Error during order placement:",
+  "context": {}
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:59:31.697Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:59:31.697Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
