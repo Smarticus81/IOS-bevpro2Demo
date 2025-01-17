@@ -38,7 +38,8 @@ export async function calculateOrderTaxAndPours(items: Array<{
         })
         .from(drinks)
         .where(eq(drinks.id, item.drink_id))
-        .leftJoin(taxCategories, eq(drinks.tax_category_id, taxCategories.id));
+        .leftJoin(taxCategories, eq(drinks.tax_category_id, taxCategories.id))
+        .limit(1);
 
       const drink = result[0]?.drink;
       const taxCategory = result[0]?.taxCategory;
@@ -49,7 +50,7 @@ export async function calculateOrderTaxAndPours(items: Array<{
       }
 
       // For now, assume a default tax rate of 0 if no tax category is found
-      const taxRate = Number(taxCategory?.rate || 0);
+      const taxRate = taxCategory ? Number(taxCategory.rate) : 0;
 
       // Check if it's a cocktail
       if (drink.is_cocktail) {
@@ -69,10 +70,13 @@ export async function calculateOrderTaxAndPours(items: Array<{
 
         // Process each ingredient
         for (const component of recipeComponents) {
-          if (!component.ingredient || !component.recipe || !component.pourSize) continue;
+          if (!component.ingredient || !component.recipe || !component.pourSize) {
+            console.error(`Invalid recipe component for drink ${drink.id}`);
+            continue;
+          }
 
-          const ingredientTaxRate = Number(component.taxCategory?.rate || 0);
-          const pourTax = Number((component.ingredient.price * Number(component.recipe.quantity) * ingredientTaxRate) / 100);
+          const ingredientTaxRate = component.taxCategory ? Number(component.taxCategory.rate) : 0;
+          const pourTax = (component.ingredient.price * Number(component.recipe.quantity) * ingredientTaxRate) / 100;
 
           totalTax += pourTax * item.quantity;
 
@@ -85,7 +89,7 @@ export async function calculateOrderTaxAndPours(items: Array<{
         }
       } else {
         // For regular drinks
-        const pourTax = Number((drink.price * taxRate) / 100);
+        const pourTax = (drink.price * taxRate) / 100;
         totalTax += pourTax * item.quantity;
 
         pours.push({
