@@ -1,0 +1,307 @@
+{
+  "timestamp": "2025-01-17T22:47:59.646Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 2,
+    "itemCount": 2,
+    "isProcessing": false
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:47:59.677Z",
+  "level": "info",
+  "message": "WebSocket connection closed",
+  "context": {}
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:47:59.804Z",
+  "level": "info",
+  "message": "WebSocket message received:",
+  "context": {
+    "type": "status",
+    "status": "connected",
+    "timestamp": "2025-01-17T22:47:59.788Z"
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:00.378Z",
+  "level": "info",
+  "message": "Attempting to reconnect...",
+  "context": {}
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:00.520Z",
+  "level": "info",
+  "message": "WebSocket message received:",
+  "context": {
+    "type": "status",
+    "status": "connected",
+    "timestamp": "2025-01-17T22:48:00.508Z"
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:01.178Z",
+  "level": "info",
+  "message": "Recognition alternatives:",
+  "context": [
+    {
+      "text": "three",
+      "confidence": 0.009999999776482582
+    }
+  ]
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:01.474Z",
+  "level": "info",
+  "message": "Recognition alternatives:",
+  "context": [
+    {
+      "text": "three gray",
+      "confidence": 0.009999999776482582
+    }
+  ]
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:01.721Z",
+  "level": "info",
+  "message": "Recognition alternatives:",
+  "context": [
+    {
+      "text": "three gray goo",
+      "confidence": 0.009999999776482582
+    }
+  ]
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:01.804Z",
+  "level": "info",
+  "message": "Recognition alternatives:",
+  "context": [
+    {
+      "text": "three gray goose",
+      "confidence": 0.009999999776482582
+    }
+  ]
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:01.828Z",
+  "level": "info",
+  "message": "Recognition alternatives:",
+  "context": [
+    {
+      "text": "gray goose",
+      "confidence": 0.009999999776482582
+    }
+  ]
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:01.983Z",
+  "level": "info",
+  "message": "Recognition alternatives:",
+  "context": [
+    {
+      "text": "goose",
+      "confidence": 0.009999999776482582
+    }
+  ]
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:02.241Z",
+  "level": "info",
+  "message": "Recognition alternatives:",
+  "context": [
+    {
+      "text": "three gray goose",
+      "confidence": 0.9688584804534912
+    },
+    {
+      "text": "3 gray goose",
+      "confidence": 0.888920783996582
+    },
+    {
+      "text": "three gray gray goose",
+      "confidence": 0.9057457447052002
+    },
+    {
+      "text": "three three gray goose",
+      "confidence": 0.8899228572845459
+    },
+    {
+      "text": "three gray juice",
+      "confidence": 0.9410896301269531
+    }
+  ]
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:02.241Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": {
+    "text": "three gray goose",
+    "confidence": 0.9688584804534912
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:02.241Z",
+  "level": "info",
+  "message": "Processing voice command:",
+  "context": "three gray goose"
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:02.241Z",
+  "level": "info",
+  "message": "Voice command received:",
+  "context": {
+    "text": "three gray goose",
+    "drinksAvailable": 65
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:02.241Z",
+  "level": "info",
+  "message": "Found best partial match:",
+  "context": {
+    "searchTerm": "gray goose",
+    "matchedDrink": "Pinot G"
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:02.241Z",
+  "level": "info",
+  "message": "Successfully parsed order items:",
+  "context": [
+    {
+      "name": "Pinot G",
+      "quantity": 3,
+      "modifiers": []
+    }
+  ]
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:02.241Z",
+  "level": "info",
+  "message": "Processing drink order:",
+  "context": [
+    {
+      "name": "Pinot G",
+      "quantity": 3,
+      "modifiers": []
+    }
+  ]
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:02.242Z",
+  "level": "info",
+  "message": "Adding item to cart:",
+  "context": {
+    "drinkId": 51,
+    "quantity": 3
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:02.242Z",
+  "level": "info",
+  "message": "Voice Command Tracked:",
+  "context": {
+    "type": "drink_order",
+    "success": true,
+    "command": "3 Pinot G",
+    "successRate": 100
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:02.242Z",
+  "level": "info",
+  "message": "Added to Cart: Added 3 Pinot G(s) to your cart.",
+  "context": {}
+}
+2Console.js:61 {
+  "timestamp": "2025-01-17T22:48:02.244Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 3,
+    "itemCount": 5,
+    "isProcessing": false
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:02.280Z",
+  "level": "info",
+  "message": "WebSocket connection closed",
+  "context": {}
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:02.389Z",
+  "level": "info",
+  "message": "WebSocket message received:",
+  "context": {
+    "type": "status",
+    "status": "connected",
+    "timestamp": "2025-01-17T22:48:02.375Z"
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:02.677Z",
+  "level": "info",
+  "message": "Attempting to reconnect...",
+  "context": {}
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:02.835Z",
+  "level": "info",
+  "message": "WebSocket message received:",
+  "context": {
+    "type": "status",
+    "status": "connected",
+    "timestamp": "2025-01-17T22:48:02.820Z"
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:05.281Z",
+  "level": "info",
+  "message": "Attempting to reconnect...",
+  "context": {}
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T22:48:05.432Z",
+  "level": "info",
+  "message": "WebSocket message received:",
+  "context": {
+    "type": "status",
+    "status": "connected",
+    "timestamp": "2025-01-17T22:48:05.419Z"
+  }
+}
+OrderSummary.tsx:61 Uncaught TypeError: onRemoveItem is not a function
+    at onClick (OrderSummary.tsx:61:38)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=ea8f73c5:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=ea8f73c5:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=ea8f73c5:3733:39)
+    at invokeGuardedCallbackAndCatchFirstError (chunk-RPCDYKBN.js?v=ea8f73c5:3736:33)
+    at executeDispatch (chunk-RPCDYKBN.js?v=ea8f73c5:7014:11)
+    at processDispatchQueueItemsInOrder (chunk-RPCDYKBN.js?v=ea8f73c5:7034:15)
+    at processDispatchQueue (chunk-RPCDYKBN.js?v=ea8f73c5:7043:13)
+    at dispatchEventsForPlugins (chunk-RPCDYKBN.js?v=ea8f73c5:7051:11)
+    at chunk-RPCDYKBN.js?v=ea8f73c5:7174:20Understand this errorAI
+chunk-RPCDYKBN.js?v=ea8f73c5:3750 Uncaught TypeError: onRemoveItem is not a function
+    at onClick (OrderSummary.tsx:61:38)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=ea8f73c5:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=ea8f73c5:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=ea8f73c5:3733:39)
+    at invokeGuardedCallbackAndCatchFirstError (chunk-RPCDYKBN.js?v=ea8f73c5:3736:33)
+    at executeDispatch (chunk-RPCDYKBN.js?v=ea8f73c5:7014:11)
+    at processDispatchQueueItemsInOrder (chunk-RPCDYKBN.js?v=ea8f73c5:7034:15)
+    at processDispatchQueue (chunk-RPCDYKBN.js?v=ea8f73c5:7043:13)
+    at dispatchEventsForPlugins (chunk-RPCDYKBN.js?v=ea8f73c5:7051:11)
+    at chunk-RPCDYKBN.js?v=ea8f73c5:7174:20Understand this errorAI
+771Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.Understand this warningAI
+1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/:1 
+        
+        
+       Failed to load resource: the server responded with a status of 502 (Bad Gateway)Understand this errorAI
+1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/:1 
+        
+        
+       Failed to load resource: the server responded with a status of 502 (Bad Gateway)

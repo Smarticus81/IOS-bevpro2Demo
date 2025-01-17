@@ -20,7 +20,7 @@ interface DrinksResponse {
 }
 
 export function Home() {
-  const { cart, addToCart, removeFromCart, placeOrder, isProcessing } = useCart();
+  const { cart, addToCart, removeItem, placeOrder, isProcessing } = useCart();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTier, setSelectedTier] = useState<string | null>("All");
 
@@ -155,7 +155,7 @@ export function Home() {
                         drink={drink}
                         quantity={cartItem?.quantity || 0}
                         onAdd={() => addToCart({ type: 'ADD_ITEM', drink, quantity: 1 })}
-                        onRemove={() => removeFromCart(drink.id)}
+                        onRemove={() => removeItem(drink.id)}
                       />
                     );
                   })}
@@ -170,7 +170,7 @@ export function Home() {
           <div className="flex-1 overflow-y-auto scrollbar-hide">
             <OrderSummary
               cart={cart}
-              onRemoveItem={removeFromCart}
+              onRemoveItem={removeItem}
               onPlaceOrder={placeOrder}
               isLoading={isProcessing}
               variant="default"
