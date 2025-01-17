@@ -15,27 +15,30 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-// All monetary amounts are in cents
+interface OrderItem {
+  id: number;
+  quantity: number;
+  price: number;
+  tax_amount: number;
+  drink_name: string;
+}
+
+interface Order {
+  id: number;
+  status: string;
+  subtotal: number;
+  tax_amount: number;
+  total: number;
+  items: OrderItem[];
+}
+
 interface Transaction {
   id: number;
   order_id: number;
-  amount: number;  // in cents
+  amount: number;
   status: string;
   created_at: string;
-  metadata: any;
-  order: {
-    id: number;
-    items: Array<{
-      drink: {
-        id: number;
-        name: string;
-        category: string;
-        price: number;  // in cents
-      };
-      quantity: number;
-    }>;
-    total: number;  // in cents
-  };
+  order: Order;
 }
 
 interface TransactionResponse {
@@ -75,7 +78,7 @@ export function Transactions() {
       transaction.status.toLowerCase().includes(searchLower) ||
       transaction.amount.toString().includes(searchLower) ||
       transaction.order?.items?.some(item => 
-        item?.drink?.name?.toLowerCase().includes(searchLower)
+        item.drink_name.toLowerCase().includes(searchLower)
       )
     );
   }) || [];
@@ -90,18 +93,14 @@ export function Transactions() {
     });
   };
 
-  const getOrderSummary = (items: Transaction['order']['items']) => {
+  const getOrderSummary = (items: OrderItem[]) => {
     if (!items?.length) return "No items";
-
-    return items.map(item => {
-      if (!item?.drink?.name) return "Unknown item";
-      return `${item.quantity}x ${item.drink.name}`;
-    }).join(", ");
+    return items.map(item => `${item.quantity}x ${item.drink_name}`).join(", ");
   };
 
   // Format monetary values from cents to dollars with proper decimals
   const formatMoney = (cents: number): string => {
-    return `$${(cents || 0).toFixed(2)}`;
+    return `$${(cents / 100).toFixed(2)}`;
   };
 
   const renderTooltipContent = (transaction: Transaction) => {
@@ -115,31 +114,35 @@ export function Transactions() {
     }
 
     return (
-      <div className="space-y-2 p-1">
+      <div className="space-y-2 p-1 max-w-md">
         <div className="text-sm font-medium border-b pb-1">Order Details</div>
-        {transaction.order.items.map((item, idx) => {
-          const itemName = item?.drink?.name || 'Unknown Item';
-          const category = item?.drink?.category || 'N/A';
-          const price = item?.drink?.price || 0;
-          const quantity = item?.quantity || 0;
-
-          return (
-            <div key={idx} className="space-y-1">
-              <div className="text-sm font-medium">
-                {quantity}x {itemName}
-              </div>
-              <div className="text-xs text-gray-500">
-                Category: {category}
-                <br />
-                Unit Price: {formatMoney(price)}
-                <br />
-                Subtotal: {formatMoney(price * quantity)}
-              </div>
+        {transaction.order.items.map((item, idx) => (
+          <div key={idx} className="space-y-1">
+            <div className="text-sm font-medium">
+              {item.quantity}x {item.drink_name}
             </div>
-          );
-        })}
-        <div className="text-sm font-medium pt-1 border-t">
-          Total: {formatMoney(transaction.amount)}
+            <div className="text-xs text-gray-500">
+              Unit Price: {formatMoney(item.price)}
+              <br />
+              Subtotal: {formatMoney(item.price * item.quantity)}
+              <br />
+              Tax: {formatMoney(item.tax_amount)}
+            </div>
+          </div>
+        ))}
+        <div className="text-sm border-t pt-2 mt-2 space-y-1">
+          <div className="flex justify-between">
+            <span>Subtotal:</span>
+            <span>{formatMoney(transaction.order.subtotal)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Tax:</span>
+            <span>{formatMoney(transaction.order.tax_amount)}</span>
+          </div>
+          <div className="flex justify-between font-medium">
+            <span>Total:</span>
+            <span>{formatMoney(transaction.order.total)}</span>
+          </div>
         </div>
       </div>
     );
