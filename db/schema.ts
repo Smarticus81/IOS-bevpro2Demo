@@ -72,6 +72,8 @@ export const pourTransactions = pgTable("pour_transactions", {
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
   status: text("status").notNull().default("pending"),
+  subtotal: integer("subtotal").notNull(),
+  tax_amount: integer("tax_amount").notNull(),
   total: integer("total").notNull(),
   items: jsonb("items").notNull(),
   created_at: timestamp("created_at").defaultNow(),
@@ -86,6 +88,8 @@ export const orderItems = pgTable("order_items", {
   drink_id: integer("drink_id").notNull().references(() => drinks.id),
   quantity: integer("quantity").notNull(),
   price: integer("price").notNull(),
+  drink_name: text("drink_name").notNull(),
+  tax_amount: integer("tax_amount").notNull(),
 });
 
 export const paymentMethods = pgTable("payment_methods", {

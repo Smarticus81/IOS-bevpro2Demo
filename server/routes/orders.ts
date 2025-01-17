@@ -14,7 +14,7 @@ router.post("/api/orders", async (req, res) => {
   }
 
   try {
-    // Get drink details for names
+    // Get drink details including names for both the order and order items
     const drinkIds = items.map(item => item.drink_id);
     const drinkDetails = await db
       .select({
@@ -26,8 +26,11 @@ router.post("/api/orders", async (req, res) => {
       .from(drinks)
       .where(inArray(drinks.id, drinkIds));
 
+    // Create a map for quick lookup of drink details
+    const drinkDetailsMap = new Map(drinkDetails.map(drink => [drink.id, drink]));
+
     // Calculate tax and track pours
-    const { totalTax, pours } = await calculateOrderTaxAndPours(items);
+    const { totalTax, pours, itemTaxes } = await calculateOrderTaxAndPours(items);
 
     // Calculate subtotal from the actual items
     const subtotal = items.reduce((total, item) => {
@@ -35,35 +38,43 @@ router.post("/api/orders", async (req, res) => {
       return total + (itemPrice * item.quantity);
     }, 0);
 
-    // Enhance items with drink names and details
+    // Enhance items with drink names and details for the order response
     const itemsWithNames = items.map(item => {
-      const drinkDetail = drinkDetails.find(d => d.id === item.drink_id);
+      const drinkDetail = drinkDetailsMap.get(item.drink_id);
       return {
         price: item.price,
         drink_id: item.drink_id,
         quantity: item.quantity,
         name: drinkDetail?.name || 'Unknown Drink',
         category: drinkDetail?.category,
-        subcategory: drinkDetail?.subcategory
+        subcategory: drinkDetail?.subcategory,
+        tax_amount: itemTaxes[item.drink_id] || 0
       };
     });
 
     // Create order with tax
     const [order] = await db.insert(orders).values({
       status: "pending",
+      subtotal: subtotal,
+      tax_amount: totalTax,
       total: subtotal + totalTax,
       items: itemsWithNames,
       payment_status: "pending",
     }).returning();
 
-    // Record order items
+    // Record order items with tax amounts
     await db.insert(orderItems).values(
-      items.map((item) => ({
-        order_id: order.id,
-        drink_id: item.drink_id,
-        quantity: item.quantity,
-        price: item.price,
-      }))
+      items.map((item) => {
+        const drinkDetail = drinkDetailsMap.get(item.drink_id);
+        return {
+          order_id: order.id,
+          drink_id: item.drink_id,
+          quantity: item.quantity,
+          price: item.price,
+          drink_name: drinkDetail?.name || 'Unknown Drink',
+          tax_amount: itemTaxes[item.drink_id] || 0
+        };
+      })
     );
 
     // Record pour transactions for tax tracking
@@ -74,6 +85,8 @@ router.post("/api/orders", async (req, res) => {
       order: {
         id: order.id,
         status: order.status,
+        subtotal: order.subtotal,
+        tax_amount: order.tax_amount,
         total: order.total,
         items: itemsWithNames,
         created_at: order.created_at,
@@ -89,9 +102,9 @@ router.post("/api/orders", async (req, res) => {
 
   } catch (error) {
     console.error("Error creating order:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: "Failed to create order",
-      details: error instanceof Error ? error.message : "Unknown error" 
+      details: error instanceof Error ? error.message : "Unknown error"
     });
   }
 });
