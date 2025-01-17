@@ -1,0 +1,237 @@
+{
+  "timestamp": "2025-01-17T15:43:39.460Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+8WebSocket connection to '<URL>' failed: WebSocket is closed before the connection is established.Understand this warningAI
+ {
+  "timestamp": "2025-01-17T15:43:39.508Z",
+  "level": "error",
+  "message": "WebSocket error:",
+  "context": {
+    "isTrusted": true
+  }
+}
+ {
+  "timestamp": "2025-01-17T15:43:39.509Z",
+  "level": "info",
+  "message": "WebSocket connection closed",
+  "context": {}
+}
+ WebSocket connection established
+ WebSocket message received: status
+ WebSocket status: connected
+ {
+  "timestamp": "2025-01-17T15:43:39.822Z",
+  "level": "info",
+  "message": "WebSocket message received:",
+  "context": {
+    "type": "status",
+    "status": "connected",
+    "timestamp": "2025-01-17T15:43:39.807Z"
+  }
+}
+ WebSocket connection established
+ WebSocket message received: status
+ WebSocket status: connected
+Console.js:61 {
+  "timestamp": "2025-01-17T15:43:55.136Z",
+  "level": "info",
+  "message": "Speech recognition initialized successfully",
+  "context": {}
+}
+2Console.js:61 {
+  "timestamp": "2025-01-17T15:43:55.185Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 0,
+    "itemCount": 0,
+    "isProcessing": false
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T15:43:55.213Z",
+  "level": "error",
+  "message": "WebSocket error:",
+  "context": {
+    "isTrusted": true
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T15:43:55.213Z",
+  "level": "info",
+  "message": "WebSocket connection closed",
+  "context": {}
+}
+Console.js:61 WebSocket connection established
+Console.js:61 WebSocket message received: status
+Console.js:61 WebSocket status: connected
+Console.js:61 {
+  "timestamp": "2025-01-17T15:43:55.522Z",
+  "level": "info",
+  "message": "WebSocket message received:",
+  "context": {
+    "type": "status",
+    "status": "connected",
+    "timestamp": "2025-01-17T15:43:55.509Z"
+  }
+}
+Console.js:61 WebSocket connection established
+Console.js:61 WebSocket message received: status
+Console.js:61 WebSocket status: connected
+Console.js:61 Audio context initialized successfully
+Console.js:61 {
+  "timestamp": "2025-01-17T15:46:44.973Z",
+  "level": "info",
+  "message": "Adding item to cart:",
+  "context": {
+    "drinkId": 13,
+    "quantity": 1
+  }
+}
+2Console.js:61 {
+  "timestamp": "2025-01-17T15:46:44.981Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T15:46:45.017Z",
+  "level": "info",
+  "message": "WebSocket connection closed",
+  "context": {}
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T15:46:45.142Z",
+  "level": "info",
+  "message": "WebSocket message received:",
+  "context": {
+    "type": "status",
+    "status": "connected",
+    "timestamp": "2025-01-17T15:46:45.127Z"
+  }
+}
+2Console.js:61 {
+  "timestamp": "2025-01-17T15:46:46.085Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": true
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T15:46:46.088Z",
+  "level": "info",
+  "message": "Starting order placement:",
+  "context": {
+    "cartItems": 1,
+    "total": 6
+  }
+}
+1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/api/orders:1 
+        
+        
+       Failed to load resource: the server responded with a status of 400 (Bad Request)Understand this errorAI
+1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/api/orders:1 
+        
+        
+       Failed to load resource: the server responded with a status of 400 (Bad Request)Understand this errorAI
+Console.js:61 {
+  "timestamp": "2025-01-17T15:46:46.165Z",
+  "level": "info",
+  "message": "Order response received:",
+  "context": {
+    "success": false,
+    "error": "Some items are out of stock",
+    "items": [
+      {
+        "drink_id": 13,
+        "available": false
+      }
+    ]
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T15:46:46.165Z",
+  "level": "error",
+  "message": "Order placement failed:",
+  "context": {}
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T15:46:46.166Z",
+  "level": "error",
+  "message": "Error during order placement:",
+  "context": {}
+}
+2Console.js:61 {
+  "timestamp": "2025-01-17T15:46:46.171Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+2Transactions.tsx:193 Uncaught TypeError: Cannot read properties of undefined (reading 'name')
+    at Transactions.tsx:193:70
+    at Array.map (<anonymous>)
+    at Transactions.tsx:190:62
+    at Array.map (<anonymous>)
+    at Transactions (Transactions.tsx:154:42)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=ea8f73c5:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=ea8f73c5:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=ea8f73c5:15924:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=ea8f73c5:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=ea8f73c5:3699:24)Understand this errorAI
+Console.js:61 The above error occurred in the <Transactions> component:
+
+    at Transactions (https://1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/src/pages/Transactions.tsx:36:31)
+    at Route (https://1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=ea8f73c5:323:16)
+    at Switch (https://1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=ea8f73c5:379:17)
+    at CartProvider (https://1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/src/contexts/CartContext.tsx:62:32)
+    at App (https://1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/src/App.tsx:31:3)
+    at QueryClientProvider (https://1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=ea8f73c5:2829:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+Mt.forEach.n.<computed> @ Console.js:61Understand this errorAI
+chunk-RPCDYKBN.js?v=ea8f73c5:9129 Uncaught TypeError: Cannot read properties of undefined (reading 'name')
+    at Transactions.tsx:193:70
+    at Array.map (<anonymous>)
+    at Transactions.tsx:190:62
+    at Array.map (<anonymous>)
+    at Transactions (Transactions.tsx:154:42)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=ea8f73c5:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=ea8f73c5:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=ea8f73c5:15924:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=ea8f73c5:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=ea8f73c5:19198:20)Understand this errorAI
+Console.js:61 {
+  "timestamp": "2025-01-17T15:46:50.298Z",
+  "level": "info",
+  "message": "WebSocket connection closed",
+  "context": {}
+}
+Console.js:61 WebSocket connection closed
+768Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.Understand this warningAI
+1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/:1 
+        
+        
+       Failed to load resource: the server responded with a status of 502 (Bad Gateway)Understand this errorAI
+Console.js:61 Attempting to reconnect...
+Console.js:61 WebSocket connection established
+Console.js:61 WebSocket message received: status
+Console.js:61 WebSocket status: connected

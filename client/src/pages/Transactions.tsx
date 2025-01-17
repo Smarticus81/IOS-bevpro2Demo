@@ -74,8 +74,8 @@ export function Transactions() {
       transaction.id.toString().includes(searchLower) ||
       transaction.status.toLowerCase().includes(searchLower) ||
       transaction.amount.toString().includes(searchLower) ||
-      transaction.order?.items?.some(item =>
-        item.drink.name.toLowerCase().includes(searchLower)
+      transaction.order?.items?.some(item => 
+        item?.drink?.name?.toLowerCase().includes(searchLower)
       )
     );
   }) || [];
@@ -101,7 +101,48 @@ export function Transactions() {
 
   // Format monetary values from cents to dollars with proper decimals
   const formatMoney = (cents: number): string => {
-    return `$${Number(cents).toFixed(2)}`;
+    return `$${(cents || 0).toFixed(2)}`;
+  };
+
+  const renderTooltipContent = (transaction: Transaction) => {
+    if (!transaction.order?.items?.length) {
+      return (
+        <div className="space-y-2 p-1">
+          <div className="text-sm font-medium border-b pb-1">Order Details</div>
+          <div className="text-sm">No items available</div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-2 p-1">
+        <div className="text-sm font-medium border-b pb-1">Order Details</div>
+        {transaction.order.items.map((item, idx) => {
+          const itemName = item?.drink?.name || 'Unknown Item';
+          const category = item?.drink?.category || 'N/A';
+          const price = item?.drink?.price || 0;
+          const quantity = item?.quantity || 0;
+
+          return (
+            <div key={idx} className="space-y-1">
+              <div className="text-sm font-medium">
+                {quantity}x {itemName}
+              </div>
+              <div className="text-xs text-gray-500">
+                Category: {category}
+                <br />
+                Unit Price: {formatMoney(price)}
+                <br />
+                Subtotal: {formatMoney(price * quantity)}
+              </div>
+            </div>
+          );
+        })}
+        <div className="text-sm font-medium pt-1 border-t">
+          Total: {formatMoney(transaction.amount)}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -185,26 +226,7 @@ export function Transactions() {
                                 </Badge>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <div className="space-y-2 p-1">
-                                  <div className="text-sm font-medium border-b pb-1">Order Details</div>
-                                  {transaction.order?.items?.map((item, idx) => (
-                                    <div key={idx} className="space-y-1">
-                                      <div className="text-sm font-medium">
-                                        {item.quantity}x {item.drink.name}
-                                      </div>
-                                      <div className="text-xs text-gray-500">
-                                        Category: {item.drink.category}
-                                        <br />
-                                        Unit Price: {formatMoney(item.drink.price)}
-                                        <br />
-                                        Subtotal: {formatMoney(item.drink.price * item.quantity)}
-                                      </div>
-                                    </div>
-                                  ))}
-                                  <div className="text-sm font-medium pt-1 border-t">
-                                    Total: {formatMoney(transaction.amount)}
-                                  </div>
-                                </div>
+                                {renderTooltipContent(transaction)}
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
