@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@db";
-import { orders, orderItems } from "@db/schema";
+import { orders, orderItems, drinks } from "@db/schema";
 import { calculateOrderTaxAndPours, recordPourTransactions } from "../services/tax-service";
 
 const router = Router();
@@ -13,6 +13,19 @@ router.post("/api/orders", async (req, res) => {
   }
 
   try {
+    // Get drink details for names
+    const drinkIds = items.map(item => item.drink_id);
+    const drinkDetails = await db
+      .select({
+        id: drinks.id,
+        name: drinks.name,
+      })
+      .from(drinks)
+      .where(drinks.id.in(drinkIds));
+
+    // Create a map of drink_id to name for easy lookup
+    const drinkNameMap = new Map(drinkDetails.map(d => [d.id, d.name]));
+
     // Calculate tax and track pours
     const { totalTax, pours } = await calculateOrderTaxAndPours(items);
 
@@ -22,11 +35,17 @@ router.post("/api/orders", async (req, res) => {
       return total + (itemPrice * item.quantity);
     }, 0);
 
+    // Enhance items with drink names
+    const itemsWithNames = items.map(item => ({
+      ...item,
+      name: drinkNameMap.get(item.drink_id) || 'Unknown Drink'
+    }));
+
     // Create order with tax
     const [order] = await db.insert(orders).values({
       status: "pending",
       total: subtotal + totalTax,
-      items: items,
+      items: itemsWithNames,
       payment_status: "pending",
     }).returning();
 
@@ -48,7 +67,7 @@ router.post("/api/orders", async (req, res) => {
       subtotal,
       tax: totalTax,
       total: subtotal + totalTax,
-      items,
+      items: itemsWithNames,
       pours
     });
 
