@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@db";
 import { orders, orderItems, drinks } from "@db/schema";
 import { calculateOrderTaxAndPours, recordPourTransactions } from "../services/tax-service";
-import { eq } from 'knex'; // Assuming eq is from knex
+import { eq, inArray } from "drizzle-orm";
 
 const router = Router();
 
@@ -22,7 +22,7 @@ router.post("/api/orders", async (req, res) => {
         name: drinks.name,
       })
       .from(drinks)
-      .where(eq(drinks.id, drinkIds)); //Potentially needs adjustment depending on the DB library used
+      .where(inArray(drinks.id, drinkIds));
 
     // Create a map of drink_id to name for easy lookup
     const drinkNameMap = new Map(drinkDetails.map(d => [d.id, d.name]));
@@ -38,7 +38,9 @@ router.post("/api/orders", async (req, res) => {
 
     // Enhance items with drink names
     const itemsWithNames = items.map(item => ({
-      ...item,
+      price: item.price,
+      drink_id: item.drink_id,
+      quantity: item.quantity,
       name: drinkNameMap.get(item.drink_id) || 'Unknown Drink'
     }));
 
@@ -50,7 +52,7 @@ router.post("/api/orders", async (req, res) => {
       payment_status: "pending",
     }).returning();
 
-    // Record order items with names - This part remains largely unchanged.
+    // Record order items with names
     await db.insert(orderItems).values(
       items.map((item) => ({
         order_id: order.id,
