@@ -9,11 +9,17 @@ export class PaymentService {
     try {
       // Validate inputs
       if (!amount || amount <= 0) {
-        throw new Error("Invalid payment amount");
+        return {
+          success: false,
+          message: "Invalid payment amount"
+        };
       }
 
       if (!orderId) {
-        throw new Error("Invalid order ID");
+        return {
+          success: false,
+          message: "Invalid order ID"
+        };
       }
 
       // Create transaction record
@@ -74,11 +80,14 @@ export class PaymentService {
         success: true,
         transaction: updatedTransaction,
         order: updatedOrder,
-        message: `Payment processed successfully`
+        message: "Payment processed successfully"
       };
     } catch (error) {
       console.error('Payment processing error:', error);
-      throw new Error(error instanceof Error ? error.message : "Payment processing failed");
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Payment processing failed"
+      };
     }
   }
 
@@ -105,7 +114,7 @@ export class PaymentService {
         })
         .from(transactions)
         .leftJoin(orders, eq(transactions.order_id, orders.id))
-        .orderBy(sql`${transactions.created_at} DESC`) //Modified Order By clause
+        .orderBy(sql`${transactions.created_at} DESC`) 
         .limit(limit)
         .offset(offset);
 

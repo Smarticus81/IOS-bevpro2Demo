@@ -70,6 +70,10 @@ export function registerRoutes(app: Express): Server {
         // Process payment with error handling
         const result = await PaymentService.processPayment(total, order.id);
 
+        if (!result.success) {
+          throw new Error(result.message || "Payment processing failed");
+        }
+
         // If payment successful, update inventory
         const inventoryUpdates = [];
         for (const item of items) {
@@ -93,15 +97,18 @@ export function registerRoutes(app: Express): Server {
 
         // Broadcast inventory updates
         broadcastUpdate(wsServer, 'INVENTORY_UPDATE', {
-          type: 'order_created',
+          type: 'order_completed',
           orderId: order.id,
-          updates: inventoryUpdates
+          updates: inventoryUpdates,
+          success: true
         });
 
         res.json({
+          success: true,
           order: result.order,
           transaction: result.transaction,
-          inventoryUpdates
+          inventoryUpdates,
+          message: "Order completed successfully"
         });
       } catch (paymentError) {
         // If payment fails, update order status
@@ -112,11 +119,25 @@ export function registerRoutes(app: Express): Server {
           })
           .where(eq(orders.id, order.id));
 
-        throw paymentError;
+        // Broadcast failure
+        broadcastUpdate(wsServer, 'ORDER_UPDATE', {
+          type: 'order_failed',
+          orderId: order.id,
+          error: paymentError instanceof Error ? paymentError.message : "Payment processing failed"
+        });
+
+        res.status(400).json({
+          success: false,
+          error: "Payment processing failed",
+          details: paymentError instanceof Error ? paymentError.message : "Unknown error",
+          orderId: order.id
+        });
+        return;
       }
     } catch (error) {
       console.error("Error creating order:", error);
       res.status(500).json({
+        success: false,
         error: "Failed to create order",
         details: error instanceof Error ? error.message : "Unknown error"
       });
