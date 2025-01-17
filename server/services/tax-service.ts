@@ -49,7 +49,7 @@ export async function calculateOrderTaxAndPours(items: Array<{
       }
 
       // For now, assume a default tax rate of 0 if no tax category is found
-      const taxRate = taxCategory?.rate || 0;
+      const taxRate = Number(taxCategory?.rate || 0);
 
       // Check if it's a cocktail
       if (drink.is_cocktail) {
@@ -71,21 +71,21 @@ export async function calculateOrderTaxAndPours(items: Array<{
         for (const component of recipeComponents) {
           if (!component.ingredient || !component.recipe || !component.pourSize) continue;
 
-          const ingredientTaxRate = component.taxCategory?.rate || 0;
-          const pourTax = (component.ingredient.price * component.recipe.quantity * ingredientTaxRate) / 100;
+          const ingredientTaxRate = Number(component.taxCategory?.rate || 0);
+          const pourTax = Number((component.ingredient.price * Number(component.recipe.quantity) * ingredientTaxRate) / 100);
 
           totalTax += pourTax * item.quantity;
 
           pours.push({
             drink_id: component.ingredient.id,
             pour_size_id: component.pourSize.id,
-            quantity: component.recipe.quantity * item.quantity,
+            quantity: Number(component.recipe.quantity) * item.quantity,
             tax_amount: pourTax * item.quantity
           });
         }
       } else {
         // For regular drinks
-        const pourTax = (drink.price * taxRate) / 100;
+        const pourTax = Number((drink.price * taxRate) / 100);
         totalTax += pourTax * item.quantity;
 
         pours.push({

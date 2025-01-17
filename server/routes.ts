@@ -66,11 +66,11 @@ export function registerRoutes(app: Express): Server {
 
       await db.insert(orderItems).values(orderItemsData);
 
-      // Process payment
       try {
+        // Process payment with error handling
         const result = await PaymentService.processPayment(total, order.id);
 
-        // Update inventory and track changes
+        // If payment successful, update inventory
         const inventoryUpdates = [];
         for (const item of items) {
           const [updatedDrink] = await db.update(drinks)
@@ -155,20 +155,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get transaction history
-  app.get("/api/transactions", async (req, res) => {
-    try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 50;
-
-      const result = await PaymentService.getTransactionHistory(page, limit);
-      res.json(result);
-    } catch (error) {
-      console.error("Error fetching transactions:", error);
-      res.status(500).json({ error: "Failed to fetch transactions" });
-    }
-  });
-
   // Process payment and record transaction
   app.post("/api/payment/process", async (req, res) => {
     try {
@@ -192,7 +178,19 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
+  // Get transaction history
+  app.get("/api/transactions", async (req, res) => {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 50;
 
+      const result = await PaymentService.getTransactionHistory(page, limit);
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      res.status(500).json({ error: "Failed to fetch transactions" });
+    }
+  });
 
   // Dashboard Statistics with pagination and caching
   app.get("/api/dashboard/stats", async (req, res) => {

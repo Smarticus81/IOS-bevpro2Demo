@@ -21,7 +21,7 @@ export class PaymentService {
         .insert(transactions)
         .values({
           order_id: orderId,
-          amount,
+          amount: Math.round(amount), // Round to nearest integer
           status: 'processing',
           attempts: 1,
           created_at: new Date(),
@@ -105,7 +105,7 @@ export class PaymentService {
         })
         .from(transactions)
         .leftJoin(orders, eq(transactions.order_id, orders.id))
-        .orderBy(desc(transactions.created_at))
+        .orderBy(sql`${transactions.created_at} DESC`) //Modified Order By clause
         .limit(limit)
         .offset(offset);
 
