@@ -7,10 +7,9 @@ import {
   orders,
   orderItems,
   paymentMethods,
-  transactions,
   tabs,
   splitPayments,
-  taxCategories // Added import for taxCategories table
+  taxCategories
 } from "@db/schema";
 import { eq, sql } from "drizzle-orm";
 import { setupRealtimeProxy, broadcastUpdate } from "./realtime-proxy";
@@ -152,7 +151,6 @@ export function registerRoutes(app: Express): Server {
           });
         }
 
-
         const inventoryUpdates = [];
         for (const item of itemsWithTax) {
           const [updatedDrink] = await db.update(drinks)
@@ -240,130 +238,6 @@ export function registerRoutes(app: Express): Server {
       }));
 
       res.json({ drinks: transformedDrinks });
-    } catch (error) {
-      console.error("Error fetching drinks:", error);
-      res.status(500).json({ error: "Failed to fetch drinks" });
-    }
-  });
-
-  // Process payment and record transaction
-  app.post("/api/payment/process", async (req, res) => {
-    try {
-      const { amount, orderId } = req.body;
-
-      if (typeof amount !== 'number' || amount <= 0) {
-        return res.status(400).json({ error: "Invalid payment amount" });
-      }
-
-      if (!orderId || typeof orderId !== 'number') {
-        return res.status(400).json({ error: "Invalid order ID" });
-      }
-
-      const result = await PaymentService.processPayment(amount, orderId);
-      res.json(result);
-    } catch (error) {
-      console.error("Payment processing error:", error);
-      res.status(500).json({
-        error: "Failed to process payment",
-        message: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-  // Get transaction history
-  app.get("/api/transactions", async (req, res) => {
-    try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 50;
-
-      const result = await PaymentService.getTransactionHistory(page, limit);
-      res.json(result);
-    } catch (error) {
-      console.error("Error fetching transactions:", error);
-      res.status(500).json({ error: "Failed to fetch transactions" });
-    }
-  });
-
-  // Dashboard Statistics with pagination and caching
-  app.get("/api/dashboard/stats", async (req, res) => {
-    try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
-      const offset = (page - 1) * limit;
-
-      const [salesStats] = await db.select({
-        totalSales: sql`SUM(transactions.amount)`,
-        totalOrders: sql`COUNT(orders.id)`
-      })
-        .from(transactions)
-        .leftJoin(orders, eq(transactions.order_id, orders.id))
-        .where(eq(transactions.status, 'completed'));
-
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-
-      const [todayStats] = await db.select({
-        todaySales: sql`SUM(transactions.amount)`
-      })
-        .from(transactions)
-        .where(sql`${transactions.created_at}::date = ${todayStart.toISOString().split('T')[0]} AND ${transactions.status} = 'completed'`);
-
-      const activeOrders = await db.select({
-        count: sql`COUNT(*)`
-      })
-        .from(orders)
-        .where(eq(orders.status, 'pending'));
-
-      const categorySales = await db.select({
-        category: drinks.category,
-        totalSales: sql`SUM(orderItems.quantity)`
-      })
-        .from(orderItems)
-        .leftJoin(drinks, eq(orderItems.drink_id, drinks.id))
-        .groupBy(drinks.category)
-        .limit(limit)
-        .offset(offset);
-
-      const popularDrinks = await db.select({
-        id: drinks.id,
-        name: drinks.name,
-        sales: sql`SUM(orderItems.quantity)`
-      })
-        .from(orderItems)
-        .leftJoin(drinks, eq(orderItems.drink_id, drinks.id))
-        .groupBy(drinks.id, drinks.name)
-        .orderBy(sql`sum(${orderItems.quantity}) DESC`)
-        .limit(limit);
-
-      res.json({
-        totalSales: salesStats?.totalSales || 0,
-        todaySales: todayStats?.todaySales || 0,
-        activeOrders: activeOrders[0]?.count || 0,
-        categorySales,
-        popularDrinks,
-        totalOrders: salesStats?.totalOrders || 0,
-        pagination: {
-          currentPage: page,
-          limit,
-          hasMore: categorySales.length === limit
-        }
-      });
-    } catch (error) {
-      console.error("Error fetching dashboard stats:", error);
-      res.status(500).json({ error: "Failed to fetch dashboard statistics" });
-    }
-  });
-
-  // Get drinks with caching
-  app.get("/api/drinks2", async (_req, res) => {
-    try {
-      const allDrinks = await db
-        .select()
-        .from(drinks)
-        .orderBy(drinks.category);
-
-      res.json({
-        drinks: allDrinks
-      });
     } catch (error) {
       console.error("Error fetching drinks:", error);
       res.status(500).json({ error: "Failed to fetch drinks" });
@@ -458,7 +332,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-
   // Get OpenAI API configuration
   app.get("/api/config", (_req, res) => {
     try {
@@ -488,7 +361,6 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
-
 
   // Payment Methods endpoints
   app.get("/api/payment-methods", async (_req, res) => {
@@ -585,6 +457,93 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ error: "Failed to fetch split payments" });
     }
   });
+
+  // Dashboard Statistics with pagination and caching
+  app.get("/api/dashboard/stats", async (req, res) => {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const offset = (page - 1) * limit;
+
+      const [salesStats] = await db.select({
+        totalSales: sql`SUM(orders.total)`, // Changed to sum orders.total instead of transactions.amount
+        totalOrders: sql`COUNT(orders.id)`
+      })
+        .from(orders) // Changed from transactions to orders
+        .where(eq(orders.status, 'completed')); // added where clause to only count completed orders
+
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const [todayStats] = await db.select({
+        todaySales: sql`SUM(orders.total)` // Changed to sum orders.total instead of transactions.amount
+      })
+        .from(orders) // Changed from transactions to orders
+        .where(sql`${orders.created_at}::date = ${todayStart.toISOString().split('T')[0]} AND ${orders.status} = 'completed'`); // added where clause to only count completed orders from today
+
+      const activeOrders = await db.select({
+        count: sql`COUNT(*)`
+      })
+        .from(orders)
+        .where(eq(orders.status, 'pending'));
+
+      const categorySales = await db.select({
+        category: drinks.category,
+        totalSales: sql`SUM(orderItems.quantity)`
+      })
+        .from(orderItems)
+        .leftJoin(drinks, eq(orderItems.drink_id, drinks.id))
+        .groupBy(drinks.category)
+        .limit(limit)
+        .offset(offset);
+
+      const popularDrinks = await db.select({
+        id: drinks.id,
+        name: drinks.name,
+        sales: sql`SUM(orderItems.quantity)`
+      })
+        .from(orderItems)
+        .leftJoin(drinks, eq(orderItems.drink_id, drinks.id))
+        .groupBy(drinks.id, drinks.name)
+        .orderBy(sql`sum(${orderItems.quantity}) DESC`)
+        .limit(limit);
+
+      res.json({
+        totalSales: salesStats?.totalSales || 0,
+        todaySales: todayStats?.todaySales || 0,
+        activeOrders: activeOrders[0]?.count || 0,
+        categorySales,
+        popularDrinks,
+        totalOrders: salesStats?.totalOrders || 0,
+        pagination: {
+          currentPage: page,
+          limit,
+          hasMore: categorySales.length === limit
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      res.status(500).json({ error: "Failed to fetch dashboard statistics" });
+    }
+  });
+
+  // Get drinks with caching
+  app.get("/api/drinks2", async (_req, res) => {
+    try {
+      const allDrinks = await db
+        .select()
+        .from(drinks)
+        .orderBy(drinks.category);
+
+      res.json({
+        drinks: allDrinks
+      });
+    } catch (error) {
+      console.error("Error fetching drinks:", error);
+      res.status(500).json({ error: "Failed to fetch drinks" });
+    }
+  });
+
 
   return httpServer;
 }

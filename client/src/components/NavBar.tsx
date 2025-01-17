@@ -1,4 +1,4 @@
-import { Home, Package, History, Database, Menu as MenuIcon } from "lucide-react";
+import { Home, Package, Database, Menu as MenuIcon } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,6 @@ export function NavBar({ drinks }: NavBarProps) {
   const navItems = [
     { href: "/", icon: Home, label: "Home" },
     { href: "/inventory", icon: Package, label: "Inventory" },
-    { href: "/transactions", icon: History, label: "Transactions" },
     { href: "/database", icon: Database, label: "Database" },
   ];
 
