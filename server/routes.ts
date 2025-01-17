@@ -26,20 +26,47 @@ export function registerRoutes(app: Express): Server {
     try {
       const { items, total } = req.body;
 
-      if (!items?.length || typeof total !== 'number' || total <= 0) {
+      if (!Array.isArray(items) || !items.length || typeof total !== 'number' || total <= 0) {
         return res.status(400).json({
+          success: false,
           error: "Invalid order data. Must include items array and valid total."
         });
       }
 
-      // Validate all items have required fields
+      // Validate items
       const invalidItems = items.filter((item: any) => {
-        return !item.drink?.id || typeof item.quantity !== 'number' || item.quantity <= 0;
+        return !item.drink_id || typeof item.quantity !== 'number' || item.quantity <= 0;
       });
 
       if (invalidItems.length > 0) {
         return res.status(400).json({
+          success: false,
           error: "Invalid items in order. Each item must have a valid drink ID and quantity."
+        });
+      }
+
+      // Check inventory availability
+      const inventoryChecks = await Promise.all(
+        items.map(async (item: any) => {
+          const [drink] = await db
+            .select({ inventory: drinks.inventory })
+            .from(drinks)
+            .where(eq(drinks.id, item.drink_id))
+            .limit(1);
+
+          return {
+            drink_id: item.drink_id,
+            available: drink && drink.inventory >= item.quantity
+          };
+        })
+      );
+
+      const unavailableItems = inventoryChecks.filter(check => !check.available);
+      if (unavailableItems.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Some items are out of stock",
+          items: unavailableItems
         });
       }
 
@@ -53,17 +80,17 @@ export function registerRoutes(app: Express): Server {
       }).returning();
 
       // Create order items
-      const orderItemsData = items.map((item: any) => ({
-        order_id: order.id,
-        drink_id: item.drink.id,
-        quantity: item.quantity,
-        price: item.drink.price
-      }));
-
-      await db.insert(orderItems).values(orderItemsData);
+      await db.insert(orderItems).values(
+        items.map((item: any) => ({
+          order_id: order.id,
+          drink_id: item.drink_id,
+          quantity: item.quantity,
+          price: item.price
+        }))
+      );
 
       try {
-        // Process payment with error handling
+        // Process payment
         const result = await PaymentService.processPayment(total, order.id);
 
         if (!result.success) {
@@ -76,8 +103,7 @@ export function registerRoutes(app: Express): Server {
             .where(eq(orders.id, order.id));
 
           // Broadcast failure
-          broadcastUpdate(wsServer, 'ORDER_UPDATE', {
-            type: 'order_failed',
+          broadcastUpdate(wsServer, 'order_failed', {
             orderId: order.id,
             error: result.message || "Payment processing failed"
           });
@@ -98,13 +124,12 @@ export function registerRoutes(app: Express): Server {
               inventory: sql`${drinks.inventory} - ${item.quantity}`,
               sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
             })
-            .where(eq(drinks.id, item.drink.id))
+            .where(eq(drinks.id, item.drink_id))
             .returning();
 
           if (updatedDrink) {
             inventoryUpdates.push({
               id: updatedDrink.id,
-              name: item.drink.name,
               inventory: updatedDrink.inventory,
               sales: updatedDrink.sales
             });
@@ -112,14 +137,12 @@ export function registerRoutes(app: Express): Server {
         }
 
         // Broadcast success
-        broadcastUpdate(wsServer, 'ORDER_UPDATE', {
-          type: 'order_completed',
+        broadcastUpdate(wsServer, 'order_completed', {
           orderId: order.id,
-          updates: inventoryUpdates,
-          success: true
+          updates: inventoryUpdates
         });
 
-        res.json({
+        return res.json({
           success: true,
           order: result.order,
           transaction: result.transaction,
@@ -137,13 +160,12 @@ export function registerRoutes(app: Express): Server {
           .where(eq(orders.id, order.id));
 
         // Broadcast failure
-        broadcastUpdate(wsServer, 'ORDER_UPDATE', {
-          type: 'order_failed',
+        broadcastUpdate(wsServer, 'order_failed', {
           orderId: order.id,
           error: paymentError instanceof Error ? paymentError.message : "Payment processing failed"
         });
 
-        res.status(400).json({
+        return res.status(400).json({
           success: false,
           error: "Payment processing failed",
           details: paymentError instanceof Error ? paymentError.message : "Unknown error",
@@ -152,7 +174,7 @@ export function registerRoutes(app: Express): Server {
       }
     } catch (error) {
       console.error("Error creating order:", error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: "Failed to create order",
         details: error instanceof Error ? error.message : "Unknown error"

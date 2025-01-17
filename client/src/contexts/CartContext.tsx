@@ -4,17 +4,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import type { CartState, CartContextType, AddToCartAction, CartItem } from '@/types/cart';
 
-// Define the context
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-// Cart actions
 type CartAction =
   | AddToCartAction
   | { type: 'REMOVE_ITEM'; drinkId: number }
   | { type: 'CLEAR_CART' }
   | { type: 'SET_PROCESSING'; isProcessing: boolean };
 
-// Cart reducer function
 function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
     case 'ADD_ITEM': {
@@ -22,12 +19,11 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 
       const existingItem = state.items.find(item => item.drink.id === action.drink.id);
       if (existingItem) {
-        const newQuantity = Math.max(0, Math.min(99, existingItem.quantity + action.quantity));
         return {
           ...state,
           items: state.items.map(item =>
             item.drink.id === action.drink.id
-              ? { ...item, quantity: newQuantity }
+              ? { ...item, quantity: Math.min(99, item.quantity + action.quantity) }
               : item
           ),
         };
@@ -54,11 +50,10 @@ function cartReducer(state: CartState, action: CartAction): CartState {
         isProcessing: action.isProcessing,
       };
     default:
-      throw new Error(`Unhandled action type: ${(action as CartAction).type}`);
+      return state;
   }
 }
 
-// CartProvider Component
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, {
     items: [],
@@ -143,7 +138,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       logger.info('Order response received:', data);
 
       if (!response.ok || !data.success) {
-        throw new Error(data.message || data.error || 'Failed to process order');
+        throw new Error(data.error || data.message || 'Failed to process order');
       }
 
       return data;
@@ -163,7 +158,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
-  // Place Order
   const placeOrder = useCallback(async () => {
     if (state.isProcessing) {
       logger.info('Order already processing');
@@ -186,7 +180,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.items, state.isProcessing, toast, orderMutation]);
 
-  // Add to Cart
   const addToCart = useCallback(async (action: AddToCartAction) => {
     if (state.isProcessing) {
       logger.info('Cart is processing, ignoring add request');
@@ -216,7 +209,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [toast, state.isProcessing]);
 
-  // Remove from Cart
   const removeItem = useCallback(async (drinkId: number) => {
     if (state.isProcessing) {
       logger.info('Cart is processing, ignoring remove request');
@@ -248,7 +240,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         cart: state.items,
         isProcessing: state.isProcessing,
         addToCart,
-        removeItem,
+        removeFromCart: removeItem,
         placeOrder
       }}
     >
@@ -268,7 +260,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// useCart Hook
 export function useCart() {
   const context = useContext(CartContext);
   if (!context) {
