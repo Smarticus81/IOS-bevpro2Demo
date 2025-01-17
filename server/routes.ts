@@ -66,38 +66,54 @@ export function registerRoutes(app: Express): Server {
 
       await db.insert(orderItems).values(orderItemsData);
 
-      // Update inventory and track changes
-      const inventoryUpdates = [];
-      for (const item of items) {
-        const [updatedDrink] = await db.update(drinks)
-          .set({
-            inventory: sql`${drinks.inventory} - ${item.quantity}`,
-            sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
-          })
-          .where(eq(drinks.id, item.drink.id))
-          .returning();
+      // Process payment
+      try {
+        const result = await PaymentService.processPayment(total, order.id);
 
-        if (updatedDrink) {
-          inventoryUpdates.push({
-            id: updatedDrink.id,
-            name: item.drink.name,
-            inventory: updatedDrink.inventory,
-            sales: updatedDrink.sales
-          });
+        // Update inventory and track changes
+        const inventoryUpdates = [];
+        for (const item of items) {
+          const [updatedDrink] = await db.update(drinks)
+            .set({
+              inventory: sql`${drinks.inventory} - ${item.quantity}`,
+              sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
+            })
+            .where(eq(drinks.id, item.drink.id))
+            .returning();
+
+          if (updatedDrink) {
+            inventoryUpdates.push({
+              id: updatedDrink.id,
+              name: item.drink.name,
+              inventory: updatedDrink.inventory,
+              sales: updatedDrink.sales
+            });
+          }
         }
+
+        // Broadcast inventory updates
+        broadcastUpdate(wsServer, 'INVENTORY_UPDATE', {
+          type: 'order_created',
+          orderId: order.id,
+          updates: inventoryUpdates
+        });
+
+        res.json({
+          order: result.order,
+          transaction: result.transaction,
+          inventoryUpdates
+        });
+      } catch (paymentError) {
+        // If payment fails, update order status
+        await db.update(orders)
+          .set({ 
+            status: 'failed',
+            payment_status: 'failed'
+          })
+          .where(eq(orders.id, order.id));
+
+        throw paymentError;
       }
-
-      // Broadcast inventory updates
-      broadcastUpdate(wsServer, 'INVENTORY_UPDATE', {
-        type: 'order_created',
-        orderId: order.id,
-        updates: inventoryUpdates
-      });
-
-      res.json({
-        order,
-        inventoryUpdates
-      });
     } catch (error) {
       console.error("Error creating order:", error);
       res.status(500).json({
@@ -124,10 +140,10 @@ export function registerRoutes(app: Express): Server {
         .from(drinks)
         .orderBy(drinks.category);
 
-      // Transform prices to match frontend expectations (convert from cents)
+      // Transform prices to match frontend expectations 
       const transformedDrinks = allDrinks.map(drink => ({
         ...drink,
-        price: drink.price,
+        price: drink.price, // Keep as is since frontend handles formatting
         inventory: drink.inventory ?? 0,
         sales: drink.sales ?? 0
       }));

@@ -1,12 +1,21 @@
 import { db } from "@db";
 import { orders, transactions, orderItems, drinks } from "@db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { sql } from 'drizzle-orm';
 
 export class PaymentService {
   // Process a payment and record transaction
   static async processPayment(amount: number, orderId: number) {
     try {
+      // Validate inputs
+      if (!amount || amount <= 0) {
+        throw new Error("Invalid payment amount");
+      }
+
+      if (!orderId) {
+        throw new Error("Invalid order ID");
+      }
+
       // Create transaction record
       const [transaction] = await db
         .insert(transactions)
@@ -65,11 +74,11 @@ export class PaymentService {
         success: true,
         transaction: updatedTransaction,
         order: updatedOrder,
-        message: `Payment of $${(amount / 100).toFixed(2)} processed successfully`
+        message: `Payment processed successfully`
       };
     } catch (error) {
       console.error('Payment processing error:', error);
-      throw error;
+      throw new Error(error instanceof Error ? error.message : "Payment processing failed");
     }
   }
 
@@ -115,7 +124,7 @@ export class PaymentService {
       };
     } catch (error) {
       console.error('Error fetching transaction history:', error);
-      throw error;
+      throw new Error('Failed to fetch transaction history');
     }
   }
 
