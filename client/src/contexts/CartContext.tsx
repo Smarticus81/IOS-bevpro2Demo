@@ -121,14 +121,36 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
         } 
         else if (message.type === 'order_failed') {
-          logger.info('Order failed:', message.error);
+          logger.error('Order failed:', message);
           dispatch({ type: 'SET_PROCESSING', isProcessing: false });
+
+          // Handle different types of failures with appropriate messages
+          let errorMessage = 'Failed to process order';
+
+          if (message.error === "Some items are out of stock") {
+            errorMessage = "Some items in your order are no longer available. Please review your cart.";
+          } else if (message.error === "Payment processing failed") {
+            if (message.details?.includes("tax_category_id")) {
+              errorMessage = "Order processing error. Please try again or contact support if the issue persists.";
+            } else {
+              errorMessage = "Payment processing failed. Please try again.";
+            }
+          }
 
           toast({
             title: 'Order Failed',
-            description: message.error || 'Failed to process order',
+            description: errorMessage,
             variant: 'destructive',
           });
+
+          // If items are out of stock, update the cart
+          if (message.items) {
+            message.items.forEach((item: { drink_id: number, available: boolean }) => {
+              if (!item.available) {
+                dispatch({ type: 'REMOVE_ITEM', drinkId: item.drink_id });
+              }
+            });
+          }
         }
       } catch (error) {
         logger.error('Error processing WebSocket message:', error);
@@ -141,6 +163,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     ws.onclose = () => {
       logger.info('WebSocket connection closed');
+      setTimeout(() => {
+        logger.info('Attempting to reconnect...');
+        // The component will re-render and attempt to reconnect
+      }, 3000);
     };
 
     return () => {

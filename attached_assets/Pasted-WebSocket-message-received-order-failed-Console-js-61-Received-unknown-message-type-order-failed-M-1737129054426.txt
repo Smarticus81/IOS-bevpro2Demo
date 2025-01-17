@@ -1,0 +1,75 @@
+WebSocket message received: order_failed
+Console.js:61 Received unknown message type: order_failed
+Mt.forEach.n.<computed> @ Console.js:61
+ws.onmessage @ useWebSocket.ts:56Understand this warningAI
+1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/api/orders:1 
+        
+        
+       Failed to load resource: the server responded with a status of 400 (Bad Request)Understand this errorAI
+1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/api/orders:1 
+        
+        
+       Failed to load resource: the server responded with a status of 400 (Bad Request)Understand this errorAI
+Console.js:61 {
+  "timestamp": "2025-01-17T15:49:40.211Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T15:49:40.211Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T15:49:40.216Z",
+  "level": "info",
+  "message": "Order response received:",
+  "context": {
+    "success": false,
+    "error": "Payment processing failed",
+    "details": "column \"tax_category_id\" does not exist",
+    "orderId": 101
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T15:49:40.216Z",
+  "level": "error",
+  "message": "Order placement failed:",
+  "context": {}
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T15:49:40.217Z",
+  "level": "error",
+  "message": "Error during order placement:",
+  "context": {}
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T15:49:40.222Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T15:49:40.223Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
