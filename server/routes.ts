@@ -10,6 +10,7 @@ import {
   transactions,
   tabs,
   splitPayments,
+  taxCategories // Added import for taxCategories table
 } from "@db/schema";
 import { eq, sql } from "drizzle-orm";
 import { setupRealtimeProxy, broadcastUpdate } from "./realtime-proxy";
@@ -23,9 +24,9 @@ export function registerRoutes(app: Express): Server {
   // Create new order with real-time inventory updates
   app.post("/api/orders", async (req, res) => {
     try {
-      const { items, total } = req.body;
+      const { items, total: subtotal } = req.body;
 
-      if (!Array.isArray(items) || !items.length || typeof total !== 'number' || total <= 0) {
+      if (!Array.isArray(items) || !items.length || typeof subtotal !== 'number' || subtotal <= 0) {
         return res.status(400).json({
           success: false,
           error: "Invalid order data. Must include items array and valid total."
@@ -44,23 +45,30 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
-      // Check inventory availability
-      const inventoryChecks = await Promise.all(
+      // Fetch drinks with their tax categories to calculate tax
+      const drinksWithTax = await Promise.all(
         items.map(async (item: any) => {
           const [drink] = await db
-            .select({ inventory: drinks.inventory })
+            .select({
+              id: drinks.id,
+              name: drinks.name,
+              tax_category_id: drinks.tax_category_id,
+              inventory: drinks.inventory
+            })
             .from(drinks)
-            .where(eq(drinks.id, item.drink_id))
-            .limit(1);
+            .leftJoin(taxCategories, eq(drinks.tax_category_id, taxCategories.id))
+            .where(eq(drinks.id, item.drink_id));
 
           return {
-            drink_id: item.drink_id,
+            ...item,
+            drink,
             available: drink && drink.inventory >= item.quantity
           };
         })
       );
 
-      const unavailableItems = inventoryChecks.filter(check => !check.available);
+      // Check inventory
+      const unavailableItems = drinksWithTax.filter(item => !item.available);
       if (unavailableItems.length > 0) {
         return res.status(400).json({
           success: false,
@@ -69,33 +77,61 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
+      // Calculate tax amounts for each item and total tax
+      const itemsWithTax = await Promise.all(
+        drinksWithTax.map(async (item) => {
+          const [taxCategory] = item.drink.tax_category_id 
+            ? await db
+                .select({ rate: taxCategories.rate })
+                .from(taxCategories)
+                .where(eq(taxCategories.id, item.drink.tax_category_id))
+            : [{ rate: 0 }];
+
+          const itemTaxAmount = Math.round(item.price * item.quantity * Number(taxCategory.rate));
+
+          return {
+            ...item,
+            tax_amount: itemTaxAmount
+          };
+        })
+      );
+
+      const totalTaxAmount = itemsWithTax.reduce((sum, item) => sum + item.tax_amount, 0);
+      const orderTotal = subtotal + totalTaxAmount;
+
       // Create order
       const [order] = await db.insert(orders).values({
-        subtotal: total,
-        tax_amount: 0, // Will be calculated based on tax categories
+        subtotal,
+        tax_amount: totalTaxAmount,
+        total: orderTotal,
         status: 'pending',
         payment_status: 'pending',
+        items: itemsWithTax.map(item => ({
+          drink_id: item.drink_id,
+          quantity: item.quantity,
+          price: item.price,
+          tax_amount: item.tax_amount
+        })),
         created_at: new Date()
       }).returning();
 
-      // Create order items
-      const orderItemsToInsert = items.map((item: any) => ({
+      // Create order items with tax information
+      const orderItemsToInsert = itemsWithTax.map(item => ({
         order_id: order.id,
         drink_id: item.drink_id,
         quantity: item.quantity,
         price: item.price,
-        tax_amount: 0, // Will be calculated based on drink's tax category
-        drink_name: '' // Will be populated from drinks table
+        tax_amount: item.tax_amount,
+        drink_name: item.drink.name
       }));
 
       await db.insert(orderItems).values(orderItemsToInsert);
 
       try {
-        // Process payment
-        const result = await PaymentService.processPayment(total, order.id);
+        // Process payment with the total amount including tax
+        const result = await PaymentService.processPayment(orderTotal, order.id);
 
         if (!result.success) {
-          // Update order status as failed
           await db.update(orders)
             .set({ 
               status: 'failed',
@@ -103,7 +139,6 @@ export function registerRoutes(app: Express): Server {
             })
             .where(eq(orders.id, order.id));
 
-          // Broadcast failure
           broadcastUpdate(wsServer, 'order_failed', {
             orderId: order.id,
             error: result.message || "Payment processing failed"
@@ -117,9 +152,9 @@ export function registerRoutes(app: Express): Server {
           });
         }
 
-        // If payment successful, update inventory
+
         const inventoryUpdates = [];
-        for (const item of items) {
+        for (const item of itemsWithTax) {
           const [updatedDrink] = await db.update(drinks)
             .set({
               inventory: sql`${drinks.inventory} - ${item.quantity}`,
@@ -137,7 +172,6 @@ export function registerRoutes(app: Express): Server {
           }
         }
 
-        // Broadcast success
         broadcastUpdate(wsServer, 'order_completed', {
           orderId: order.id,
           updates: inventoryUpdates
@@ -152,7 +186,6 @@ export function registerRoutes(app: Express): Server {
         });
 
       } catch (paymentError) {
-        // Update order status as failed
         await db.update(orders)
           .set({ 
             status: 'failed',
@@ -160,7 +193,6 @@ export function registerRoutes(app: Express): Server {
           })
           .where(eq(orders.id, order.id));
 
-        // Broadcast failure
         broadcastUpdate(wsServer, 'order_failed', {
           orderId: order.id,
           error: paymentError instanceof Error ? paymentError.message : "Payment processing failed"
@@ -200,7 +232,6 @@ export function registerRoutes(app: Express): Server {
         .from(drinks)
         .orderBy(drinks.category);
 
-      // Transform prices to match frontend expectations 
       const transformedDrinks = allDrinks.map(drink => ({
         ...drink,
         price: drink.price,
@@ -255,12 +286,10 @@ export function registerRoutes(app: Express): Server {
   // Dashboard Statistics with pagination and caching
   app.get("/api/dashboard/stats", async (req, res) => {
     try {
-      // Get pagination parameters
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const offset = (page - 1) * limit;
 
-      // Get total sales and today's sales
       const [salesStats] = await db.select({
         totalSales: sql`SUM(transactions.amount)`,
         totalOrders: sql`COUNT(orders.id)`
@@ -278,14 +307,12 @@ export function registerRoutes(app: Express): Server {
         .from(transactions)
         .where(sql`${transactions.created_at}::date = ${todayStart.toISOString().split('T')[0]} AND ${transactions.status} = 'completed'`);
 
-      // Get active orders with pagination
       const activeOrders = await db.select({
         count: sql`COUNT(*)`
       })
         .from(orders)
         .where(eq(orders.status, 'pending'));
 
-      // Get category sales with pagination
       const categorySales = await db.select({
         category: drinks.category,
         totalSales: sql`SUM(orderItems.quantity)`
@@ -296,7 +323,6 @@ export function registerRoutes(app: Express): Server {
         .limit(limit)
         .offset(offset);
 
-      // Get popular drinks with pagination
       const popularDrinks = await db.select({
         id: drinks.id,
         name: drinks.name,
@@ -330,7 +356,6 @@ export function registerRoutes(app: Express): Server {
   // Get drinks with caching
   app.get("/api/drinks2", async (_req, res) => {
     try {
-      // Get all drinks without pagination
       const allDrinks = await db
         .select()
         .from(drinks)

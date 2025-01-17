@@ -75,7 +75,12 @@ export const orders = pgTable("orders", {
   subtotal: integer("subtotal").notNull(),
   tax_amount: integer("tax_amount").notNull(),
   total: integer("total").notNull(),
-  items: jsonb("items").notNull(),
+  items: jsonb("items").$type<Array<{
+    drink_id: number;
+    quantity: number;
+    price: number;
+    tax_amount: number;
+  }>>().notNull(),
   created_at: timestamp("created_at").defaultNow(),
   completed_at: timestamp("completed_at"),
   payment_status: text("payment_status").default("pending"),
