@@ -22,10 +22,15 @@ export const paymentService = {
       }
 
       const data = await response.json();
+      
+      if (!data.transactionId || !data.status) {
+        throw new Error('Invalid payment response format');
+      }
+      
       return {
         clientSecret: data.clientSecret,
         id: data.transactionId,
-        status: data.status
+        status: data.status || 'failed'
       };
     } catch (error) {
       console.error('Error creating payment intent:', error);
