@@ -20,12 +20,11 @@ router.post("/api/orders", async (req, res) => {
       .select({
         id: drinks.id,
         name: drinks.name,
+        category: drinks.category,
+        subcategory: drinks.subcategory
       })
       .from(drinks)
       .where(inArray(drinks.id, drinkIds));
-
-    // Create a map of drink_id to name for easy lookup
-    const drinkNameMap = new Map(drinkDetails.map(d => [d.id, d.name]));
 
     // Calculate tax and track pours
     const { totalTax, pours } = await calculateOrderTaxAndPours(items);
@@ -36,13 +35,18 @@ router.post("/api/orders", async (req, res) => {
       return total + (itemPrice * item.quantity);
     }, 0);
 
-    // Enhance items with drink names
-    const itemsWithNames = items.map(item => ({
-      price: item.price,
-      drink_id: item.drink_id,
-      quantity: item.quantity,
-      name: drinkNameMap.get(item.drink_id) || 'Unknown Drink'
-    }));
+    // Enhance items with drink names and details
+    const itemsWithNames = items.map(item => {
+      const drinkDetail = drinkDetails.find(d => d.id === item.drink_id);
+      return {
+        price: item.price,
+        drink_id: item.drink_id,
+        quantity: item.quantity,
+        name: drinkDetail?.name || 'Unknown Drink',
+        category: drinkDetail?.category,
+        subcategory: drinkDetail?.subcategory
+      };
+    });
 
     // Create order with tax
     const [order] = await db.insert(orders).values({
@@ -52,7 +56,7 @@ router.post("/api/orders", async (req, res) => {
       payment_status: "pending",
     }).returning();
 
-    // Record order items with names
+    // Record order items
     await db.insert(orderItems).values(
       items.map((item) => ({
         order_id: order.id,
