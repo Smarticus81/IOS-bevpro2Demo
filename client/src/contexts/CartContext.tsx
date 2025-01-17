@@ -3,8 +3,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import type { CartState, CartContextType, AddToCartAction, CartItem } from '@/types/cart';
-import { useLocation } from 'wouter';
-import { paymentService } from '@/lib/paymentService';
 
 // Define the context
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -47,7 +45,6 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       };
     case 'CLEAR_CART':
       return {
-        ...state,
         items: [],
         isProcessing: false,
       };
@@ -70,38 +67,37 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
 
   // Setup WebSocket connection for real-time updates
   useEffect(() => {
-    const ws = new WebSocket(`ws://${window.location.host}`);
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${protocol}//${window.location.host}`);
 
     ws.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
+        const message = JSON.parse(event.data);
+        logger.info('WebSocket message received:', message);
 
-        if (data.type === 'ORDER_UPDATE') {
-          logger.info('Received order update', data);
+        if (message.type === 'order_completed') {
+          logger.info('Order completed successfully');
+          dispatch({ type: 'CLEAR_CART' });
+          queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
 
-          if (data.type === 'order_completed') {
-            // Clear cart on successful order
-            dispatch({ type: 'CLEAR_CART' });
-            queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
+          toast({
+            title: 'Order Completed',
+            description: 'Your order has been processed successfully!',
+            variant: 'default',
+          });
+        } 
+        else if (message.type === 'order_failed') {
+          logger.info('Order failed:', message.error);
+          dispatch({ type: 'SET_PROCESSING', isProcessing: false });
 
-            toast({
-              title: 'Order Completed',
-              description: 'Your order has been processed successfully!',
-              variant: 'default',
-            });
-          } else if (data.type === 'order_failed') {
-            dispatch({ type: 'SET_PROCESSING', isProcessing: false });
-
-            toast({
-              title: 'Order Failed',
-              description: data.error || 'Failed to process order',
-              variant: 'destructive',
-            });
-          }
+          toast({
+            title: 'Order Failed',
+            description: message.error || 'Failed to process order',
+            variant: 'destructive',
+          });
         }
       } catch (error) {
         logger.error('Error processing WebSocket message:', error);
@@ -112,6 +108,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       logger.error('WebSocket error:', error);
     };
 
+    ws.onclose = () => {
+      logger.info('WebSocket connection closed');
+    };
+
     return () => {
       ws.close();
     };
@@ -119,15 +119,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const orderMutation = useMutation({
     mutationFn: async (cartItems: CartItem[]) => {
-      logger.info('Initiating order placement', {
-        cartSize: cartItems.length,
+      logger.info('Starting order placement:', {
+        cartItems: cartItems.length,
         total: cartItems.reduce((sum, item) => sum + (item.drink.price * item.quantity), 0)
       });
 
-      dispatch({ type: 'SET_PROCESSING', isProcessing: true });
-
-      // Create the order
-      const orderResponse = await fetch('/api/orders', {
+      const response = await fetch('/api/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -142,20 +139,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }),
       });
 
-      if (!orderResponse.ok) {
-        const errorData = await orderResponse.json();
-        throw new Error(errorData.message || 'Failed to create order');
+      const data = await response.json();
+      logger.info('Order response received:', data);
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || data.error || 'Failed to process order');
       }
 
-      const orderData = await orderResponse.json();
-
-      if (!orderData.success) {
-        throw new Error(orderData.message || 'Order processing failed');
-      }
-
-      return orderData;
+      return data;
     },
-    onError: async (error: Error) => {
+    onMutate: () => {
+      dispatch({ type: 'SET_PROCESSING', isProcessing: true });
+    },
+    onError: (error: Error) => {
       logger.error('Order placement failed:', error);
       dispatch({ type: 'SET_PROCESSING', isProcessing: false });
 
@@ -167,19 +163,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
-  // Place Order with validation and retry logic
+  // Place Order
   const placeOrder = useCallback(async () => {
-    logger.info('Attempting to place order', {
-      cartSize: state.items.length,
-      isProcessing: state.isProcessing
-    });
-
     if (state.isProcessing) {
-      toast({
-        title: 'Processing',
-        description: 'Your order is already being processed.',
-        variant: 'default',
-      });
+      logger.info('Order already processing');
       return;
     }
 
@@ -199,18 +186,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.items, state.isProcessing, toast, orderMutation]);
 
-  // Add to Cart with validation and error handling
+  // Add to Cart
   const addToCart = useCallback(async (action: AddToCartAction) => {
     if (state.isProcessing) {
-      logger.info('Cart is currently processing, ignoring add request');
+      logger.info('Cart is processing, ignoring add request');
       return;
     }
 
     try {
-      logger.info('Adding item to cart', {
+      logger.info('Adding item to cart:', {
         drinkId: action.drink.id,
-        quantity: action.quantity,
-        currentCartSize: state.items.length
+        quantity: action.quantity
       });
 
       dispatch(action);
@@ -230,10 +216,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [toast, state.isProcessing]);
 
-  // Remove from Cart with validation
+  // Remove from Cart
   const removeItem = useCallback(async (drinkId: number) => {
     if (state.isProcessing) {
-      logger.info('Cart is currently processing, ignoring remove request');
+      logger.info('Cart is processing, ignoring remove request');
       return;
     }
 
@@ -247,7 +233,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         variant: 'default',
       });
     } catch (error) {
-      logger.error('Error removing item from cart:', { error, drinkId });
+      logger.error('Error removing item from cart:', error);
       toast({
         title: 'Error',
         description: 'Failed to remove item from cart.',
