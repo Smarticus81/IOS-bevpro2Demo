@@ -10,7 +10,6 @@ import {
   transactions,
   tabs,
   splitPayments,
-  eventPackages,
 } from "@db/schema";
 import { eq, sql } from "drizzle-orm";
 import { setupRealtimeProxy, broadcastUpdate } from "./realtime-proxy";
@@ -72,22 +71,24 @@ export function registerRoutes(app: Express): Server {
 
       // Create order
       const [order] = await db.insert(orders).values({
-        total,
-        items,
+        subtotal: total,
+        tax_amount: 0, // Will be calculated based on tax categories
         status: 'pending',
         payment_status: 'pending',
         created_at: new Date()
       }).returning();
 
       // Create order items
-      await db.insert(orderItems).values(
-        items.map((item: any) => ({
-          order_id: order.id,
-          drink_id: item.drink_id,
-          quantity: item.quantity,
-          price: item.price
-        }))
-      );
+      const orderItemsToInsert = items.map((item: any) => ({
+        order_id: order.id,
+        drink_id: item.drink_id,
+        quantity: item.quantity,
+        price: item.price,
+        tax_amount: 0, // Will be calculated based on drink's tax category
+        drink_name: '' // Will be populated from drinks table
+      }));
+
+      await db.insert(orderItems).values(orderItemsToInsert);
 
       try {
         // Process payment
@@ -202,7 +203,7 @@ export function registerRoutes(app: Express): Server {
       // Transform prices to match frontend expectations 
       const transformedDrinks = allDrinks.map(drink => ({
         ...drink,
-        price: drink.price, // Keep as is since frontend handles formatting
+        price: drink.price,
         inventory: drink.inventory ?? 0,
         sales: drink.sales ?? 0
       }));
@@ -557,30 +558,6 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error fetching split payments:", error);
       res.status(500).json({ error: "Failed to fetch split payments" });
-    }
-  });
-
-  // Event packages endpoints
-  app.get("/api/event-packages", async (_req, res) => {
-    try {
-      const packages = await db.select().from(eventPackages);
-      res.json(packages);
-    } catch (error) {
-      console.error("Error fetching event packages:", error);
-      res.status(500).json({ error: "Failed to fetch event packages" });
-    }
-  });
-
-  app.post("/api/event-packages", async (req, res) => {
-    try {
-      const [eventPackage] = await db
-        .insert(eventPackages)
-        .values(req.body)
-        .returning();
-      res.json(eventPackage);
-    } catch (error) {
-      console.error("Error creating event package:", error);
-      res.status(500).json({ error: "Failed to create event package" });
     }
   });
 

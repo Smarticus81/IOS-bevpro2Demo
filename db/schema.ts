@@ -46,7 +46,7 @@ export const taxCategories = pgTable("tax_categories", {
 export const pourInventory = pgTable("pour_inventory", {
   id: serial("id").primaryKey(),
   drink_id: integer("drink_id").notNull().references(() => drinks.id),
-  bottle_id: text("bottle_id", { length: 50 }).notNull(),
+  bottle_id: text("bottle_id").notNull(),
   initial_volume_ml: decimal("initial_volume_ml", { precision: 10, scale: 2 }).notNull(),
   remaining_volume_ml: decimal("remaining_volume_ml", { precision: 10, scale: 2 }).notNull(),
   opened_at: timestamp("opened_at").defaultNow(),
@@ -64,7 +64,7 @@ export const pourTransactions = pgTable("pour_transactions", {
   volume_ml: decimal("volume_ml", { precision: 10, scale: 2 }).notNull(),
   transaction_time: timestamp("transaction_time").defaultNow(),
   order_id: integer("order_id").references(() => orders.id),
-  tax_amount: decimal("tax_amount", { precision: 10, scale: 2 }),
+  tax_amount: decimal("tax_amount", { precision: 10, scale: 2 }).notNull(),
   staff_id: integer("staff_id"),
   notes: text("notes"),
 });
@@ -139,30 +139,7 @@ export const splitPayments = pgTable("split_payments", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
-export const eventPackages = pgTable("event_packages", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description"),
-  price_per_person: integer("price_per_person").notNull(),
-  minimum_guests: integer("minimum_guests").default(1),
-  duration_hours: integer("duration_hours"),
-  is_active: boolean("is_active").default(true),
-  included_items: jsonb("included_items"),
-  created_at: timestamp("created_at").defaultNow(),
-});
-
-// Enhanced recipe tracking for cocktails
-export const cocktailRecipes = pgTable("cocktail_recipes", {
-  id: serial("id").primaryKey(),
-  drink_id: integer("drink_id").notNull().references(() => drinks.id),
-  ingredient_drink_id: integer("ingredient_drink_id").notNull().references(() => drinks.id),
-  pour_size_id: integer("pour_size_id").notNull().references(() => pourSizes.id),
-  quantity: decimal("quantity", { precision: 5, scale: 2 }).notNull(),
-  notes: text("notes"),
-  created_at: timestamp("created_at").defaultNow(),
-});
-
-
+// Relations definitions
 export const transactionRelations = relations(transactions, ({ one }) => ({
   order: one(orders, {
     fields: [transactions.order_id],
@@ -190,7 +167,6 @@ export const drinkRelations = relations(drinks, ({ many, one }) => ({
     fields: [drinks.tax_category_id],
     references: [taxCategories.id],
   }),
-  recipes: many(cocktailRecipes),
 }));
 
 export const tabRelations = relations(tabs, ({ many, one }) => ({
@@ -228,21 +204,6 @@ export const pourTransactionRelations = relations(pourTransactions, ({ one }) =>
   }),
 }));
 
-export const cocktailRecipeRelations = relations(cocktailRecipes, ({ one }) => ({
-  drink: one(drinks, {
-    fields: [cocktailRecipes.drink_id],
-    references: [drinks.id],
-  }),
-  ingredient: one(drinks, {
-    fields: [cocktailRecipes.ingredient_drink_id],
-    references: [drinks.id],
-  }),
-  pourSize: one(pourSizes, {
-    fields: [cocktailRecipes.pour_size_id],
-    references: [pourSizes.id],
-  }),
-}));
-
 // Types
 export type Drink = typeof drinks.$inferSelect;
 export type Order = typeof orders.$inferSelect;
@@ -251,15 +212,10 @@ export type PaymentMethod = typeof paymentMethods.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
 export type Tab = typeof tabs.$inferSelect;
 export type SplitPayment = typeof splitPayments.$inferSelect;
-export type EventPackage = typeof eventPackages.$inferSelect;
 export type PourSize = typeof pourSizes.$inferSelect;
 export type TaxCategory = typeof taxCategories.$inferSelect;
 export type PourInventory = typeof pourInventory.$inferSelect;
 export type PourTransaction = typeof pourTransactions.$inferSelect;
-export type InsertDrink = typeof drinks.$inferInsert;
-export type CocktailRecipe = typeof cocktailRecipes.$inferSelect;
-export type InsertCocktailRecipe = typeof cocktailRecipes.$inferInsert;
-
 
 // Schemas
 export const insertDrinkSchema = createInsertSchema(drinks);
@@ -274,8 +230,6 @@ export const insertTabSchema = createInsertSchema(tabs);
 export const selectTabSchema = createSelectSchema(tabs);
 export const insertSplitPaymentSchema = createInsertSchema(splitPayments);
 export const selectSplitPaymentSchema = createSelectSchema(splitPayments);
-export const insertEventPackageSchema = createInsertSchema(eventPackages);
-export const selectEventPackageSchema = createSelectSchema(eventPackages);
 export const insertPourSizeSchema = createInsertSchema(pourSizes);
 export const selectPourSizeSchema = createSelectSchema(pourSizes);
 export const insertTaxCategorySchema = createInsertSchema(taxCategories);
@@ -284,5 +238,3 @@ export const insertPourInventorySchema = createInsertSchema(pourInventory);
 export const selectPourInventorySchema = createSelectSchema(pourInventory);
 export const insertPourTransactionSchema = createInsertSchema(pourTransactions);
 export const selectPourTransactionSchema = createSelectSchema(pourTransactions);
-export const insertCocktailRecipeSchema = createInsertSchema(cocktailRecipes);
-export const selectCocktailRecipeSchema = createSelectSchema(cocktailRecipes);
