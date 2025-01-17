@@ -97,17 +97,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       const orderData = await orderResponse.json();
 
-      // Process payment through payment service
-      const paymentResponse = await paymentService.createPaymentIntent({
-        amount: orderData.order.total,
-        orderId: orderData.order.id
-      });
+      try {
+        // Process payment through payment service
+        const paymentResponse = await paymentService.createPaymentIntent({
+          amount: Math.round(orderData.order.total * 100), // Convert to cents
+          orderId: orderData.order.id
+        });
 
-      return {
-        transactionId: paymentResponse.id,
-        success: paymentResponse.status === 'succeeded',
-        orderId: orderData.order.id
-      };
+        if (!paymentResponse || !paymentResponse.id) {
+          throw new Error('Invalid payment response');
+        }
+
+        return {
+          transactionId: paymentResponse.id,
+          success: paymentResponse.status === 'succeeded',
+          orderId: orderData.order.id
+        };
+      } catch (error) {
+        throw new Error(error instanceof Error ? error.message : 'Payment processing failed');
+      }
     },
     onSuccess: async (data) => {
       logger.info('Payment successful, clearing cart');
