@@ -1,0 +1,50 @@
+Uncaught TypeError: Cannot read properties of undefined (reading 'name')
+    at Transactions.tsx:95:62
+    at Array.map (<anonymous>)
+    at getOrderSummary (Transactions.tsx:95:18)
+    at Transactions.tsx:174:28
+    at Array.map (<anonymous>)
+    at Transactions (Transactions.tsx:151:42)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=ea8f73c5:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=ea8f73c5:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=ea8f73c5:15924:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=ea8f73c5:3674:22)Understand this errorAI
+Console.js:61 The above error occurred in the <Transactions> component:
+
+    at Transactions (https://1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/src/pages/Transactions.tsx:36:31)
+    at Route (https://1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=ea8f73c5:323:16)
+    at Switch (https://1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=ea8f73c5:379:17)
+    at CartProvider (https://1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/src/contexts/CartContext.tsx:62:32)
+    at App (https://1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/src/App.tsx:31:3)
+    at QueryClientProvider (https://1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=ea8f73c5:2829:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+Mt.forEach.n.<computed> @ Console.js:61Understand this errorAI
+chunk-RPCDYKBN.js?v=ea8f73c5:9129 Uncaught TypeError: Cannot read properties of undefined (reading 'name')
+    at Transactions.tsx:95:62
+    at Array.map (<anonymous>)
+    at getOrderSummary (Transactions.tsx:95:18)
+    at Transactions.tsx:174:28
+    at Array.map (<anonymous>)
+    at Transactions (Transactions.tsx:151:42)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=ea8f73c5:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=ea8f73c5:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=ea8f73c5:15924:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=ea8f73c5:19753:22)Understand this errorAI
+Console.js:61 WebSocket connection closed
+Console.js:61 {
+  "timestamp": "2025-01-17T15:31:27.802Z",
+  "level": "info",
+  "message": "WebSocket connection closed",
+  "context": {}
+}
+Console.js:61 Attempting to reconnect...
+Console.js:61 WebSocket connection established
+Console.js:61 WebSocket message received: status
+Console.js:61 WebSocket status: connected
+758Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.Understand this warningAI
+1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/:1 
+        
+        
+       Failed to load resource: the server responded with a status of 502 (Bad Gateway)

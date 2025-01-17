@@ -74,7 +74,7 @@ export function Transactions() {
       transaction.id.toString().includes(searchLower) ||
       transaction.status.toLowerCase().includes(searchLower) ||
       transaction.amount.toString().includes(searchLower) ||
-      transaction.order?.items?.some(item => 
+      transaction.order?.items?.some(item =>
         item.drink.name.toLowerCase().includes(searchLower)
       )
     );
@@ -92,12 +92,15 @@ export function Transactions() {
 
   const getOrderSummary = (items: Transaction['order']['items']) => {
     if (!items?.length) return "No items";
-    return items.map(item => `${item.quantity}x ${item.drink.name}`).join(", ");
+
+    return items.map(item => {
+      if (!item?.drink?.name) return "Unknown item";
+      return `${item.quantity}x ${item.drink.name}`;
+    }).join(", ");
   };
 
   // Format monetary values from cents to dollars with proper decimals
   const formatMoney = (cents: number): string => {
-    // Since amounts are already in dollars with proper decimals, we don't need to divide by 100
     return `$${Number(cents).toFixed(2)}`;
   };
 
