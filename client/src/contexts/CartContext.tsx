@@ -101,19 +101,34 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         // Process payment through payment service
         const paymentResponse = await paymentService.createPaymentIntent({
           amount: Math.round(orderData.order.total * 100), // Convert to cents
-          orderId: orderData.order.id
+          orderId: orderData.order.id,
+          customerEmail: undefined, // Add customer email if available
+          currency: 'usd'
         });
 
         if (!paymentResponse || !paymentResponse.id) {
+          logger.error('Invalid payment response', { response: paymentResponse });
           throw new Error('Invalid payment response');
+        }
+
+        if (paymentResponse.status !== 'succeeded') {
+          logger.error('Payment failed', { 
+            status: paymentResponse.status,
+            transactionId: paymentResponse.id 
+          });
+          throw new Error(`Payment failed with status: ${paymentResponse.status}`);
         }
 
         return {
           transactionId: paymentResponse.id,
-          success: paymentResponse.status === 'succeeded',
+          success: true,
           orderId: orderData.order.id
         };
       } catch (error) {
+        logger.error('Payment processing error', { 
+          error: error instanceof Error ? error.message : 'Unknown error',
+          orderId: orderData.order.id
+        });
         throw new Error(error instanceof Error ? error.message : 'Payment processing failed');
       }
     },
