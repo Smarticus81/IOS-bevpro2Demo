@@ -86,91 +86,108 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Setup WebSocket connection for real-time updates
   useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${window.location.host}`);
+    let reconnectTimeout: NodeJS.Timeout;
+    let ws: WebSocket;
 
-    ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        logger.info('WebSocket message received:', message);
+    const connectWebSocket = () => {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${protocol}//${window.location.host}`);
 
-        if (message.type === 'order_completed') {
-          logger.info('Order completed successfully');
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          logger.info('WebSocket message received:', message);
 
-          // Show order confirmation modal
-          if (message.transaction && message.order) {
-            setOrderConfirmation({
-              isOpen: true,
-              details: {
-                orderId: message.order.id,
-                transactionId: message.transaction.id,
-                items: state.items.map(item => ({
-                  name: item.drink.name,
-                  quantity: item.quantity,
-                  price: item.drink.price
-                })),
-                subtotal: message.order.total - (message.order.tax || 0),
-                tax: message.order.tax || 0,
-                total: message.order.total,
-                timestamp: message.timestamp
+          if (message.type === 'order_completed') {
+            logger.info('Order completed successfully');
+
+            // Show order confirmation modal
+            if (message.transaction && message.order) {
+              setOrderConfirmation({
+                isOpen: true,
+                details: {
+                  orderId: message.order.id,
+                  transactionId: message.transaction.id,
+                  items: state.items.map(item => ({
+                    name: item.drink.name,
+                    quantity: item.quantity,
+                    price: item.drink.price
+                  })),
+                  subtotal: message.order.total - (message.order.tax || 0),
+                  tax: message.order.tax || 0,
+                  total: message.order.total,
+                  timestamp: message.timestamp
+                }
+              });
+            }
+
+            dispatch({ type: 'CLEAR_CART' });
+            queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
+          } 
+          else if (message.type === 'order_failed') {
+            logger.error('Order failed:', message);
+            dispatch({ type: 'SET_PROCESSING', isProcessing: false });
+
+            // Handle different types of failures with appropriate messages
+            let errorMessage = 'Failed to process order';
+
+            if (message.error === "Some items are out of stock") {
+              errorMessage = "Some items in your order are no longer available. Please review your cart.";
+            } else if (message.error === "Payment processing failed") {
+              if (message.details?.includes("tax_category_id")) {
+                errorMessage = "Order processing error. Please try again or contact support if the issue persists.";
+              } else {
+                errorMessage = "Payment processing failed. Please try again.";
               }
+            }
+
+            toast({
+              title: 'Order Failed',
+              description: errorMessage,
+              variant: 'destructive',
             });
-          }
 
-          dispatch({ type: 'CLEAR_CART' });
-          queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
-        } 
-        else if (message.type === 'order_failed') {
-          logger.error('Order failed:', message);
-          dispatch({ type: 'SET_PROCESSING', isProcessing: false });
-
-          // Handle different types of failures with appropriate messages
-          let errorMessage = 'Failed to process order';
-
-          if (message.error === "Some items are out of stock") {
-            errorMessage = "Some items in your order are no longer available. Please review your cart.";
-          } else if (message.error === "Payment processing failed") {
-            if (message.details?.includes("tax_category_id")) {
-              errorMessage = "Order processing error. Please try again or contact support if the issue persists.";
-            } else {
-              errorMessage = "Payment processing failed. Please try again.";
+            // If items are out of stock, update the cart
+            if (message.items) {
+              message.items.forEach((item: { drink_id: number, available: boolean }) => {
+                if (!item.available) {
+                  dispatch({ type: 'REMOVE_ITEM', drinkId: item.drink_id });
+                }
+              });
             }
           }
-
-          toast({
-            title: 'Order Failed',
-            description: errorMessage,
-            variant: 'destructive',
-          });
-
-          // If items are out of stock, update the cart
-          if (message.items) {
-            message.items.forEach((item: { drink_id: number, available: boolean }) => {
-              if (!item.available) {
-                dispatch({ type: 'REMOVE_ITEM', drinkId: item.drink_id });
-              }
-            });
-          }
+        } catch (error) {
+          logger.error('Error processing WebSocket message:', error);
         }
-      } catch (error) {
-        logger.error('Error processing WebSocket message:', error);
-      }
+      };
+
+      ws.onerror = (error) => {
+        logger.error('WebSocket error:', error);
+      };
+
+      ws.onclose = () => {
+        logger.info('WebSocket connection closed');
+        // Clear any existing reconnect timeout
+        if (reconnectTimeout) {
+          clearTimeout(reconnectTimeout);
+        }
+        // Attempt to reconnect after 3 seconds
+        reconnectTimeout = setTimeout(() => {
+          logger.info('Attempting to reconnect...');
+          connectWebSocket();
+        }, 3000);
+      };
     };
 
-    ws.onerror = (error) => {
-      logger.error('WebSocket error:', error);
-    };
-
-    ws.onclose = () => {
-      logger.info('WebSocket connection closed');
-      setTimeout(() => {
-        logger.info('Attempting to reconnect...');
-        // The component will re-render and attempt to reconnect
-      }, 3000);
-    };
+    connectWebSocket();
 
     return () => {
-      ws.close();
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+      if (ws) {
+        ws.close();
+      }
     };
   }, [toast, queryClient, state.items]);
 
@@ -302,7 +319,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         cart: state.items,
         isProcessing: state.isProcessing,
         addToCart,
-        removeFromCart: removeItem,
+        removeItem,
         placeOrder
       }}
     >

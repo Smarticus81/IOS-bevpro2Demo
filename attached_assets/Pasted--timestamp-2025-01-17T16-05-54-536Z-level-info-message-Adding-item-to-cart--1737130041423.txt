@@ -1,0 +1,201 @@
+{
+  "timestamp": "2025-01-17T16:05:54.536Z",
+  "level": "info",
+  "message": "Adding item to cart:",
+  "context": {
+    "drinkId": 11,
+    "quantity": 1
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:05:54.546Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:05:54.546Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:05:54.580Z",
+  "level": "info",
+  "message": "WebSocket connection closed",
+  "context": {}
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:05:54.709Z",
+  "level": "info",
+  "message": "WebSocket message received:",
+  "context": {
+    "type": "status",
+    "status": "connected",
+    "timestamp": "2025-01-17T16:05:54.696Z"
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:05:57.581Z",
+  "level": "info",
+  "message": "Attempting to reconnect...",
+  "context": {}
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:06:04.998Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": true
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:06:04.998Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": true
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:06:05.001Z",
+  "level": "info",
+  "message": "Starting order placement:",
+  "context": {
+    "cartItems": 1,
+    "total": 6
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:06:05.418Z",
+  "level": "info",
+  "message": "WebSocket message received:",
+  "context": {
+    "type": "order_failed",
+    "orderId": 103,
+    "error": "column \"tax_category_id\" does not exist",
+    "timestamp": "2025-01-17T16:06:05.407Z"
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:06:05.418Z",
+  "level": "error",
+  "message": "Order failed:",
+  "context": {
+    "type": "order_failed",
+    "orderId": 103,
+    "error": "column \"tax_category_id\" does not exist",
+    "timestamp": "2025-01-17T16:06:05.407Z"
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:06:05.424Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:06:05.424Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+Console.js:61 WebSocket message received: order_failed
+Console.js:61 Received unknown message type: order_failed
+Mt.forEach.n.<computed> @ Console.js:61
+ws.onmessage @ useWebSocket.ts:56Understand this warningAI
+Console.js:61 WebSocket message received: order_failed
+Console.js:61 Received unknown message type: order_failed
+Mt.forEach.n.<computed> @ Console.js:61
+ws.onmessage @ useWebSocket.ts:56Understand this warningAI
+CartContext.tsx:184 
+        
+        
+       POST https://1f6a0a41-0260-49c9-a80c-d53442c51717-00-5jx70xych1bz.riker.replit.dev/api/orders 400 (Bad Request)
+window.fetch @ Network.js:219
+mutationFn @ CartContext.tsx:184
+fn @ @tanstack_react-query.js?v=ea8f73c5:1188
+run @ @tanstack_react-query.js?v=ea8f73c5:493
+start @ @tanstack_react-query.js?v=ea8f73c5:535
+execute @ @tanstack_react-query.js?v=ea8f73c5:1224
+await in execute
+mutate @ @tanstack_react-query.js?v=ea8f73c5:2649
+(anonymous) @ CartContext.tsx:239
+callCallback2 @ chunk-RPCDYKBN.js?v=ea8f73c5:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=ea8f73c5:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=ea8f73c5:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=ea8f73c5:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=ea8f73c5:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=ea8f73c5:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=ea8f73c5:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=ea8f73c5:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=ea8f73c5:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=ea8f73c5:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=ea8f73c5:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=ea8f73c5:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=ea8f73c5:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=ea8f73c5:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=ea8f73c5:5449Understand this errorAI
+Console.js:61 {
+  "timestamp": "2025-01-17T16:06:05.429Z",
+  "level": "info",
+  "message": "Order response received:",
+  "context": {
+    "success": false,
+    "error": "Payment processing failed",
+    "details": "column \"tax_category_id\" does not exist",
+    "orderId": 103
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:06:05.429Z",
+  "level": "error",
+  "message": "Order placement failed:",
+  "context": {}
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:06:05.429Z",
+  "level": "error",
+  "message": "Error during order placement:",
+  "context": {}
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:06:05.434Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
+Console.js:61 {
+  "timestamp": "2025-01-17T16:06:05.434Z",
+  "level": "debug",
+  "message": "OrderSummaryDrawer render",
+  "context": {
+    "cartItems": 1,
+    "itemCount": 1,
+    "isProcessing": false
+  }
+}
