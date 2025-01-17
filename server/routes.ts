@@ -12,17 +12,13 @@ import {
   splitPayments,
   eventPackages,
 } from "@db/schema";
-import { eq, sql, count, sum, desc } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { setupRealtimeProxy, broadcastUpdate } from "./realtime-proxy";
 import { PaymentService } from "./services/payments";
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
-
-  // Enable compression for all routes
   app.use(compression());
-
-  // Setup realtime proxy
   const wsServer = setupRealtimeProxy(httpServer);
 
   // Create new order with real-time inventory updates
@@ -71,7 +67,27 @@ export function registerRoutes(app: Express): Server {
         const result = await PaymentService.processPayment(total, order.id);
 
         if (!result.success) {
-          throw new Error(result.message || "Payment processing failed");
+          // Update order status as failed
+          await db.update(orders)
+            .set({ 
+              status: 'failed',
+              payment_status: 'failed'
+            })
+            .where(eq(orders.id, order.id));
+
+          // Broadcast failure
+          broadcastUpdate(wsServer, 'ORDER_UPDATE', {
+            type: 'order_failed',
+            orderId: order.id,
+            error: result.message || "Payment processing failed"
+          });
+
+          return res.status(400).json({
+            success: false,
+            error: "Payment processing failed",
+            message: result.message,
+            orderId: order.id
+          });
         }
 
         // If payment successful, update inventory
@@ -95,8 +111,8 @@ export function registerRoutes(app: Express): Server {
           }
         }
 
-        // Broadcast inventory updates
-        broadcastUpdate(wsServer, 'INVENTORY_UPDATE', {
+        // Broadcast success
+        broadcastUpdate(wsServer, 'ORDER_UPDATE', {
           type: 'order_completed',
           orderId: order.id,
           updates: inventoryUpdates,
@@ -110,8 +126,9 @@ export function registerRoutes(app: Express): Server {
           inventoryUpdates,
           message: "Order completed successfully"
         });
+
       } catch (paymentError) {
-        // If payment fails, update order status
+        // Update order status as failed
         await db.update(orders)
           .set({ 
             status: 'failed',
@@ -132,7 +149,6 @@ export function registerRoutes(app: Express): Server {
           details: paymentError instanceof Error ? paymentError.message : "Unknown error",
           orderId: order.id
         });
-        return;
       }
     } catch (error) {
       console.error("Error creating order:", error);
@@ -223,8 +239,8 @@ export function registerRoutes(app: Express): Server {
 
       // Get total sales and today's sales
       const [salesStats] = await db.select({
-        totalSales: sum(transactions.amount).mapWith(Number),
-        totalOrders: count(orders.id).mapWith(Number)
+        totalSales: sql`SUM(transactions.amount)`,
+        totalOrders: sql`COUNT(orders.id)`
       })
         .from(transactions)
         .leftJoin(orders, eq(transactions.order_id, orders.id))
@@ -234,14 +250,14 @@ export function registerRoutes(app: Express): Server {
       todayStart.setHours(0, 0, 0, 0);
 
       const [todayStats] = await db.select({
-        todaySales: sum(transactions.amount).mapWith(Number)
+        todaySales: sql`SUM(transactions.amount)`
       })
         .from(transactions)
         .where(sql`${transactions.created_at}::date = ${todayStart.toISOString().split('T')[0]} AND ${transactions.status} = 'completed'`);
 
       // Get active orders with pagination
       const activeOrders = await db.select({
-        count: count().mapWith(Number)
+        count: sql`COUNT(*)`
       })
         .from(orders)
         .where(eq(orders.status, 'pending'));
@@ -249,7 +265,7 @@ export function registerRoutes(app: Express): Server {
       // Get category sales with pagination
       const categorySales = await db.select({
         category: drinks.category,
-        totalSales: sum(orderItems.quantity).mapWith(Number)
+        totalSales: sql`SUM(orderItems.quantity)`
       })
         .from(orderItems)
         .leftJoin(drinks, eq(orderItems.drink_id, drinks.id))
@@ -261,7 +277,7 @@ export function registerRoutes(app: Express): Server {
       const popularDrinks = await db.select({
         id: drinks.id,
         name: drinks.name,
-        sales: sum(orderItems.quantity).mapWith(Number)
+        sales: sql`SUM(orderItems.quantity)`
       })
         .from(orderItems)
         .leftJoin(drinks, eq(orderItems.drink_id, drinks.id))

@@ -35,6 +35,9 @@ export class PaymentService {
         })
         .returning();
 
+      // In a real implementation, we would process the payment with a payment provider here
+      // For demo purposes, we'll simulate a successful payment
+
       // Update transaction record as completed
       const [updatedTransaction] = await db
         .update(transactions)
