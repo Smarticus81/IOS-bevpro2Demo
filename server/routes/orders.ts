@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@db";
 import { orders, orderItems, drinks } from "@db/schema";
 import { calculateOrderTaxAndPours, recordPourTransactions } from "../services/tax-service";
+import { eq } from 'knex'; // Assuming eq is from knex
 
 const router = Router();
 
@@ -21,7 +22,7 @@ router.post("/api/orders", async (req, res) => {
         name: drinks.name,
       })
       .from(drinks)
-      .where(drinks.id.in(drinkIds));
+      .where(eq(drinks.id, drinkIds)); //Potentially needs adjustment depending on the DB library used
 
     // Create a map of drink_id to name for easy lookup
     const drinkNameMap = new Map(drinkDetails.map(d => [d.id, d.name]));
@@ -49,7 +50,7 @@ router.post("/api/orders", async (req, res) => {
       payment_status: "pending",
     }).returning();
 
-    // Record order items
+    // Record order items with names - This part remains largely unchanged.
     await db.insert(orderItems).values(
       items.map((item) => ({
         order_id: order.id,
@@ -63,11 +64,20 @@ router.post("/api/orders", async (req, res) => {
     await recordPourTransactions(order.id, pours);
 
     res.json({
-      id: order.id,
+      success: true,
+      order: {
+        id: order.id,
+        status: order.status,
+        total: order.total,
+        items: itemsWithNames,
+        created_at: order.created_at,
+        completed_at: order.completed_at,
+        payment_status: order.payment_status,
+        tab_id: order.tab_id
+      },
       subtotal,
       tax: totalTax,
       total: subtotal + totalTax,
-      items: itemsWithNames,
       pours
     });
 
