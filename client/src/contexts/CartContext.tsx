@@ -1,8 +1,9 @@
-import { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
+import { createContext, useContext, useReducer, useCallback, useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 import type { CartState, CartContextType, AddToCartAction, CartItem } from '@/types/cart';
+import { OrderConfirmationModal } from '@/components/OrderConfirmationModal';
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
@@ -60,6 +61,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     isProcessing: false,
   });
 
+  const [orderConfirmation, setOrderConfirmation] = useState<{
+    isOpen: boolean;
+    details: {
+      orderId: number;
+      transactionId: string;
+      items: Array<{
+        name: string;
+        quantity: number;
+        price: number;
+      }>;
+      subtotal: number;
+      tax: number;
+      total: number;
+      timestamp: string;
+    } | null;
+  }>({
+    isOpen: false,
+    details: null
+  });
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -75,14 +96,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
         if (message.type === 'order_completed') {
           logger.info('Order completed successfully');
+
+          // Show order confirmation modal
+          if (message.transaction && message.order) {
+            setOrderConfirmation({
+              isOpen: true,
+              details: {
+                orderId: message.order.id,
+                transactionId: message.transaction.id,
+                items: state.items.map(item => ({
+                  name: item.drink.name,
+                  quantity: item.quantity,
+                  price: item.drink.price
+                })),
+                subtotal: message.order.total - (message.order.tax || 0),
+                tax: message.order.tax || 0,
+                total: message.order.total,
+                timestamp: message.timestamp
+              }
+            });
+          }
+
           dispatch({ type: 'CLEAR_CART' });
           queryClient.invalidateQueries({ queryKey: ['/api/drinks'] });
-
-          toast({
-            title: 'Order Completed',
-            description: 'Your order has been processed successfully!',
-            variant: 'default',
-          });
         } 
         else if (message.type === 'order_failed') {
           logger.info('Order failed:', message.error);
@@ -110,7 +146,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return () => {
       ws.close();
     };
-  }, [toast, queryClient]);
+  }, [toast, queryClient, state.items]);
 
   const orderMutation = useMutation({
     mutationFn: async (cartItems: CartItem[]) => {
@@ -256,6 +292,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       )}
+      <OrderConfirmationModal
+        isOpen={orderConfirmation.isOpen}
+        onClose={() => setOrderConfirmation(prev => ({ ...prev, isOpen: false }))}
+        orderDetails={orderConfirmation.details}
+      />
     </CartContext.Provider>
   );
 }
