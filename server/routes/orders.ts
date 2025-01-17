@@ -8,12 +8,19 @@ const router = Router();
 router.post("/api/orders", async (req, res) => {
   const { items } = req.body;
 
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: "Invalid order items" });
+  }
+
   try {
     // Calculate tax and track pours
     const { totalTax, pours } = await calculateOrderTaxAndPours(items);
 
-    // Calculate subtotal
-    const subtotal = items.reduce((total: number, item: any) => total + (item.price * item.quantity), 0);
+    // Calculate subtotal from the actual items
+    const subtotal = items.reduce((total, item) => {
+      const itemPrice = typeof item.price === 'number' ? item.price : 0;
+      return total + (itemPrice * item.quantity);
+    }, 0);
 
     // Create order with tax
     const [order] = await db.insert(orders).values({
@@ -25,7 +32,7 @@ router.post("/api/orders", async (req, res) => {
 
     // Record order items
     await db.insert(orderItems).values(
-      items.map((item: any) => ({
+      items.map((item) => ({
         order_id: order.id,
         drink_id: item.drink_id,
         quantity: item.quantity,
@@ -47,7 +54,10 @@ router.post("/api/orders", async (req, res) => {
 
   } catch (error) {
     console.error("Error creating order:", error);
-    res.status(500).json({ error: "Failed to create order" });
+    res.status(500).json({ 
+      error: "Failed to create order",
+      details: error instanceof Error ? error.message : "Unknown error" 
+    });
   }
 });
 

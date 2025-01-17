@@ -91,7 +91,7 @@ export function DrinkCard({ drink, onAdd, onRemove, quantity }: DrinkCardProps) 
                        bg-white/95 backdrop-blur-sm rounded-lg
                        shadow-sm border border-gray-100">
             <span className="text-sm font-semibold text-gray-900">
-              ${(drink.price / 100).toFixed(2)}
+              ${drink.price.toFixed(2)}
             </span>
           </div>
 
