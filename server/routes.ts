@@ -11,13 +11,9 @@ import {
   tabs,
   splitPayments,
   eventPackages,
-  //pourInventory, //removed
-  //pourTransactions, //removed
-  //pourSizes, //removed
-  //taxCategories, //removed
 } from "@db/schema";
 import { eq, sql, count, sum, desc } from "drizzle-orm";
-import { setupRealtimeProxy } from "./realtime-proxy";
+import { setupRealtimeProxy, broadcastUpdate } from "./realtime-proxy";
 import { PaymentService } from "./services/payments";
 
 export function registerRoutes(app: Express): Server {
@@ -25,6 +21,9 @@ export function registerRoutes(app: Express): Server {
 
   // Enable compression for all routes
   app.use(compression());
+
+  // Setup realtime proxy
+  const wsServer = setupRealtimeProxy(httpServer);
 
   // Create new order with real-time inventory updates
   app.post("/api/orders", async (req, res) => {
@@ -67,17 +66,38 @@ export function registerRoutes(app: Express): Server {
 
       await db.insert(orderItems).values(orderItemsData);
 
-      // Update inventory
+      // Update inventory and track changes
+      const inventoryUpdates = [];
       for (const item of items) {
-        await db.update(drinks)
+        const [updatedDrink] = await db.update(drinks)
           .set({
             inventory: sql`${drinks.inventory} - ${item.quantity}`,
             sales: sql`COALESCE(${drinks.sales}, 0) + ${item.quantity}`
           })
-          .where(eq(drinks.id, item.drink.id));
+          .where(eq(drinks.id, item.drink.id))
+          .returning();
+
+        if (updatedDrink) {
+          inventoryUpdates.push({
+            id: updatedDrink.id,
+            name: item.drink.name,
+            inventory: updatedDrink.inventory,
+            sales: updatedDrink.sales
+          });
+        }
       }
 
-      res.json(order);
+      // Broadcast inventory updates
+      broadcastUpdate(wsServer, 'INVENTORY_UPDATE', {
+        type: 'order_created',
+        orderId: order.id,
+        updates: inventoryUpdates
+      });
+
+      res.json({
+        order,
+        inventoryUpdates
+      });
     } catch (error) {
       console.error("Error creating order:", error);
       res.status(500).json({
@@ -104,7 +124,15 @@ export function registerRoutes(app: Express): Server {
         .from(drinks)
         .orderBy(drinks.category);
 
-      res.json({ drinks: allDrinks });
+      // Transform prices to match frontend expectations (convert from cents)
+      const transformedDrinks = allDrinks.map(drink => ({
+        ...drink,
+        price: drink.price,
+        inventory: drink.inventory ?? 0,
+        sales: drink.sales ?? 0
+      }));
+
+      res.json({ drinks: transformedDrinks });
     } catch (error) {
       console.error("Error fetching drinks:", error);
       res.status(500).json({ error: "Failed to fetch drinks" });
