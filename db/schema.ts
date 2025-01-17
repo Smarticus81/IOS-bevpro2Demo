@@ -71,6 +71,7 @@ export const pourTransactions = pgTable("pour_transactions", {
 
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
+  name: text("name"),
   status: text("status").notNull().default("pending"),
   subtotal: integer("subtotal").notNull(),
   tax_amount: integer("tax_amount").notNull(),
