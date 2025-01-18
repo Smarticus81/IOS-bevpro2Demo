@@ -1,14 +1,21 @@
-import { pgTable, text, serial, integer, timestamp, boolean, jsonb, decimal } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean, jsonb, decimal, foreignKey } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
+
+export const taxCategories = pgTable("tax_categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  rate: decimal("rate").notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+});
 
 export const drinks = pgTable("drinks", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   category: text("category").notNull(),
   subcategory: text("subcategory"),
-  price: integer("price").notNull(),
-  inventory: integer("inventory").notNull().default(0),
+  price: decimal("price").notNull(),
+  inventory: integer("inventory").default(0),
   image: text("image"),
   sales: integer("sales").default(0),
   tax_category_id: integer("tax_category_id").references(() => taxCategories.id),
@@ -33,14 +40,8 @@ export const pourSizes = pgTable("pour_sizes", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
+
 // Tax categories for different types of alcohol
-export const taxCategories = pgTable("tax_categories", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  rate: decimal("rate").notNull(),
-  description: text("description"),
-  created_at: timestamp("created_at").defaultNow(),
-});
 
 // Pour inventory tracking for individual bottles
 export const pourInventory = pgTable("pour_inventory", {
