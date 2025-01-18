@@ -334,18 +334,32 @@ export function registerRoutes(app: Express): Server {
 
   // Get OpenAI API configuration
   app.get("/api/config", (_req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    
     try {
-      const openaiKey = process.env.OPENAI_API_KEY;
+      const openaiKey = process.env.OPENAI_API_KEY?.trim();
 
       if (!openaiKey) {
-        throw new Error("OpenAI API key not found in environment");
+        return res.status(500).json({
+          error: "Configuration error",
+          message: "OpenAI API key not found in environment",
+          timestamp: new Date().toISOString()
+        });
       }
 
       if (!openaiKey.startsWith('sk-')) {
-        throw new Error("Invalid OpenAI API key format");
+        return res.status(500).json({
+          error: "Configuration error",
+          message: "Invalid OpenAI API key format",
+          timestamp: new Date().toISOString()
+        });
       }
 
-      res.json({ openaiKey });
+      return res.status(200).json({
+        openaiKey,
+        timestamp: new Date().toISOString()
+      });
+
     } catch (error: unknown) {
       const err = error as Error;
       console.error("OpenAI config error:", {
@@ -354,7 +368,7 @@ export function registerRoutes(app: Express): Server {
         timestamp: new Date().toISOString()
       });
 
-      res.status(500).json({
+      return res.status(500).json({
         error: "Configuration error",
         message: err.message,
         timestamp: new Date().toISOString()
